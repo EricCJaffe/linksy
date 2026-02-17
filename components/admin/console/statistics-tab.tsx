@@ -1,7 +1,89 @@
 'use client'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Users, Building2, Activity, TrendingUp, Database, Zap } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Users, Building2, Activity, TrendingUp, Database, Zap, MapPin, FileText, RefreshCw } from 'lucide-react'
+import { useState, useEffect } from 'react'
+
+function GeocodingCard() {
+  const [stats, setStats] = useState<{ total: number; geocoded: number; ungeocoded: number } | null>(null)
+  const [isRunning, setIsRunning] = useState(false)
+  const [result, setResult] = useState<{ processed: number; succeeded: number; failed: number } | null>(null)
+
+  useEffect(() => {
+    fetch('/api/admin/geocode')
+      .then((r) => r.json())
+      .then(setStats)
+      .catch(() => {})
+  }, [result])
+
+  const runGeocoding = async () => {
+    setIsRunning(true)
+    setResult(null)
+    try {
+      const res = await fetch('/api/admin/geocode', { method: 'POST' })
+      const data = await res.json()
+      setResult(data)
+    } catch {
+      setResult({ processed: 0, succeeded: 0, failed: 0 })
+    } finally {
+      setIsRunning(false)
+    }
+  }
+
+  const pct = stats && stats.total > 0
+    ? Math.round((stats.geocoded / stats.total) * 100)
+    : 0
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <MapPin className="h-4 w-4" />
+          Geocoding
+        </CardTitle>
+        <CardDescription>
+          Geocode provider addresses to enable proximity search and map display
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {stats ? (
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Geocoded locations</span>
+              <span className="font-medium">{stats.geocoded} / {stats.total}</span>
+            </div>
+            <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full bg-green-500 rounded-full transition-all"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {stats.ungeocoded} location{stats.ungeocoded !== 1 ? 's' : ''} pending geocoding
+            </p>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">Loading geocoding stats…</p>
+        )}
+
+        {result && (
+          <div className="rounded-md bg-muted px-3 py-2 text-sm">
+            Run complete — processed: {result.processed}, succeeded: {result.succeeded}, failed: {result.failed}
+          </div>
+        )}
+
+        <Button
+          onClick={runGeocoding}
+          disabled={isRunning || stats?.ungeocoded === 0}
+          size="sm"
+        >
+          {isRunning ? 'Geocoding…' : 'Run Batch Geocoding'}
+        </Button>
+      </CardContent>
+    </Card>
+  )
+}
 
 export function StatisticsTab() {
   return (
@@ -170,6 +252,107 @@ export function StatisticsTab() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Maintenance tools */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <GeocodingCard />
+        <ContextCardsCard />
+      </div>
     </>
+  )
+}
+
+function ContextCardsCard() {
+  const [stats, setStats] = useState<{ total: number; generated: number; missing: number } | null>(null)
+  const [isRunning, setIsRunning] = useState(false)
+  const [result, setResult] = useState<{ updated: number; total: number } | null>(null)
+
+  useEffect(() => {
+    fetch('/api/admin/linksy/context-cards')
+      .then((r) => r.json())
+      .then(setStats)
+      .catch(() => {})
+  }, [result])
+
+  const runGeneration = async (force = false) => {
+    setIsRunning(true)
+    setResult(null)
+    try {
+      const res = await fetch('/api/admin/linksy/context-cards', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ force }),
+      })
+      const data = await res.json()
+      setResult(data)
+    } catch {
+      setResult({ updated: 0, total: 0 })
+    } finally {
+      setIsRunning(false)
+    }
+  }
+
+  const pct = stats && stats.total > 0
+    ? Math.round((stats.generated / stats.total) * 100)
+    : 0
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <FileText className="h-4 w-4" />
+          LLM Context Cards
+        </CardTitle>
+        <CardDescription>
+          Pre-generated provider summaries used for AI-powered search responses
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {stats ? (
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Cards generated</span>
+              <span className="font-medium">{stats.generated} / {stats.total}</span>
+            </div>
+            <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full bg-blue-500 rounded-full transition-all"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {stats.missing} provider{stats.missing !== 1 ? 's' : ''} missing context cards
+            </p>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">Loading stats…</p>
+        )}
+
+        {result && (
+          <div className="rounded-md bg-muted px-3 py-2 text-sm">
+            Done — generated {result.updated} of {result.total} context cards
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          <Button
+            onClick={() => runGeneration(false)}
+            disabled={isRunning || stats?.missing === 0}
+            size="sm"
+          >
+            {isRunning ? 'Generating…' : 'Generate Missing'}
+          </Button>
+          <Button
+            onClick={() => runGeneration(true)}
+            disabled={isRunning}
+            size="sm"
+            variant="outline"
+          >
+            <RefreshCw className="h-3.5 w-3.5 mr-1" />
+            Regenerate All
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   )
 }

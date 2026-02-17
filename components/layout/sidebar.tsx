@@ -8,10 +8,23 @@ import {
   Building2,
   LayoutDashboard,
   Briefcase,
+  Tags,
+  Ticket,
+  Store,
+  Search,
+  HelpCircle,
+  LifeBuoy,
+  BarChart3,
+  Calendar,
+  AlertTriangle,
+  Globe,
+  BookOpen,
+  FileText,
 } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
 import { useCurrentTenant } from '@/lib/hooks/useCurrentTenant'
+import { useProviderAccess } from '@/lib/hooks/useProviderAccess'
 import { OrgSwitcher } from './org-switcher'
 
 const mainNavItems = [
@@ -21,9 +34,29 @@ const mainNavItems = [
     icon: Home,
   },
   {
+    title: 'Providers',
+    href: '/dashboard/providers',
+    icon: Building2,
+  },
+  {
+    title: 'Needs',
+    href: '/dashboard/needs',
+    icon: Tags,
+  },
+  {
+    title: 'Referrals',
+    href: '/dashboard/tickets',
+    icon: Ticket,
+  },
+  {
     title: 'Notifications',
     href: '/dashboard/notifications',
     icon: Bell,
+  },
+  {
+    title: 'Help & Docs',
+    href: '/dashboard/help',
+    icon: BookOpen,
   },
 ]
 
@@ -41,15 +74,75 @@ const adminNavItems = [
     href: '/dashboard/admin',
     icon: LayoutDashboard,
   },
+  {
+    title: 'Reports',
+    href: '/dashboard/admin/reports',
+    icon: BarChart3,
+  },
+  {
+    title: 'Events',
+    href: '/dashboard/admin/events',
+    icon: Calendar,
+  },
+  {
+    title: 'Support Tickets',
+    href: '/dashboard/admin/support',
+    icon: LifeBuoy,
+  },
+  {
+    title: 'Crisis Detection',
+    href: '/dashboard/admin/crisis',
+    icon: AlertTriangle,
+  },
+  {
+    title: 'Widget Hosts',
+    href: '/dashboard/admin/hosts',
+    icon: Globe,
+  },
+  {
+    title: 'Docs Manager',
+    href: '/dashboard/admin/docs',
+    icon: FileText,
+  },
+  {
+    title: 'Provider Portal Preview',
+    href: '/dashboard/my-organization',
+    icon: Store,
+  },
+  {
+    title: 'Public Search Preview',
+    href: '/find-help',
+    icon: Search,
+  },
+]
+
+const providerNavItems = [
+  {
+    title: 'My Organization',
+    href: '/dashboard/my-organization',
+    icon: Store,
+  },
+  {
+    title: 'My Referrals',
+    href: '/dashboard/my-tickets',
+    icon: Ticket,
+  },
+  {
+    title: 'Submit Support Ticket',
+    href: '/dashboard/support',
+    icon: HelpCircle,
+  },
 ]
 
 export function Sidebar() {
   const pathname = usePathname()
   const { data: user } = useCurrentUser()
   const { data: tenantData } = useCurrentTenant()
+  const { data: providerAccess } = useProviderAccess()
 
   const isSiteAdmin = user?.profile?.role === 'site_admin'
   const isTenantAdmin = tenantData?.role === 'admin'
+  const isProviderContact = providerAccess?.hasAccess === true
 
   return (
     <aside className="flex h-full w-64 flex-col border-r bg-card">
@@ -65,7 +158,9 @@ export function Sidebar() {
               href={item.href}
               className={cn(
                 'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                pathname === item.href
+                (item.href === '/dashboard'
+                  ? pathname === item.href
+                  : pathname.startsWith(item.href))
                   ? 'bg-primary text-primary-foreground'
                   : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
               )}
@@ -105,6 +200,29 @@ export function Sidebar() {
               Admin
             </p>
             {adminNavItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                  pathname.startsWith(item.href)
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                )}
+              >
+                <item.icon className="h-4 w-4" />
+                {item.title}
+              </Link>
+            ))}
+          </div>
+        )}
+
+        {isProviderContact && !isSiteAdmin && (
+          <div className="space-y-1">
+            <p className="px-3 text-xs font-semibold uppercase text-muted-foreground">
+              Provider Portal
+            </p>
+            {providerNavItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}

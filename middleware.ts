@@ -3,7 +3,7 @@ import { updateSession } from '@/lib/supabase/middleware'
 import { validateCSRF } from '@/lib/middleware/csrf'
 import { globalRateLimit } from '@/lib/utils/rate-limit'
 
-const publicRoutes = ['/', '/login', '/signup', '/reset-password']
+const publicRoutes = ['/', '/login', '/signup', '/reset-password', '/auth/callback']
 const authRoutes = ['/login', '/signup', '/reset-password']
 
 /**

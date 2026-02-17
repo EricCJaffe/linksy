@@ -53,7 +53,7 @@ const nextConfig = {
           },
           {
             key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=()',
+            value: 'camera=(), microphone=(), geolocation=(self)',
           },
           {
             key: 'Content-Security-Policy',
@@ -64,7 +64,7 @@ const nextConfig = {
               "img-src 'self' data: blob: https: *.supabase.co",
               "font-src 'self' data: https://fonts.gstatic.com",
               "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
-              "frame-src 'self'",
+              "frame-src 'self' https://www.openstreetmap.org",
               "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self'",

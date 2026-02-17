@@ -1,0 +1,174 @@
+'use client'
+
+import { useState } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { AlertCircle, Calendar, CheckCircle, XCircle } from 'lucide-react'
+import { useAdminEvents, useApproveEvent, useRejectEvent } from '@/lib/hooks/useAdminEvents'
+
+export default function AdminEventsPage() {
+  const [statusFilter, setStatusFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending')
+  const { data: events, isLoading, error } = useAdminEvents(statusFilter)
+  const approveEvent = useApproveEvent()
+  const rejectEvent = useRejectEvent()
+
+  const handleApprove = async (eventId: string) => {
+    await approveEvent.mutateAsync(eventId)
+  }
+
+  const handleReject = async (eventId: string) => {
+    if (confirm('Are you sure you want to reject this event?')) {
+      await rejectEvent.mutateAsync(eventId)
+    }
+  }
+
+  const statusColors = {
+    pending: 'bg-yellow-100 text-yellow-800',
+    approved: 'bg-green-100 text-green-800',
+    rejected: 'bg-red-100 text-red-800',
+    cancelled: 'bg-gray-100 text-gray-800',
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-3xl font-bold">Events Management</h1>
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>Failed to load events. Please try again.</AlertDescription>
+        </Alert>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold flex items-center gap-2">
+          <Calendar className="h-8 w-8" />
+          Events Management
+        </h1>
+        <p className="text-muted-foreground mt-1">
+          Review and approve provider events
+        </p>
+      </div>
+
+      {/* Status Filter Tabs */}
+      <div className="flex gap-2 border-b">
+        <button
+          onClick={() => setStatusFilter('pending')}
+          className={`px-4 py-2 font-medium transition-colors relative ${
+            statusFilter === 'pending'
+              ? 'text-primary border-b-2 border-primary'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Pending
+        </button>
+        <button
+          onClick={() => setStatusFilter('approved')}
+          className={`px-4 py-2 font-medium transition-colors relative ${
+            statusFilter === 'approved'
+              ? 'text-primary border-b-2 border-primary'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Approved
+        </button>
+        <button
+          onClick={() => setStatusFilter('rejected')}
+          className={`px-4 py-2 font-medium transition-colors relative ${
+            statusFilter === 'rejected'
+              ? 'text-primary border-b-2 border-primary'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Rejected
+        </button>
+        <button
+          onClick={() => setStatusFilter('all')}
+          className={`px-4 py-2 font-medium transition-colors relative ${
+            statusFilter === 'all'
+              ? 'text-primary border-b-2 border-primary'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          All
+        </button>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-32 w-full" />
+          ))}
+        </div>
+      ) : !events || events.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground">
+            No {statusFilter === 'all' ? '' : statusFilter} events found.
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {events.map((event) => (
+            <Card key={event.id}>
+              <CardContent className="pt-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold">{event.title}</h3>
+                      <Badge className={statusColors[event.status]}>{event.status}</Badge>
+                      {event.is_public && <Badge variant="outline">Public</Badge>}
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {event.provider?.name}
+                    </p>
+                    <p className="text-sm font-medium mt-1">
+                      {new Date(event.event_date).toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })}
+                    </p>
+                    {event.location && (
+                      <p className="text-sm text-muted-foreground">{event.location}</p>
+                    )}
+                    {event.description && (
+                      <p className="mt-2 text-sm">{event.description}</p>
+                    )}
+                  </div>
+                  {event.status === 'pending' && (
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => handleApprove(event.id)}
+                        disabled={approveEvent.isPending}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                        Approve
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleReject(event.id)}
+                        disabled={rejectEvent.isPending}
+                      >
+                        <XCircle className="h-4 w-4 mr-1" />
+                        Reject
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
