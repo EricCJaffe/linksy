@@ -3,7 +3,9 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { geocodeAddress } from '@/lib/utils/geocode'
 import OpenAI from 'openai'
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+function getOpenAI() {
+  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+}
 
 /**
  * POST /api/linksy/search
@@ -33,6 +35,7 @@ export async function POST(request: Request) {
     }
 
     // Step 1: Generate embedding for the user's query
+    const openai = getOpenAI()
     const embeddingResponse = await openai.embeddings.create({
       model: 'text-embedding-3-small',
       input: query.trim(),
@@ -300,7 +303,7 @@ async function generateConversationalResponse(
         ? ' Location not provided — results are not sorted by distance.'
         : ''
 
-      const completion = await openai.chat.completions.create({
+      const completion = await getOpenAI().chat.completions.create({
         model: 'gpt-4o-mini',
         messages: [
           {
