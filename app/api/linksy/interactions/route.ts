@@ -46,10 +46,10 @@ export async function POST(request: Request) {
 
     // If phone or website click, also update services_clicked on the session
     if (session_id && (interaction_type === 'phone_click' || interaction_type === 'website_click')) {
-      supabase.rpc('linksy_add_service_clicked', {
+      void supabase.rpc('linksy_add_service_clicked', {
         p_session_id: session_id,
         p_provider_id: provider_id,
-      }).then(() => {}).catch(() => {})
+      })
     }
 
     return NextResponse.json({ ok: true })

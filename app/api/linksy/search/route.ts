@@ -221,18 +221,18 @@ export async function POST(request: Request) {
       activeSessionId = newSession?.id ?? null
     } else {
       // Increment message count and token usage atomically
-      supabase.rpc('linksy_increment_session_usage', {
+      void supabase.rpc('linksy_increment_session_usage', {
         p_session_id: activeSessionId,
         p_tokens: tokensUsed,
-      }).then(() => {}).catch(() => {})
+      })
     }
 
     // Record host usage (fire-and-forget)
     if (hostProviderId) {
-      supabase.rpc('linksy_increment_host_usage', {
+      void supabase.rpc('linksy_increment_host_usage', {
         p_host_provider_id: hostProviderId,
         p_tokens_used: tokensUsed,
-      }).then(() => {}).catch(() => {})
+      })
     }
 
     return NextResponse.json({
