@@ -6,8 +6,8 @@ import { requireSiteAdmin } from '@/lib/middleware/auth'
  * GET /api/admin/linksy/context-cards
  * Returns stats on how many providers have context cards generated
  */
-export async function GET(request: Request) {
-  const auth = await requireSiteAdmin(request)
+export async function GET() {
+  const auth = await requireSiteAdmin()
   if (auth instanceof NextResponse) return auth
 
   const supabase = await createServiceClient()
@@ -30,7 +30,7 @@ export async function GET(request: Request) {
  * Pass { force: true } to regenerate all, even ones already generated.
  */
 export async function POST(request: Request) {
-  const auth = await requireSiteAdmin(request)
+  const auth = await requireSiteAdmin()
   if (auth instanceof NextResponse) return auth
 
   const body = await request.json().catch(() => ({}))
