@@ -19,8 +19,8 @@ export function convertToCSV<T extends Record<string, any>>(
       if (value === null || value === undefined) return ''
 
       // Handle dates
-      if (typeof value === 'object' && value instanceof Date) {
-        return value.toISOString()
+      if ((value as unknown) instanceof Date) {
+        return (value as Date).toISOString()
       }
 
       // Handle objects/arrays (stringify them)
