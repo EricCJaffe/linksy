@@ -984,7 +984,7 @@ function ReferralsTab({ provider: initialProvider }: { provider: ProviderDetail 
                     <SelectContent>
                       <SelectItem value="unassigned">Unassigned</SelectItem>
                       {contacts.map((contact) => (
-                        <SelectItem key={contact.id} value={contact.user_id}>
+                        <SelectItem key={contact.id} value={contact.user_id ?? contact.id}>
                           {contact.user?.full_name || contact.user?.email || 'Unknown'}
                           {contact.is_primary_contact && ' (Primary)'}
                           {contact.is_default_referral_handler && ' (Default Handler)'}
