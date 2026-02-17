@@ -19,7 +19,7 @@ export default function MyOrganizationPage() {
 
   const isSiteAdmin = user?.profile?.role === 'site_admin'
   const providerId = isSiteAdmin && selectedProviderId ? selectedProviderId : access?.provider?.id
-  const { data: provider, isLoading: providerLoading } = useProvider(providerId!, {
+  const { data: provider, isLoading: providerLoading } = useProvider(providerId, undefined, {
     enabled: !!providerId,
   })
 
