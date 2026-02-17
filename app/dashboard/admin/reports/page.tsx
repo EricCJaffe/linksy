@@ -5,8 +5,21 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { AlertCircle, TrendingUp, Users, BarChart3, History } from 'lucide-react'
+import { AlertCircle, TrendingUp, Users, BarChart3, History, Search, Phone, Globe, AlertTriangle, Navigation } from 'lucide-react'
+
+interface SearchAnalyticsData {
+  totalSessions: number
+  sessionsLast30Days: number
+  totalInteractions: number
+  totalCrisisDetections: number
+  monthlySearchTrend: { month: string; count: number }[]
+  interactionsByType: { type: string; count: number }[]
+  topProvidersByInteraction: { id: string; name: string; count: number }[]
+  crisisBreakdown: { type: string; count: number }[]
+  recentCrisisSessions: { id: string; crisis_type: string | null; created_at: string }[]
+}
 
 interface ReportsData {
   referralsByCategory: { name: string; count: number }[]
@@ -88,15 +101,31 @@ function MonthlyTrendChart({ data }: { data: { month: string; count: number }[] 
   )
 }
 
+const CRISIS_LABELS: Record<string, string> = {
+  suicide: 'Suicide & Crisis',
+  domestic_violence: 'Domestic Violence',
+  trafficking: 'Human Trafficking',
+  child_abuse: 'Child Abuse',
+}
+
+const INTERACTION_LABELS: Record<string, { label: string; icon: React.ReactNode }> = {
+  phone_click: { label: 'Phone Calls', icon: <Phone className="h-3 w-3" /> },
+  website_click: { label: 'Website Visits', icon: <Globe className="h-3 w-3" /> },
+  directions_click: { label: 'Directions', icon: <Navigation className="h-3 w-3" /> },
+  profile_view: { label: 'Profile Views', icon: <Search className="h-3 w-3" /> },
+}
+
 export default function ReportsPage() {
+  const [activeTab, setActiveTab] = useState<'referrals' | 'search'>('referrals')
   const [data, setData] = useState<ReportsData | null>(null)
+  const [searchData, setSearchData] = useState<SearchAnalyticsData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [searchLoading, setSearchLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [includeLegacy, setIncludeLegacy] = useState(true)
 
-  useEffect(() => {
-    fetchReports()
-  }, [includeLegacy])
+  useEffect(() => { fetchReports() }, [includeLegacy])
+  useEffect(() => { fetchSearchAnalytics() }, [])
 
   const fetchReports = async () => {
     setIsLoading(true)
@@ -114,7 +143,19 @@ export default function ReportsPage() {
     }
   }
 
-  if (error) {
+  const fetchSearchAnalytics = async () => {
+    setSearchLoading(true)
+    try {
+      const res = await fetch('/api/stats/search-analytics')
+      if (res.ok) setSearchData(await res.json())
+    } catch {
+      // non-fatal
+    } finally {
+      setSearchLoading(false)
+    }
+  }
+
+  if (error && activeTab === 'referrals') {
     return (
       <div className="space-y-6">
         <h1 className="text-3xl font-bold">Reports & Analytics</h1>
@@ -140,25 +181,237 @@ export default function ReportsPage() {
             Insights and trends across the platform
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button
-            variant={!includeLegacy ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setIncludeLegacy(false)}
-          >
-            <TrendingUp className="h-4 w-4 mr-2" />
-            Since Launch
-          </Button>
-          <Button
-            variant={includeLegacy ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setIncludeLegacy(true)}
-          >
-            <History className="h-4 w-4 mr-2" />
-            All Time
-          </Button>
-        </div>
+        {activeTab === 'referrals' && (
+          <div className="flex gap-2">
+            <Button
+              variant={!includeLegacy ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setIncludeLegacy(false)}
+            >
+              <TrendingUp className="h-4 w-4 mr-2" />
+              Since Launch
+            </Button>
+            <Button
+              variant={includeLegacy ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setIncludeLegacy(true)}
+            >
+              <History className="h-4 w-4 mr-2" />
+              All Time
+            </Button>
+          </div>
+        )}
       </div>
+
+      {/* Tab navigation */}
+      <div className="flex gap-1 border-b">
+        <button
+          onClick={() => setActiveTab('referrals')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'referrals'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <Users className="h-4 w-4 inline mr-1.5" />
+          Referrals
+        </button>
+        <button
+          onClick={() => setActiveTab('search')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'search'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <Search className="h-4 w-4 inline mr-1.5" />
+          Search & AI
+          {(searchData?.totalCrisisDetections ?? 0) > 0 && (
+            <Badge variant="destructive" className="ml-2 text-xs">{searchData!.totalCrisisDetections}</Badge>
+          )}
+        </button>
+      </div>
+
+      {/* Search & AI Analytics Tab */}
+      {activeTab === 'search' && (
+        <div className="space-y-6">
+          {/* Summary stat cards */}
+          <div className="grid gap-4 md:grid-cols-4">
+            {searchLoading ? (
+              Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24" />)
+            ) : searchData ? (
+              <>
+                <Card>
+                  <CardContent className="pt-6">
+                    <p className="text-sm text-muted-foreground">Total Searches</p>
+                    <p className="text-4xl font-bold mt-1">{searchData.totalSessions.toLocaleString()}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <p className="text-sm text-muted-foreground">Last 30 Days</p>
+                    <p className="text-4xl font-bold mt-1">{searchData.sessionsLast30Days.toLocaleString()}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <p className="text-sm text-muted-foreground">Provider Interactions</p>
+                    <p className="text-4xl font-bold mt-1">{searchData.totalInteractions.toLocaleString()}</p>
+                  </CardContent>
+                </Card>
+                <Card className={searchData.totalCrisisDetections > 0 ? 'border-red-300' : ''}>
+                  <CardContent className="pt-6">
+                    <p className="text-sm text-muted-foreground flex items-center gap-1">
+                      <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
+                      Crisis Detections
+                    </p>
+                    <p className="text-4xl font-bold mt-1 text-red-600">{searchData.totalCrisisDetections}</p>
+                  </CardContent>
+                </Card>
+              </>
+            ) : null}
+          </div>
+
+          {/* Monthly search trend */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Monthly Searches (Last 12 Months)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {searchLoading ? (
+                <Skeleton className="h-36 w-full" />
+              ) : searchData && searchData.monthlySearchTrend.length > 0 ? (
+                <MonthlyTrendChart data={searchData.monthlySearchTrend} />
+              ) : (
+                <p className="text-sm text-muted-foreground">No search data yet</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            {/* Interaction types */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Interaction Types</CardTitle>
+                <p className="text-sm text-muted-foreground">How users engage with provider cards</p>
+              </CardHeader>
+              <CardContent>
+                {searchLoading ? (
+                  <Skeleton className="h-32 w-full" />
+                ) : searchData && searchData.interactionsByType.length > 0 ? (
+                  <div className="space-y-3">
+                    {searchData.interactionsByType.map((item) => {
+                      const meta = INTERACTION_LABELS[item.type]
+                      const max = searchData.interactionsByType[0]?.count || 1
+                      return (
+                        <div key={item.type} className="flex items-center gap-3">
+                          <span className="w-36 shrink-0 text-sm text-right text-muted-foreground flex items-center justify-end gap-1">
+                            {meta?.icon}{meta?.label ?? item.type}
+                          </span>
+                          <div className="flex-1 h-5 bg-muted rounded overflow-hidden">
+                            <div className="h-full bg-blue-500 rounded" style={{ width: `${(item.count / max) * 100}%` }} />
+                          </div>
+                          <span className="w-8 shrink-0 text-sm font-semibold text-right">{item.count}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No interactions yet</p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Crisis breakdown */}
+            <Card className="border-red-200">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-red-700">
+                  <AlertTriangle className="h-5 w-5" />
+                  Crisis Detections
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">By crisis type (all time)</p>
+              </CardHeader>
+              <CardContent>
+                {searchLoading ? (
+                  <Skeleton className="h-32 w-full" />
+                ) : searchData && searchData.crisisBreakdown.length > 0 ? (
+                  <div className="space-y-3">
+                    {searchData.crisisBreakdown.map((item) => {
+                      const max = searchData.crisisBreakdown[0]?.count || 1
+                      return (
+                        <div key={item.type} className="flex items-center gap-3">
+                          <span className="w-36 shrink-0 text-sm text-right text-muted-foreground">
+                            {CRISIS_LABELS[item.type] ?? item.type}
+                          </span>
+                          <div className="flex-1 h-5 bg-muted rounded overflow-hidden">
+                            <div className="h-full bg-red-500 rounded" style={{ width: `${(item.count / max) * 100}%` }} />
+                          </div>
+                          <span className="w-8 shrink-0 text-sm font-semibold text-right">{item.count}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No crisis detections recorded</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Top providers by interaction */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Top Providers by Engagement
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">Providers users interact with most (calls, visits, directions)</p>
+            </CardHeader>
+            <CardContent>
+              {searchLoading ? (
+                <Skeleton className="h-48 w-full" />
+              ) : searchData && searchData.topProvidersByInteraction.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-16">Rank</TableHead>
+                      <TableHead>Provider</TableHead>
+                      <TableHead>Engagement</TableHead>
+                      <TableHead className="text-right">Interactions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {searchData.topProvidersByInteraction.map((p, i) => {
+                      const max = searchData.topProvidersByInteraction[0]?.count || 1
+                      return (
+                        <TableRow key={p.id}>
+                          <TableCell className="text-muted-foreground">#{i + 1}</TableCell>
+                          <TableCell className="font-medium">{p.name}</TableCell>
+                          <TableCell className="w-40">
+                            <div className="h-3 bg-muted rounded overflow-hidden">
+                              <div className="h-full bg-blue-500 rounded" style={{ width: `${(p.count / max) * 100}%` }} />
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right font-bold">{p.count}</TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-8">No interaction data yet</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Referrals Tab */}
+      {activeTab === 'referrals' && (
+        <div className="space-y-6">
 
       {/* Summary stat cards */}
       <div className="grid gap-4 md:grid-cols-3">
@@ -340,6 +593,8 @@ export default function ReportsPage() {
             />
           </CardContent>
         </Card>
+      )}
+      </div>
       )}
     </div>
   )
