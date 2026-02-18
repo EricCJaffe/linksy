@@ -5,6 +5,7 @@
 - [ ] Add automated test framework (no tests exist — see `docs/CONTEXT.md` testing section)
 - [ ] Integrate Sentry error tracking (`lib/utils/logger.ts:42` — `TODO: Integrate with Sentry, CloudWatch, or other logging service`)
 - [ ] Wire up error tracking service in error handler (`lib/utils/error-handler.ts:194` — `TODO: Send to error tracking service`)
+- [ ] **Secure/Private Notes** — add `is_private` boolean to `linksy_provider_notes`; filter visibility server-side (plan in `.claude/plans/`); UI toggle + lock badge in provider detail notes tab (see `docs/DECISIONS/0003-private-notes-visibility.md`)
 
 ## Backlog
 
@@ -32,19 +33,23 @@ Items extracted from `FEATURES_CHECKLIST.md` that are partially or not yet imple
 - [ ] API key management UI (create, revoke, configure per key)
 
 ### Provider Portal (Phase 2)
-- [ ] Notification when new ticket is assigned
-- [ ] Provider-scoped analytics (views, clicks, referrals)
 - [ ] Limited field editing for provider staff
 
 ### Infrastructure
-- [ ] GitHub Actions CI/CD pipeline
 - [ ] Multi-language support (i18n)
 - [ ] Two-factor authentication (2FA)
 
 ## Done
 
+- [x] GitHub Actions CI — `.github/workflows/ci.yml` runs `type-check` + `lint` on push/PR to main
+- [x] Provider-scoped analytics — `GET /api/providers/[id]/analytics`, `useProviderAnalytics` hook, engagement cards (profile views, phone/website/directions clicks last 30 days + all time) on My Organization page
+- [x] Event approval queue — admin events page at `/dashboard/admin/events` with Pending/Approved/Rejected tabs + count badges; approve/reject actions
+- [x] Email notifications — new ticket assigned (to default referral handler) + ticket status update (to client); fire-and-forget via `lib/utils/email.ts` hooked into `POST /api/tickets` and `PATCH /api/tickets/[id]`
+- [x] Google + Microsoft OAuth login — buttons in `components/auth/login-form.tsx`, callback handler at `app/auth/callback/route.ts`
+- [x] Search session + interaction tracking — `linksy_search_sessions`, `linksy_interactions` tables; `POST /api/linksy/interactions` endpoint; sessionId returned from search and passed back on subsequent messages
+- [x] LLM Context Cards — auto-generated markdown per provider stored in `llm_context_card`; fed to `gpt-4o-mini` for conversational search responses; batch endpoint `POST /api/admin/linksy/context-cards`
 - [x] Widget customization UI enhancement (secondary color, header bg, font family, live preview, logo upload)
-- [x] Search & AI Analytics tab in reports dashboard
+- [x] Search & AI Analytics tab in reports dashboard (`/api/stats/search-analytics`)
 - [x] Crisis detection system with emergency resource banners
 - [x] Provider portal via `/dashboard/my-organization`
 - [x] Host widget embedding via `/find-help/[slug]`

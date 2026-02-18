@@ -154,6 +154,122 @@ export async function sendEmail(options: EmailOptions): Promise<{ success: boole
   return { success: false, error: 'Email service not configured' }
 }
 
+// --- Linksy ticket email templates ---
+
+/**
+ * Send a notification to the default referral handler when a new ticket is created
+ */
+export async function sendNewTicketNotification({
+  to,
+  contactName,
+  ticketNumber,
+  clientName,
+  needName,
+  description,
+  providerName,
+  ticketUrl,
+}: {
+  to: string
+  contactName: string
+  ticketNumber: string
+  clientName: string
+  needName: string
+  description: string
+  providerName: string
+  ticketUrl: string
+}): Promise<{ success: boolean; error?: string }> {
+  const appName = process.env.NEXT_PUBLIC_APP_NAME || 'Linksy'
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;line-height:1.6;color:#333;max-width:600px;margin:0 auto;padding:20px">
+  <div style="background:#2563eb;padding:24px;text-align:center;border-radius:10px 10px 0 0">
+    <h1 style="color:white;margin:0;font-size:24px">${appName}</h1>
+  </div>
+  <div style="background:#fff;padding:32px;border-radius:0 0 10px 10px;box-shadow:0 2px 4px rgba(0,0,0,0.1)">
+    <h2 style="color:#111;margin-top:0">New Referral Ticket Assigned</h2>
+    <p>Hi ${contactName},</p>
+    <p>A new referral has been submitted to <strong>${providerName}</strong>.</p>
+    <table style="border-collapse:collapse;width:100%;margin:16px 0">
+      <tr><td style="padding:8px 12px;background:#f3f4f6;font-weight:600;width:140px">Ticket #</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb">${ticketNumber}</td></tr>
+      <tr><td style="padding:8px 12px;background:#f3f4f6;font-weight:600">Client</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb">${clientName || 'Not provided'}</td></tr>
+      <tr><td style="padding:8px 12px;background:#f3f4f6;font-weight:600">Need</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb">${needName || 'Not specified'}</td></tr>
+      <tr><td style="padding:8px 12px;background:#f3f4f6;font-weight:600;vertical-align:top">Description</td><td style="padding:8px 12px">${description || 'None provided'}</td></tr>
+    </table>
+    <div style="text-align:center;margin:28px 0">
+      <a href="${ticketUrl}" style="background:#2563eb;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:600;display:inline-block">View Ticket</a>
+    </div>
+    <p style="color:#6b7280;font-size:13px">You are receiving this because you are the default referral handler for ${providerName}.</p>
+  </div>
+</body>
+</html>`.trim()
+
+  return sendEmail({
+    to,
+    subject: `New referral ticket #${ticketNumber} — ${providerName}`,
+    html,
+  })
+}
+
+/**
+ * Send a status update notification to the client when a ticket status changes
+ */
+export async function sendTicketStatusNotification({
+  to,
+  clientName,
+  ticketNumber,
+  newStatus,
+  providerName,
+  needName,
+}: {
+  to: string
+  clientName: string
+  ticketNumber: string
+  newStatus: string
+  providerName: string
+  needName: string
+}): Promise<{ success: boolean; error?: string }> {
+  const appName = process.env.NEXT_PUBLIC_APP_NAME || 'Linksy'
+
+  const statusLabel: Record<string, string> = {
+    pending: 'Pending',
+    in_progress: 'In Progress',
+    completed: 'Completed',
+    cancelled: 'Cancelled',
+  }
+  const label = statusLabel[newStatus] || newStatus
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;line-height:1.6;color:#333;max-width:600px;margin:0 auto;padding:20px">
+  <div style="background:#2563eb;padding:24px;text-align:center;border-radius:10px 10px 0 0">
+    <h1 style="color:white;margin:0;font-size:24px">${appName}</h1>
+  </div>
+  <div style="background:#fff;padding:32px;border-radius:0 0 10px 10px;box-shadow:0 2px 4px rgba(0,0,0,0.1)">
+    <h2 style="color:#111;margin-top:0">Referral Status Update</h2>
+    <p>Hi ${clientName || 'there'},</p>
+    <p>Your referral to <strong>${providerName}</strong> for <strong>${needName}</strong> has been updated.</p>
+    <p style="font-size:20px;margin:24px 0">New status: <strong style="color:#2563eb">${label}</strong></p>
+    <table style="border-collapse:collapse;width:100%;margin:16px 0">
+      <tr><td style="padding:8px 12px;background:#f3f4f6;font-weight:600;width:140px">Ticket #</td><td style="padding:8px 12px">${ticketNumber}</td></tr>
+    </table>
+    <p>If you have questions, please contact ${providerName} directly or reach out to the organization that submitted the referral on your behalf.</p>
+    <p style="color:#6b7280;font-size:13px">You are receiving this because you were listed as the client for referral ticket #${ticketNumber}.</p>
+  </div>
+</body>
+</html>`.trim()
+
+  return sendEmail({
+    to,
+    subject: `Your referral status has been updated — ${label}`,
+    html,
+  })
+}
+
 /**
  * Send an invitation email to a new user
  */

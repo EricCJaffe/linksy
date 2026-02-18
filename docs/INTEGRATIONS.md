@@ -18,12 +18,15 @@
 - **Graceful degradation:** Returns null if API key not configured; search still works but without distance sorting
 - **Also used:** Admin geocode endpoint at `app/api/admin/geocode/route.ts`
 
-### Resend (Email)
-- **Purpose:** Transactional email (invitations, notifications)
-- **Auth:** `RESEND_API_KEY` env var
+### Resend / SMTP (Email)
+- **Purpose:** Transactional email — provider contact invitations, ticket assignment notifications, ticket status updates
+- **Auth:** `RESEND_API_KEY` env var (primary), or `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASSWORD` (nodemailer fallback)
 - **Entry point:** `lib/utils/email.ts`
-- **Fallback:** SMTP via Nodemailer if Resend key not set
-- **Dev mode:** Logs emails to console if neither provider is configured
+- **Triggers:**
+  - **New ticket created** (`POST /api/tickets`): notifies the default referral handler for the assigned provider
+  - **Ticket status updated** (`PATCH /api/tickets/[id]`): notifies the client at `client_email` if present
+  - **Provider contact invited** (`POST /api/providers/[id]/contacts/[contactId]/invite`): uses `supabase.auth.admin.inviteUserByEmail` (Supabase handles the email directly)
+- **Dev mode:** Logs emails to console if neither Resend nor SMTP is configured (safe by default — no accidental sends)
 
 ### OpenStreetMap
 - **Purpose:** Embedded map tiles on provider location cards
@@ -37,10 +40,12 @@
 
 ## Internal Services
 
-### Supabase Auth Callback
-- **Endpoint:** `app/api/auth/callback/route.ts`
-- **Purpose:** Handles OAuth redirect flow from Supabase Auth
-- **Triggers on:** successful social login / email confirmation
+### Supabase Auth Callback (OAuth)
+- **Endpoint:** `app/auth/callback/route.ts` (note: `app/auth/`, not `app/api/auth/`)
+- **Purpose:** Handles OAuth redirect from Google and Microsoft (Azure AD) after Supabase Auth flow
+- **Triggers on:** successful social login
+- **Flow:** Receives `?code=` param → `supabase.auth.exchangeCodeForSession(code)` → redirects to `/dashboard` on success, `/login?error=oauth_error` on failure
+- **Providers configured:** Google, Microsoft (Azure) via Supabase dashboard OAuth settings
 
 ### Crisis Detection
 - **Endpoint:** `app/api/crisis-keywords/test/route.ts`

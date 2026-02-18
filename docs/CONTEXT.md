@@ -63,9 +63,10 @@ provider portal).
 
 ## Auth and Membership
 
-- **Auth provider:** Supabase Auth (email/password + OAuth)
+- **Auth provider:** Supabase Auth (email/password + Google OAuth + Microsoft OAuth via Azure)
+- **OAuth:** `components/auth/login-form.tsx` calls `supabase.auth.signInWithOAuth({ provider: 'google' | 'azure' })`; callback at `app/auth/callback/route.ts` exchanges code for session
 - **Session management:** `lib/supabase/middleware.ts` refreshes sessions on every request via cookies
-- **Middleware:** `middleware.ts` protects `/dashboard/*`, enforces rate limits (100 req/min/IP), validates CSRF on API routes
+- **Middleware:** `middleware.ts` protects `/dashboard/*`, enforces rate limits (100 req/min/IP), validates CSRF on API routes; `/auth/callback` is on the public routes list
 - **User roles:** `site_admin`, `tenant_admin`, `user` (stored in `users.role`)
 - **Tenant roles:** `admin`, `member` (stored in `tenant_users`)
 - **Provider access:** `linksy_provider_contacts` links auth users to providers with `provider_role` (admin/user)

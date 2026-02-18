@@ -12,8 +12,16 @@ import { useAdminEvents, useApproveEvent, useRejectEvent } from '@/lib/hooks/use
 export default function AdminEventsPage() {
   const [statusFilter, setStatusFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending')
   const { data: events, isLoading, error } = useAdminEvents(statusFilter)
+  const { data: allEvents } = useAdminEvents('all')
   const approveEvent = useApproveEvent()
   const rejectEvent = useRejectEvent()
+
+  const counts = {
+    pending: allEvents?.filter(e => e.status === 'pending').length ?? 0,
+    approved: allEvents?.filter(e => e.status === 'approved').length ?? 0,
+    rejected: allEvents?.filter(e => e.status === 'rejected').length ?? 0,
+    all: allEvents?.length ?? 0,
+  }
 
   const handleApprove = async (eventId: string) => {
     await approveEvent.mutateAsync(eventId)
@@ -58,46 +66,29 @@ export default function AdminEventsPage() {
 
       {/* Status Filter Tabs */}
       <div className="flex gap-2 border-b">
-        <button
-          onClick={() => setStatusFilter('pending')}
-          className={`px-4 py-2 font-medium transition-colors relative ${
-            statusFilter === 'pending'
-              ? 'text-primary border-b-2 border-primary'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          Pending
-        </button>
-        <button
-          onClick={() => setStatusFilter('approved')}
-          className={`px-4 py-2 font-medium transition-colors relative ${
-            statusFilter === 'approved'
-              ? 'text-primary border-b-2 border-primary'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          Approved
-        </button>
-        <button
-          onClick={() => setStatusFilter('rejected')}
-          className={`px-4 py-2 font-medium transition-colors relative ${
-            statusFilter === 'rejected'
-              ? 'text-primary border-b-2 border-primary'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          Rejected
-        </button>
-        <button
-          onClick={() => setStatusFilter('all')}
-          className={`px-4 py-2 font-medium transition-colors relative ${
-            statusFilter === 'all'
-              ? 'text-primary border-b-2 border-primary'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          All
-        </button>
+        {([
+          { key: 'pending', label: 'Pending', badgeClass: 'bg-yellow-100 text-yellow-800' },
+          { key: 'approved', label: 'Approved', badgeClass: 'bg-green-100 text-green-800' },
+          { key: 'rejected', label: 'Rejected', badgeClass: 'bg-red-100 text-red-800' },
+          { key: 'all', label: 'All', badgeClass: 'bg-muted text-muted-foreground' },
+        ] as const).map(({ key, label, badgeClass }) => (
+          <button
+            key={key}
+            onClick={() => setStatusFilter(key)}
+            className={`flex items-center gap-2 px-4 py-2 font-medium transition-colors relative ${
+              statusFilter === key
+                ? 'text-primary border-b-2 border-primary'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {label}
+            {counts[key] > 0 && (
+              <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${badgeClass}`}>
+                {counts[key]}
+              </span>
+            )}
+          </button>
+        ))}
       </div>
 
       {isLoading ? (

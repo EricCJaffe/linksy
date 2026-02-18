@@ -2,14 +2,14 @@
 
 import { useState } from 'react'
 import { useProviderAccess } from '@/lib/hooks/useProviderAccess'
-import { useProvider, useProviders } from '@/lib/hooks/useProviders'
+import { useProvider, useProviders, useProviderAnalytics } from '@/lib/hooks/useProviders'
 import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
 import { ProviderDetailTabs } from '@/components/providers/provider-detail-tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card, CardContent } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { AlertCircle, FileText, CheckCircle, Users } from 'lucide-react'
+import { AlertCircle, FileText, CheckCircle, Users, Phone, Globe, MapPin, Eye } from 'lucide-react'
 
 export default function MyOrganizationPage() {
   const { data: user } = useCurrentUser()
@@ -22,6 +22,7 @@ export default function MyOrganizationPage() {
   const { data: provider, isLoading: providerLoading } = useProvider(providerId, undefined, {
     enabled: !!providerId,
   })
+  const { data: analytics } = useProviderAnalytics(providerId)
 
   if (accessLoading || providerLoading) {
     return (
@@ -174,6 +175,66 @@ export default function MyOrganizationPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Widget Engagement (last 30 days) */}
+      {analytics && (
+        <div>
+          <h2 className="text-lg font-semibold mb-3">Widget Engagement — Last 30 Days</h2>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Profile Views</p>
+                    <p className="text-2xl font-bold">{analytics.last30Days.profile_view}</p>
+                    <p className="text-xs text-muted-foreground">{analytics.allTime.profile_view} all time</p>
+                  </div>
+                  <Eye className="h-8 w-8 text-blue-400" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Phone Clicks</p>
+                    <p className="text-2xl font-bold">{analytics.last30Days.phone_click}</p>
+                    <p className="text-xs text-muted-foreground">{analytics.allTime.phone_click} all time</p>
+                  </div>
+                  <Phone className="h-8 w-8 text-green-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Website Clicks</p>
+                    <p className="text-2xl font-bold">{analytics.last30Days.website_click}</p>
+                    <p className="text-xs text-muted-foreground">{analytics.allTime.website_click} all time</p>
+                  </div>
+                  <Globe className="h-8 w-8 text-indigo-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Directions Clicks</p>
+                    <p className="text-2xl font-bold">{analytics.last30Days.directions_click}</p>
+                    <p className="text-xs text-muted-foreground">{analytics.allTime.directions_click} all time</p>
+                  </div>
+                  <MapPin className="h-8 w-8 text-orange-500" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
 
       <ProviderDetailTabs provider={provider} />
     </div>

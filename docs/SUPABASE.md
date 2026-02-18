@@ -44,8 +44,10 @@
 |----------|-----------|---------|
 | `linksy_search_needs` | `api/linksy/search/route.ts` | Vector similarity search on need embeddings (threshold 0.5) |
 | `linksy_nearby_provider_ids` | `api/linksy/search/route.ts` | PostGIS proximity filter within radius (ring-based: 10→25→50 mi) |
-| `linksy_increment_session_usage` | `api/linksy/search/route.ts` | Track token usage per search session |
-| `linksy_increment_host_usage` | `api/linksy/search/route.ts` | Track search/token usage per host provider |
+| `linksy_increment_session_usage` | `api/linksy/search/route.ts` | Track token usage per search session (fire-and-forget) |
+| `linksy_increment_host_usage` | `api/linksy/search/route.ts` | Track search/token usage per host provider (fire-and-forget) |
+| `linksy_add_service_clicked` | `api/linksy/interactions/route.ts` | Increment click count on provider for a session (fire-and-forget) |
+| *(direct query)* | `api/providers/[id]/analytics/route.ts` | Aggregate `linksy_interactions` by type for provider analytics |
 
 ### Key Tables
 

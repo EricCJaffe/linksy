@@ -1,19 +1,131 @@
 # API Documentation
 
-This document provides detailed information about all API routes in the Multi-Tenant SaaS Template.
+This document covers two layers of API routes: the **Linksy domain APIs** added for this project, and the **base template APIs** inherited from the multi-tenant SaaS scaffold.
 
 ## Table of Contents
 
-- [Authentication](#authentication)
-- [Activity Feed](#activity-feed)
-- [Audit Logs](#audit-logs)
-- [Files](#files)
-- [Search](#search)
+- [Linksy Domain APIs](#linksy-domain-apis)
+  - [AI Search](#post-apilinksy-search)
+  - [Interactions](#post-apilinksy-interactions)
+  - [Providers](#providers-api)
+  - [Tickets](#tickets-api)
+  - [Stats / Search Analytics](#get-apistatssearch-analytics)
+- [Base Template APIs](#base-template-apis)
+  - [Authentication](#authentication)
+  - [Activity Feed](#activity-feed)
+  - [Audit Logs](#audit-logs)
+  - [Files](#files)
+  - [Search](#search)
 - [Error Responses](#error-responses)
+
+---
+
+## Linksy Domain APIs
+
+### POST /api/linksy/search
+
+AI-powered natural language search for community resource providers. **No auth required** (public endpoint used by embedded widget).
+
+**Body:**
+```json
+{
+  "query": "I need help with food",
+  "zipCode": "32073",
+  "location": { "lat": 30.1, "lng": -81.7 },
+  "hostProviderId": "uuid",
+  "sessionId": "uuid-or-null"
+}
+```
+- `query` is required; `zipCode` or `location` is optional (enables proximity sorting)
+- `hostProviderId` associates the search with a host provider for usage tracking
+- `sessionId` continues an existing session (increments message count); omit to start a new session
+
+**Response:**
+```json
+{
+  "query": "...",
+  "needs": [{ "id": "...", "name": "Food Assistance", "similarity": 0.87 }],
+  "providers": [{ "id": "...", "name": "...", "distance": 2.4, ... }],
+  "message": "Here are some organizations that can help with food...",
+  "searchRadiusMiles": 10,
+  "sessionId": "uuid"
+}
+```
+
+**Pipeline:** embed query → vector search needs → resolve providers → ring-based proximity (10/25/50 mi) → GPT-4o-mini response → session tracking
+
+---
+
+### POST /api/linksy/interactions
+
+Log a user interaction (click, call, website visit) within a search session. **No auth required.**
+
+**Body:**
+```json
+{
+  "sessionId": "uuid",
+  "providerId": "uuid",
+  "interactionType": "phone_click"
+}
+```
+`interactionType` values: `phone_click`, `website_click`, `directions_click`, `profile_view`
+
+**Response:** `{ "success": true }`
+
+---
+
+### Providers API
+
+| Method | Route | Auth | Purpose |
+|--------|-------|------|---------|
+| GET | `/api/providers` | `requireAuth` | List providers (with filters) |
+| POST | `/api/providers` | `requireTenantAdmin` | Create provider |
+| GET | `/api/providers/[id]` | `requireAuth` | Provider detail + contacts + notes |
+| PATCH | `/api/providers/[id]` | `requireTenantAdmin` | Update provider |
+| POST | `/api/providers/[id]/notes` | `requireAuth` | Add note to provider |
+| PATCH | `/api/providers/[id]/notes/[noteId]` | `requireAuth` | Edit note (own notes; site_admin can edit any) |
+| DELETE | `/api/providers/[id]/notes/[noteId]` | `requireAuth` | Delete note |
+| POST | `/api/providers/[id]/contacts/[contactId]/invite` | `requireTenantAdmin` | Invite provider contact via email |
+
+---
+
+### Tickets API
+
+| Method | Route | Auth | Purpose |
+|--------|-------|------|---------|
+| GET | `/api/tickets` | `requireAuth` | List tickets (filterable by status, provider, need, date) |
+| POST | `/api/tickets` | `requireTenantAdmin` | Create ticket; auto-assigns to default referral handler; sends email notification |
+| GET | `/api/tickets/[id]` | `requireAuth` | Ticket detail with comments |
+| PATCH | `/api/tickets/[id]` | `requireTenantAdmin` | Update ticket; sends status-change email to client if `client_email` set |
+
+---
+
+### GET /api/stats/search-analytics
+
+Returns search and AI usage analytics for the admin dashboard. **Requires auth.**
+
+**Response:**
+```json
+{
+  "totalSessions": 1250,
+  "sessionsLast30Days": 340,
+  "totalInteractions": 872,
+  "totalCrisisDetections": 12,
+  "monthlySearchTrend": [{ "month": "2025-03", "count": 42 }],
+  "interactionsByType": [{ "type": "phone_click", "count": 330 }],
+  "topProvidersByInteraction": [{ "id": "...", "name": "...", "count": 88 }],
+  "crisisBreakdown": [{ "type": "mental_health", "count": 7 }],
+  "recentCrisisSessions": [...]
+}
+```
+
+---
+
+## Base Template APIs
 
 ## Authentication
 
-All API routes require authentication via Supabase JWT token. The token is automatically included in requests by the Supabase client.
+All admin API routes require authentication via Supabase JWT token (cookie-based SSR session). The token is automatically included in requests by the Supabase client.
 
 ### Headers
 

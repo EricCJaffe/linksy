@@ -11,7 +11,11 @@ Start here:
 
 Reference:
 - `docs/SUPABASE.md` — database, RPC functions, storage
-- `docs/INTEGRATIONS.md` — OpenAI, Google Maps, email
+- `docs/INTEGRATIONS.md` — OpenAI, Google Maps, email, OAuth
 - `docs/TASKS.md` — active TODOs and backlog
-- `docs/DECISIONS/README.md` — architecture decision records
+- `docs/DECISIONS/` — architecture decision records (ADRs)
+- `docs/ARCHITECTURE.md` — data model, security layers, component structure
+- `docs/API.md` — API route reference (base template + Linksy-specific)
+- `docs/DEPLOYMENT.md` — Vercel deploy guide
+- `docs/CONTRIBUTING.md` — contribution guidelines
 - `FEATURES_CHECKLIST.md` — master feature inventory (root)

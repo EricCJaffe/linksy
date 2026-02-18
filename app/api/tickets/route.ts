@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireAuth, requireTenantAdmin } from '@/lib/middleware/auth'
+import { sendNewTicketNotification } from '@/lib/utils/email'
 
 export async function GET(request: Request) {
   const { data: auth, error } = await requireAuth()
@@ -132,6 +133,38 @@ export async function POST(request: Request) {
 
   if (insertError) {
     return NextResponse.json({ error: insertError.message }, { status: 500 })
+  }
+
+  // Fire-and-forget: notify the default referral handler by email
+  if (defaultHandlerUserId && body.provider_id) {
+    void (async () => {
+      try {
+        const [{ data: handlerUser }, { data: providerData }, { data: needData }] = await Promise.all([
+          supabase.auth.admin.getUserById(defaultHandlerUserId),
+          supabase.from('linksy_providers').select('name').eq('id', body.provider_id).single(),
+          body.need_id
+            ? supabase.from('linksy_needs').select('name').eq('id', body.need_id).single()
+            : Promise.resolve({ data: null }),
+        ])
+
+        const handlerEmail = handlerUser?.user?.email
+        if (handlerEmail && handlerUser?.user) {
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+          await sendNewTicketNotification({
+            to: handlerEmail,
+            contactName: handlerUser.user.user_metadata?.full_name || handlerEmail,
+            ticketNumber: ticket.ticket_number || ticket.id,
+            clientName: body.client_name || '',
+            needName: (needData as any)?.name || '',
+            description: body.description_of_need || '',
+            providerName: (providerData as any)?.name || 'your organization',
+            ticketUrl: `${appUrl}/dashboard/tickets/${ticket.id}`,
+          })
+        }
+      } catch (err) {
+        console.error('[ticket email] Failed to send new ticket notification:', err)
+      }
+    })()
   }
 
   return NextResponse.json(ticket, { status: 201 })

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireAuth, requireTenantAdmin } from '@/lib/middleware/auth'
+import { sendTicketStatusNotification } from '@/lib/utils/email'
 
 export async function GET(
   request: Request,
@@ -113,6 +114,33 @@ export async function PATCH(
 
   if (updateError) {
     return NextResponse.json({ error: updateError.message }, { status: 500 })
+  }
+
+  // Fire-and-forget: notify client if status changed and they have an email
+  if (updates.status && ticket.client_email) {
+    void (async () => {
+      try {
+        const [{ data: providerData }, { data: needData }] = await Promise.all([
+          ticket.provider_id
+            ? supabase.from('linksy_providers').select('name').eq('id', ticket.provider_id).single()
+            : Promise.resolve({ data: null }),
+          ticket.need_id
+            ? supabase.from('linksy_needs').select('name').eq('id', ticket.need_id).single()
+            : Promise.resolve({ data: null }),
+        ])
+
+        await sendTicketStatusNotification({
+          to: ticket.client_email,
+          clientName: ticket.client_name || '',
+          ticketNumber: ticket.ticket_number || ticket.id,
+          newStatus: updates.status,
+          providerName: (providerData as any)?.name || 'the provider',
+          needName: (needData as any)?.name || 'your need',
+        })
+      } catch (err) {
+        console.error('[ticket email] Failed to send status notification:', err)
+      }
+    })()
   }
 
   return NextResponse.json(ticket)

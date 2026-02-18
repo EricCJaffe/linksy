@@ -100,6 +100,24 @@ export function useCreateNote(providerId: string) {
   })
 }
 
+export interface ProviderAnalytics {
+  allTime: { total: number; profile_view: number; phone_click: number; website_click: number; directions_click: number }
+  last30Days: { total: number; profile_view: number; phone_click: number; website_click: number; directions_click: number }
+}
+
+export function useProviderAnalytics(providerId: string | undefined) {
+  return useQuery({
+    queryKey: ['provider-analytics', providerId],
+    queryFn: async () => {
+      const res = await fetch(`/api/providers/${providerId}/analytics`)
+      if (!res.ok) throw new Error('Failed to fetch analytics')
+      return res.json() as Promise<ProviderAnalytics>
+    },
+    enabled: !!providerId,
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
 export function useUpdateNote(providerId: string) {
   const queryClient = useQueryClient()
 
