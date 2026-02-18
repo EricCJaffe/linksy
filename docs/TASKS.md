@@ -10,14 +10,8 @@
 
 Items extracted from `FEATURES_CHECKLIST.md` that are partially or not yet implemented:
 
-### Provider Management
-- [ ] Bulk actions on provider list (activate, deactivate, export CSV) — export exists but bulk status change does not
-- [ ] "View LLM Context Card" preview on provider detail page
-- [ ] Search quality metrics display (popularity score, CTR, conversion rate)
-
 ### Events
 - [ ] Calendar view for events (currently list-only)
-- [ ] Event approval queue page
 - [ ] Recurrence rule support (iCal RRULE)
 
 ### Analytics
@@ -40,6 +34,9 @@ Items extracted from `FEATURES_CHECKLIST.md` that are partially or not yet imple
 
 ## Done
 
+- [x] Provider Management bulk actions — checkboxes + bulk activate/deactivate bar + export selected on providers list; `PATCH /api/admin/providers/bulk`
+- [x] LLM Context Card preview — shown in Details tab of provider detail page; `pre` block with mono font; "not generated" fallback
+- [x] Search quality metrics — Details tab shows total interactions, profile views, CTR (clicks/views), referral conversion rate (tickets/views), per-type breakdown
 - [x] Private/Secure Notes — `is_private` column on `linksy_provider_notes`; server-side visibility filter in GET provider detail; toggle switch + amber lock badge in UI; site_admin can edit any note
 - [x] GitHub Actions CI — `.github/workflows/ci.yml` runs `type-check` + `lint` on push/PR to main
 - [x] Provider-scoped analytics — `GET /api/providers/[id]/analytics`, `useProviderAnalytics` hook, engagement cards (profile views, phone/website/directions clicks last 30 days + all time) on My Organization page

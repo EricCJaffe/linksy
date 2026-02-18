@@ -25,7 +25,7 @@ import {
   TableRow,
   TableCell,
 } from '@/components/ui/table'
-import { useProvider, useUpdateProvider, useNeedCategories, useCreateNote, useUpdateNote } from '@/lib/hooks/useProviders'
+import { useProvider, useUpdateProvider, useNeedCategories, useCreateNote, useUpdateNote, useProviderAnalytics } from '@/lib/hooks/useProviders'
 import { useUpdateTicket } from '@/lib/hooks/useTickets'
 import { useUpdateProviderContact, useDeleteProviderContact, useInviteProviderContact } from '@/lib/hooks/useProviderContacts'
 import { useCreateProviderEvent, useUpdateProviderEvent, useDeleteProviderEvent } from '@/lib/hooks/useProviderEvents'
@@ -35,7 +35,7 @@ import { ImageUpload } from '@/components/ui/image-upload'
 import { WidgetPreview } from '@/components/widget/widget-preview'
 import { uploadWidgetLogo } from '@/lib/storage/upload'
 import type { ProviderDetail, NoteType, TicketStatus, ProviderContact, ProviderEvent } from '@/lib/types/linksy'
-import { Plus, Copy, ExternalLink, Lock, MapPin, Pencil, Trash2, CheckCircle, Circle } from 'lucide-react'
+import { Plus, Copy, ExternalLink, Lock, MapPin, Pencil, Trash2, CheckCircle, Circle, BarChart2, FileText } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import type { HostWidgetConfig } from '@/lib/types/linksy'
 
@@ -791,6 +791,17 @@ function ContactsTab({ provider }: { provider: ProviderDetail }) {
 }
 
 function DetailsTab({ provider }: { provider: ProviderDetail }) {
+  const { data: analytics } = useProviderAnalytics(provider.id)
+
+  const profileViews = analytics?.allTime.profile_view ?? 0
+  const totalClicks = (analytics?.allTime.phone_click ?? 0)
+    + (analytics?.allTime.website_click ?? 0)
+    + (analytics?.allTime.directions_click ?? 0)
+  const ctr = profileViews > 0 ? Math.round((totalClicks / profileViews) * 100) : 0
+  const conversionRate = profileViews > 0
+    ? Math.round(((provider.tickets?.length ?? 0) / profileViews) * 100)
+    : 0
+
   return (
     <div className="space-y-4">
       <Card>
@@ -844,6 +855,67 @@ function DetailsTab({ provider }: { provider: ProviderDetail }) {
             <span className="text-muted-foreground">Updated</span>
             <span>{new Date(provider.updated_at).toLocaleDateString()}</span>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Search Quality Metrics */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <BarChart2 className="h-4 w-4" />
+            Search Quality Metrics
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Total Interactions</span>
+            <span className="font-medium">{analytics?.allTime.total ?? '—'}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Profile Views</span>
+            <span className="font-medium">{profileViews || '—'}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Click-through Rate</span>
+            <span className="font-medium">{profileViews > 0 ? `${ctr}%` : '—'}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Referral Conversion</span>
+            <span className="font-medium">{profileViews > 0 ? `${conversionRate}%` : '—'}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Phone Clicks</span>
+            <span>{analytics?.allTime.phone_click ?? '—'}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Website Clicks</span>
+            <span>{analytics?.allTime.website_click ?? '—'}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Directions Clicks</span>
+            <span>{analytics?.allTime.directions_click ?? '—'}</span>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* LLM Context Card Preview */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <FileText className="h-4 w-4" />
+            LLM Context Card
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {provider.llm_context_card ? (
+            <pre className="whitespace-pre-wrap rounded-md bg-muted p-3 text-xs font-mono leading-relaxed">
+              {provider.llm_context_card}
+            </pre>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No context card generated yet. Go to Admin Console → Statistics to generate one.
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>

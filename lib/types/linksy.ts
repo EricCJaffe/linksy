@@ -93,6 +93,8 @@ export interface Provider {
   host_searches_this_month: number
   host_monthly_token_budget: number | null
   host_usage_reset_at: string | null
+  // AI / search
+  llm_context_card: string | null
   // Aggregated counts from list query
   location_count?: number
   need_count?: number
