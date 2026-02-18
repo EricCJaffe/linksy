@@ -8,7 +8,18 @@
 
 ## Backlog
 
-Items extracted from `FEATURES_CHECKLIST.md` that are partially or not yet implemented:
+### Public Presence
+- [ ] Public hero/landing page — marketing page at `/` describing Linksy for potential customers
+- [ ] Provider onboarding page — public form for a new provider to request to be listed
+- [ ] Host onboarding page — public form for an organization to request widget embedding
+
+### Testing
+- [ ] Referral workflow end-to-end test plan — widget search → crisis check → provider selection → ticket creation → email notification → status update → client email
+
+### Widget / Embed
+- [x] Fix iframe cross-origin embedding — `/find-help/*` now overrides `X-Frame-Options` and sets `frame-ancestors *` CSP; all other routes keep `SAMEORIGIN`
+- [ ] `host_allowed_domains` enforcement — column exists on `linksy_providers`, not yet checked in widget route
+- [ ] JavaScript embed snippet (`widget.js`) — currently iframe-only
 
 ### Events
 - [ ] Calendar view for events (currently list-only)
@@ -19,17 +30,11 @@ Items extracted from `FEATURES_CHECKLIST.md` that are partially or not yet imple
 - [ ] Geographic distribution of searches
 - [ ] Average time-to-resolution for tickets
 
-### Widget / Embed
-- [ ] JavaScript embed snippet (`widget.js` with `data-api-key`) — currently iframe-only
-- [ ] Shadow DOM style isolation for JS embed
-- [ ] Per-API-key rate limiting (currently per-IP only)
-- [ ] API key management UI (create, revoke, configure per key)
-
 ### Provider Portal (Phase 2)
 - [ ] Limited field editing for provider staff
 
 ### Infrastructure
-- [ ] Multi-language support (i18n)
+- [ ] Spanish (es) language support — i18n for widget and public-facing pages
 - [ ] Two-factor authentication (2FA)
 
 ## Done
