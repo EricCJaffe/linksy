@@ -2,20 +2,29 @@
 
 import { useState } from 'react'
 import { useProviderAccess } from '@/lib/hooks/useProviderAccess'
-import { useProvider, useProviders, useProviderAnalytics } from '@/lib/hooks/useProviders'
+import { useProvider, useProviders, useProviderAnalytics, useUpdateProvider } from '@/lib/hooks/useProviders'
 import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
 import { ProviderDetailTabs } from '@/components/providers/provider-detail-tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { AlertCircle, FileText, CheckCircle, Users, Phone, Globe, MapPin, Eye } from 'lucide-react'
+import { AlertCircle, FileText, CheckCircle, Users, Phone, Globe, MapPin, Eye, Pencil, X, Check } from 'lucide-react'
+import { useToast } from '@/hooks/use-toast'
 
 export default function MyOrganizationPage() {
   const { data: user } = useCurrentUser()
   const { data: access, isLoading: accessLoading } = useProviderAccess()
   const { data: allProviders } = useProviders({ limit: 1000 }, { enabled: user?.profile?.role === 'site_admin' })
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null)
+  const [editingProfile, setEditingProfile] = useState(false)
+  const [profileForm, setProfileForm] = useState<Record<string, string>>({})
+  const { toast } = useToast()
+  const updateProvider = useUpdateProvider()
 
   const isSiteAdmin = user?.profile?.role === 'site_admin'
   const providerId = isSiteAdmin && selectedProviderId ? selectedProviderId : access?.provider?.id
@@ -94,6 +103,34 @@ export default function MyOrganizationPage() {
     pendingReferrals: provider.tickets?.filter(t => t.status === 'pending').length || 0,
     completedReferrals: provider.tickets?.filter(t => t.status === 'customer_need_addressed').length || 0,
     activeContacts: provider.contacts?.length || 0,
+  }
+
+  function startEditingProfile() {
+    if (!provider) return
+    setProfileForm({
+      description: provider.description || '',
+      phone: provider.phone || '',
+      email: provider.email || '',
+      website: provider.website || '',
+      hours: provider.hours || '',
+      social_facebook: provider.social_facebook || '',
+      social_instagram: provider.social_instagram || '',
+      social_twitter: provider.social_twitter || '',
+      social_linkedin: provider.social_linkedin || '',
+      referral_instructions: provider.referral_instructions || '',
+    })
+    setEditingProfile(true)
+  }
+
+  async function saveProfile() {
+    if (!providerId) return
+    try {
+      await updateProvider.mutateAsync({ id: providerId, ...profileForm })
+      toast({ title: 'Profile updated', description: 'Your organization profile has been saved.' })
+      setEditingProfile(false)
+    } catch {
+      toast({ title: 'Error', description: 'Failed to save profile.', variant: 'destructive' })
+    }
   }
 
   return (
@@ -175,6 +212,109 @@ export default function MyOrganizationPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Edit Profile */}
+      {!isSiteAdmin && (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">Organization Profile</CardTitle>
+              {!editingProfile ? (
+                <Button variant="outline" size="sm" onClick={startEditingProfile}>
+                  <Pencil className="h-4 w-4 mr-1" /> Edit Profile
+                </Button>
+              ) : (
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setEditingProfile(false)} disabled={updateProvider.isPending}>
+                    <X className="h-4 w-4 mr-1" /> Cancel
+                  </Button>
+                  <Button size="sm" onClick={saveProfile} disabled={updateProvider.isPending}>
+                    <Check className="h-4 w-4 mr-1" /> Save
+                  </Button>
+                </div>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {!editingProfile ? (
+              <div className="grid gap-3 text-sm md:grid-cols-2">
+                {provider.description && (
+                  <div className="md:col-span-2">
+                    <span className="font-medium text-muted-foreground">Description: </span>
+                    {provider.description}
+                  </div>
+                )}
+                {provider.phone && <div><span className="font-medium text-muted-foreground">Phone: </span>{provider.phone}</div>}
+                {provider.email && <div><span className="font-medium text-muted-foreground">Email: </span>{provider.email}</div>}
+                {provider.website && <div><span className="font-medium text-muted-foreground">Website: </span>{provider.website}</div>}
+                {provider.hours && <div className="md:col-span-2"><span className="font-medium text-muted-foreground">Hours: </span>{provider.hours}</div>}
+                {provider.referral_instructions && (
+                  <div className="md:col-span-2">
+                    <span className="font-medium text-muted-foreground">Referral Instructions: </span>
+                    {provider.referral_instructions}
+                  </div>
+                )}
+                {!provider.description && !provider.phone && !provider.email && !provider.website && (
+                  <p className="text-muted-foreground md:col-span-2">No profile details yet. Click Edit Profile to add information.</p>
+                )}
+              </div>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="md:col-span-2 space-y-1.5">
+                  <Label>Description</Label>
+                  <Textarea
+                    rows={3}
+                    value={profileForm.description}
+                    onChange={e => setProfileForm(f => ({ ...f, description: e.target.value }))}
+                    placeholder="Describe your organization..."
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Phone</Label>
+                  <Input value={profileForm.phone} onChange={e => setProfileForm(f => ({ ...f, phone: e.target.value }))} placeholder="(555) 555-5555" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Email</Label>
+                  <Input type="email" value={profileForm.email} onChange={e => setProfileForm(f => ({ ...f, email: e.target.value }))} placeholder="contact@org.org" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Website</Label>
+                  <Input value={profileForm.website} onChange={e => setProfileForm(f => ({ ...f, website: e.target.value }))} placeholder="https://..." />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Hours</Label>
+                  <Input value={profileForm.hours} onChange={e => setProfileForm(f => ({ ...f, hours: e.target.value }))} placeholder="Mon–Fri 9am–5pm" />
+                </div>
+                <div className="md:col-span-2 space-y-1.5">
+                  <Label>Referral Instructions</Label>
+                  <Textarea
+                    rows={2}
+                    value={profileForm.referral_instructions}
+                    onChange={e => setProfileForm(f => ({ ...f, referral_instructions: e.target.value }))}
+                    placeholder="Instructions for referrers..."
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Facebook</Label>
+                  <Input value={profileForm.social_facebook} onChange={e => setProfileForm(f => ({ ...f, social_facebook: e.target.value }))} placeholder="https://facebook.com/..." />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Instagram</Label>
+                  <Input value={profileForm.social_instagram} onChange={e => setProfileForm(f => ({ ...f, social_instagram: e.target.value }))} placeholder="https://instagram.com/..." />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Twitter / X</Label>
+                  <Input value={profileForm.social_twitter} onChange={e => setProfileForm(f => ({ ...f, social_twitter: e.target.value }))} placeholder="https://twitter.com/..." />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>LinkedIn</Label>
+                  <Input value={profileForm.social_linkedin} onChange={e => setProfileForm(f => ({ ...f, social_linkedin: e.target.value }))} placeholder="https://linkedin.com/..." />
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Widget Engagement (last 30 days) */}
       {analytics && (

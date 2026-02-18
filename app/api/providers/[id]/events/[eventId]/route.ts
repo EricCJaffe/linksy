@@ -16,7 +16,7 @@ export async function PATCH(
   const { eventId } = params
   const body = await request.json()
 
-  const allowedFields = ['title', 'description', 'event_date', 'location', 'is_public', 'status']
+  const allowedFields = ['title', 'description', 'event_date', 'location', 'is_public', 'recurrence_rule', 'status']
   const updates: Record<string, any> = {}
 
   for (const field of allowedFields) {

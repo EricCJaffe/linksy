@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs'
 import { toast } from '@/hooks/use-toast'
 import { PostgrestError } from '@supabase/supabase-js'
 
@@ -191,8 +192,9 @@ export function logError(
     console.error('Error logged:', errorInfo)
   }
 
-  // TODO: Send to error tracking service (e.g., Sentry, LogRocket, etc.)
-  // Example: Sentry.captureException(error, { contexts: { custom: context } })
+  if (error instanceof Error) {
+    Sentry.captureException(error, { contexts: { custom: context as Record<string, unknown> } })
+  }
 }
 
 /**

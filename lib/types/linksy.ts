@@ -166,6 +166,7 @@ export interface ProviderEvent {
   location: string | null
   status: EventStatus
   is_public: boolean
+  recurrence_rule: string | null
   created_by: string | null
   created_at: string
   updated_at: string

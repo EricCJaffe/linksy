@@ -141,7 +141,20 @@ export async function GET(request: Request) {
     monthlyQuery = monthlyQuery.filter('legacy_id', 'is', null)
   }
 
-  const [recentTickets, monthlyTickets] = await Promise.all([recentQuery, monthlyQuery])
+  // Time-to-resolution: resolved (non-pending) tickets
+  let resolutionQuery = supabase
+    .from('linksy_tickets')
+    .select('status, created_at, updated_at')
+    .neq('status', 'pending')
+  if (!includeLegacy) {
+    resolutionQuery = resolutionQuery.filter('legacy_id', 'is', null)
+  }
+
+  const [recentTickets, monthlyTickets, resolutionTickets] = await Promise.all([
+    recentQuery,
+    monthlyQuery,
+    resolutionQuery,
+  ])
 
   // Aggregate monthly tickets into month buckets
   const monthMap = new Map<string, number>()
@@ -161,6 +174,35 @@ export async function GET(request: Request) {
   })
   const monthlyTrends = Array.from(monthMap.entries()).map(([month, count]) => ({ month, count }))
 
+  // Average time-to-resolution
+  const resolved = resolutionTickets.data ?? []
+  const statusResolutionMap = new Map<string, { totalDays: number; count: number }>()
+  let totalResolutionDays = 0
+
+  resolved.forEach((t) => {
+    const days = (new Date(t.updated_at).getTime() - new Date(t.created_at).getTime()) / (1000 * 60 * 60 * 24)
+    totalResolutionDays += days
+    const entry = statusResolutionMap.get(t.status)
+    if (entry) {
+      entry.totalDays += days
+      entry.count++
+    } else {
+      statusResolutionMap.set(t.status, { totalDays: days, count: 1 })
+    }
+  })
+
+  const avgResolutionDays = resolved.length > 0
+    ? Math.round((totalResolutionDays / resolved.length) * 10) / 10
+    : null
+
+  const avgResolutionByStatus = Array.from(statusResolutionMap.entries())
+    .map(([status, { totalDays, count }]) => ({
+      status,
+      avg_days: Math.round((totalDays / count) * 10) / 10,
+      count,
+    }))
+    .sort((a, b) => b.count - a.count)
+
   return NextResponse.json({
     referralsByCategory,
     topReferrers,
@@ -169,6 +211,11 @@ export async function GET(request: Request) {
     monthlyTrends,
     recentActivity: {
       last30Days: recentTickets.data?.length || 0,
+    },
+    timeToResolution: {
+      avgDays: avgResolutionDays,
+      totalResolved: resolved.length,
+      byStatus: avgResolutionByStatus,
     },
   })
 }

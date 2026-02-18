@@ -32,3 +32,6 @@ jobs:
           # Dummy values so Next.js doesn't error on missing public env vars at lint time
           NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
+
+      - name: Test
+        run: npm run test:run

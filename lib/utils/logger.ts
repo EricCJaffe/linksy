@@ -1,8 +1,9 @@
 /**
  * Centralized Logging Utility
  * Provides structured logging with different severity levels
- * Can be easily integrated with external services (Sentry, CloudWatch, etc.)
+ * Integrated with Sentry for error/fatal events when SENTRY_DSN is configured.
  */
+import * as Sentry from '@sentry/nextjs'
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'fatal'
 
@@ -42,30 +43,19 @@ class Logger {
    * TODO: Integrate with Sentry, CloudWatch, or other logging service
    */
   private async sendToExternalService(entry: LogEntry): Promise<void> {
-    // Placeholder for external logging service integration
-    // Example: await Sentry.captureException(entry.error, { level: entry.level, extra: entry.context })
-
-    // For now, this is a no-op in production (logs go to stdout/stderr)
-    // When ready to integrate Sentry:
-    // 1. npm install @sentry/nextjs
-    // 2. Initialize Sentry in this file
-    // 3. Uncomment the Sentry calls below
-
-    /*
     if (entry.level === 'error' || entry.level === 'fatal') {
       if (entry.error) {
         Sentry.captureException(entry.error, {
-          level: entry.level,
+          level: entry.level as Sentry.SeverityLevel,
           extra: entry.context,
         })
       } else {
         Sentry.captureMessage(entry.message, {
-          level: entry.level,
+          level: entry.level as Sentry.SeverityLevel,
           extra: entry.context,
         })
       }
     }
-    */
   }
 
   /**

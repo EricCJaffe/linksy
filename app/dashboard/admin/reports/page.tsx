@@ -7,7 +7,16 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { AlertCircle, TrendingUp, Users, BarChart3, History, Search, Phone, Globe, AlertTriangle, Navigation } from 'lucide-react'
+import { AlertCircle, TrendingUp, Users, BarChart3, History, Search, Phone, Globe, AlertTriangle, Navigation, MapPin, Clock, GitMerge } from 'lucide-react'
+
+interface FunnelData {
+  totalSessions: number
+  engagedSessions: number
+  convertedSessions: number
+  engagementRate: number
+  conversionRate: number
+  engagedConversionRate: number
+}
 
 interface SearchAnalyticsData {
   totalSessions: number
@@ -19,6 +28,14 @@ interface SearchAnalyticsData {
   topProvidersByInteraction: { id: string; name: string; count: number }[]
   crisisBreakdown: { type: string; count: number }[]
   recentCrisisSessions: { id: string; crisis_type: string | null; created_at: string }[]
+  funnel: FunnelData
+  topZipCodes: { zip_code: string; count: number }[]
+}
+
+interface TimeToResolution {
+  avgDays: number | null
+  totalResolved: number
+  byStatus: { status: string; avg_days: number; count: number }[]
 }
 
 interface ReportsData {
@@ -28,6 +45,7 @@ interface ReportsData {
   referralsBySource: { source: string; count: number }[]
   monthlyTrends: { month: string; count: number }[]
   recentActivity: { last30Days: number }
+  timeToResolution: TimeToResolution
 }
 
 const statusLabels: Record<string, string> = {
@@ -406,6 +424,102 @@ export default function ReportsPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* Search-to-Referral Funnel */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <GitMerge className="h-5 w-5" />
+                Search-to-Referral Funnel
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">Conversion from search session → provider engagement → referral ticket</p>
+            </CardHeader>
+            <CardContent>
+              {searchLoading ? (
+                <Skeleton className="h-32 w-full" />
+              ) : searchData?.funnel ? (
+                <div className="space-y-4">
+                  {[
+                    {
+                      label: 'Searches Started',
+                      count: searchData.funnel.totalSessions,
+                      pct: 100,
+                      color: 'bg-blue-500',
+                      subtitle: 'All search sessions',
+                    },
+                    {
+                      label: 'Clicked a Provider',
+                      count: searchData.funnel.engagedSessions,
+                      pct: searchData.funnel.engagementRate,
+                      color: 'bg-teal-500',
+                      subtitle: `${searchData.funnel.engagementRate}% engagement rate`,
+                    },
+                    {
+                      label: 'Created a Referral',
+                      count: searchData.funnel.convertedSessions,
+                      pct: searchData.funnel.conversionRate,
+                      color: 'bg-green-500',
+                      subtitle: `${searchData.funnel.conversionRate}% conversion · ${searchData.funnel.engagedConversionRate}% of engaged`,
+                    },
+                  ].map((stage) => (
+                    <div key={stage.label} className="space-y-1">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-medium">{stage.label}</span>
+                        <span className="font-bold tabular-nums">{stage.count.toLocaleString()}</span>
+                      </div>
+                      <div className="h-8 bg-muted rounded overflow-hidden">
+                        <div
+                          className={`h-full rounded ${stage.color} transition-all`}
+                          style={{ width: `${Math.max(stage.pct, stage.count > 0 ? 1 : 0)}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">{stage.subtitle}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No session data yet</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Geographic Distribution */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="h-5 w-5" />
+                Geographic Distribution of Searches
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">Top zip codes by search volume (all time)</p>
+            </CardHeader>
+            <CardContent>
+              {searchLoading ? (
+                <Skeleton className="h-48 w-full" />
+              ) : searchData && searchData.topZipCodes.length > 0 ? (
+                <div className="space-y-2">
+                  {searchData.topZipCodes.map((item) => {
+                    const max = searchData.topZipCodes[0]?.count || 1
+                    return (
+                      <div key={item.zip_code} className="flex items-center gap-3">
+                        <span className="w-20 shrink-0 text-sm text-right text-muted-foreground font-mono">
+                          {item.zip_code}
+                        </span>
+                        <div className="flex-1 h-6 bg-muted rounded overflow-hidden">
+                          <div
+                            className="h-full bg-violet-500 rounded"
+                            style={{ width: `${(item.count / max) * 100}%` }}
+                          />
+                        </div>
+                        <span className="w-10 shrink-0 text-sm font-semibold text-right">{item.count}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No location data recorded yet. Zip codes are captured when users provide their location during search.</p>
+              )}
+            </CardContent>
+          </Card>
         </div>
       )}
 
@@ -442,6 +556,84 @@ export default function ReportsPage() {
           </>
         )}
       </div>
+
+      {/* Time to Resolution */}
+      {!isLoading && data && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              Average Time to Resolution
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">How quickly referrals reach a closed status</p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-6 md:grid-cols-2">
+              {/* Summary */}
+              <div className="space-y-3">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-4xl font-bold">
+                    {data.timeToResolution.avgDays !== null
+                      ? data.timeToResolution.avgDays < 1
+                        ? `${Math.round(data.timeToResolution.avgDays * 24)}h`
+                        : `${data.timeToResolution.avgDays}d`
+                      : '—'}
+                  </span>
+                  <span className="text-muted-foreground">avg to close</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Based on {data.timeToResolution.totalResolved.toLocaleString()} resolved referrals
+                </p>
+                {data.timeToResolution.avgDays !== null && (
+                  <div className="text-sm space-y-1 pt-2 border-t">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Fastest target</span>
+                      <span className="font-medium text-green-600">{'< 1 day'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Platform average</span>
+                      <span className="font-medium">
+                        {data.timeToResolution.avgDays < 1
+                          ? `${Math.round(data.timeToResolution.avgDays * 24)} hours`
+                          : `${data.timeToResolution.avgDays} days`}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* By status */}
+              {data.timeToResolution.byStatus.length > 0 ? (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground mb-3">Avg days by resolution type</p>
+                  {data.timeToResolution.byStatus.map((item) => {
+                    const maxDays = Math.max(...data.timeToResolution.byStatus.map((s) => s.avg_days), 1)
+                    return (
+                      <div key={item.status} className="flex items-center gap-3">
+                        <span className="w-36 shrink-0 text-xs text-right text-muted-foreground">
+                          {statusLabels[item.status] || item.status}
+                        </span>
+                        <div className="flex-1 h-5 bg-muted rounded overflow-hidden">
+                          <div
+                            className="h-full bg-orange-400 rounded"
+                            style={{ width: `${(item.avg_days / maxDays) * 100}%` }}
+                          />
+                        </div>
+                        <span className="w-16 shrink-0 text-xs font-semibold text-right">
+                          {item.avg_days < 1 ? `${Math.round(item.avg_days * 24)}h` : `${item.avg_days}d`}
+                          <span className="font-normal text-muted-foreground ml-1">({item.count})</span>
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No resolved referrals yet</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Monthly trend */}
       <Card>

@@ -43,7 +43,7 @@ export async function POST(
 
   const { id: providerId } = params
   const body = await request.json()
-  const { title, description, event_date, location, is_public } = body
+  const { title, description, event_date, location, is_public, recurrence_rule } = body
 
   if (!title || !event_date) {
     return NextResponse.json(
@@ -63,6 +63,7 @@ export async function POST(
       event_date,
       location: location || null,
       is_public: is_public || false,
+      recurrence_rule: recurrence_rule || null,
       created_by: auth.user.id,
       status: 'pending',
     })

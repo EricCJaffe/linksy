@@ -13,6 +13,7 @@ export function useCreateProviderEvent(providerId: string) {
       event_date: string
       location?: string
       is_public?: boolean
+      recurrence_rule?: string | null
     }) => {
       const res = await fetch(`/api/providers/${providerId}/events`, {
         method: 'POST',
@@ -42,6 +43,7 @@ export function useUpdateProviderEvent(providerId: string) {
       event_date?: string
       location?: string
       is_public?: boolean
+      recurrence_rule?: string | null
       status?: string
     }) => {
       const res = await fetch(`/api/providers/${providerId}/events/${eventId}`, {

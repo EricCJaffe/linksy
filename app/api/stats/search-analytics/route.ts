@@ -24,6 +24,7 @@ export async function GET() {
     { data: monthlySessions },
     { data: interactions },
     { data: crisisSessions },
+    { data: funnelSessions },
   ] = await Promise.all([
     // Totals
     supabase.from('linksy_search_sessions').select('*', { count: 'exact', head: true }),
@@ -48,6 +49,10 @@ export async function GET() {
       .eq('crisis_detected', true)
       .order('created_at', { ascending: false })
       .limit(20),
+    // Funnel + geographic data
+    supabase
+      .from('linksy_search_sessions')
+      .select('created_ticket, services_clicked, zip_code_searched'),
   ])
 
   // Monthly search trend
@@ -97,8 +102,34 @@ export async function GET() {
     .map(([type, count]) => ({ type, count }))
     .sort((a, b) => b.count - a.count)
 
+  // Search-to-referral funnel
+  const engagedCount = funnelSessions?.filter(
+    (s: any) => Array.isArray(s.services_clicked) && s.services_clicked.length > 0
+  ).length ?? 0
+  const convertedCount = funnelSessions?.filter((s: any) => s.created_ticket === true).length ?? 0
+  const total = totalSessionCount ?? 0
+  const funnel = {
+    totalSessions: total,
+    engagedSessions: engagedCount,
+    convertedSessions: convertedCount,
+    engagementRate: total > 0 ? Math.round((engagedCount / total) * 1000) / 10 : 0,
+    conversionRate: total > 0 ? Math.round((convertedCount / total) * 1000) / 10 : 0,
+    engagedConversionRate: engagedCount > 0 ? Math.round((convertedCount / engagedCount) * 1000) / 10 : 0,
+  }
+
+  // Geographic distribution — top zip codes
+  const zipMap = new Map<string, number>()
+  funnelSessions?.forEach((s: any) => {
+    const zip = s.zip_code_searched || 'Unknown'
+    zipMap.set(zip, (zipMap.get(zip) || 0) + 1)
+  })
+  const topZipCodes = Array.from(zipMap.entries())
+    .map(([zip_code, count]) => ({ zip_code, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 15)
+
   return NextResponse.json({
-    totalSessions: totalSessionCount ?? 0,
+    totalSessions: total,
     sessionsLast30Days: recentSessionCount ?? 0,
     totalInteractions: interactions?.length ?? 0,
     totalCrisisDetections: crisisSessions?.length ?? 0,
@@ -107,5 +138,7 @@ export async function GET() {
     topProvidersByInteraction,
     crisisBreakdown,
     recentCrisisSessions: (crisisSessions ?? []).slice(0, 10),
+    funnel,
+    topZipCodes,
   })
 }

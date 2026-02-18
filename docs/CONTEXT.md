@@ -90,7 +90,11 @@ and the `/dashboard/settings/modules` page.
 
 ## Testing
 
-- **No test framework is currently configured.** There are no test files (`*.test.ts`, `*.spec.ts`) in the project.
+- **Unit tests:** Vitest + @testing-library/react. Config at `vitest.config.ts`, setup at `vitest.setup.ts`.
+  - `npm run test` — watch mode
+  - `npm run test:run` — single run (used in CI)
+  - `npm run test:coverage` — v8 coverage report
+  - Test files live under `__tests__/` mirroring `lib/` structure
 - **Type checking:** `npm run type-check` (runs `tsc --noEmit`)
 - **Linting:** `npm run lint` (ESLint with `eslint-config-next`)
-- **Manual verification** is the current approach for feature work.
+- **CI:** GitHub Actions runs type-check, lint, and tests on every push/PR to main.

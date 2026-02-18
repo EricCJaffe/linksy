@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { requireAuth, requireTenantAdmin } from '@/lib/middleware/auth'
+import { requireAuth } from '@/lib/middleware/auth'
 
 export async function GET(
   request: Request,
@@ -130,22 +130,47 @@ export async function PATCH(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const { data: auth, error } = await requireTenantAdmin()
+  const { data: auth, error } = await requireAuth()
   if (error) return error
 
   const { id } = params
   const body = await request.json()
   const supabase = await createServiceClient()
 
-  // Only allow updating known provider fields
-  const allowedFields = [
-    'name', 'description', 'sector', 'phone', 'email', 'website', 'hours',
-    'is_active', 'referral_type', 'referral_instructions', 'project_status',
-    'allow_auto_update', 'social_facebook', 'social_instagram',
-    'social_twitter', 'social_linkedin',
-    // Host system fields
+  // Fields any active provider contact can edit
+  const staffFields = [
+    'description', 'phone', 'email', 'website', 'hours',
+    'social_facebook', 'social_instagram', 'social_twitter', 'social_linkedin',
+    'referral_instructions',
+  ]
+
+  // Additional fields only admins can edit
+  const adminOnlyFields = [
+    'name', 'sector', 'is_active', 'referral_type', 'project_status',
+    'allow_auto_update',
     'is_host', 'host_embed_active', 'host_widget_config', 'host_monthly_token_budget',
   ]
+
+  let allowedFields: string[]
+
+  if (auth.isSiteAdmin || auth.isTenantAdmin) {
+    allowedFields = [...staffFields, ...adminOnlyFields]
+  } else {
+    // Check if user is an active contact for this provider
+    const { data: contact } = await supabase
+      .from('linksy_provider_contacts')
+      .select('id')
+      .eq('provider_id', id)
+      .eq('user_id', auth.user.id)
+      .eq('status', 'active')
+      .maybeSingle()
+
+    if (!contact) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    allowedFields = staffFields
+  }
 
   const updates: Record<string, any> = {}
   for (const key of allowedFields) {

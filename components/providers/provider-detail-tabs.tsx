@@ -29,13 +29,14 @@ import { useProvider, useUpdateProvider, useNeedCategories, useCreateNote, useUp
 import { useUpdateTicket } from '@/lib/hooks/useTickets'
 import { useUpdateProviderContact, useDeleteProviderContact, useInviteProviderContact } from '@/lib/hooks/useProviderContacts'
 import { useCreateProviderEvent, useUpdateProviderEvent, useDeleteProviderEvent } from '@/lib/hooks/useProviderEvents'
+import { EventCalendar, formatRecurrence } from '@/components/providers/event-calendar'
 import { SupportTicketsTab } from '@/components/support/support-tickets-tab'
 import { ContactManagementDialog } from '@/components/providers/contact-management-dialog'
 import { ImageUpload } from '@/components/ui/image-upload'
 import { WidgetPreview } from '@/components/widget/widget-preview'
 import { uploadWidgetLogo } from '@/lib/storage/upload'
 import type { ProviderDetail, NoteType, TicketStatus, ProviderContact, ProviderEvent } from '@/lib/types/linksy'
-import { Plus, Copy, ExternalLink, Lock, MapPin, Pencil, Trash2, CheckCircle, Circle, BarChart2, FileText } from 'lucide-react'
+import { Plus, Copy, ExternalLink, Lock, MapPin, Pencil, Trash2, CheckCircle, Circle, BarChart2, FileText, LayoutList, CalendarDays, RefreshCw } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import type { HostWidgetConfig } from '@/lib/types/linksy'
 
@@ -1104,12 +1105,14 @@ function ReferralsTab({ provider: initialProvider }: { provider: ProviderDetail 
 function EventsTab({ provider }: { provider: ProviderDetail }) {
   const [isAdding, setIsAdding] = useState(false)
   const [editingEvent, setEditingEvent] = useState<ProviderEvent | null>(null)
+  const [calendarView, setCalendarView] = useState(false)
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     event_date: '',
     location: '',
     is_public: false,
+    recurrence_rule: '' as string,
   })
 
   const createEvent = useCreateProviderEvent(provider.id)
@@ -1119,15 +1122,19 @@ function EventsTab({ provider }: { provider: ProviderDetail }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    const payload = {
+      ...formData,
+      recurrence_rule: formData.recurrence_rule || null,
+    }
     if (editingEvent) {
-      await updateEvent.mutateAsync({ eventId: editingEvent.id, ...formData })
+      await updateEvent.mutateAsync({ eventId: editingEvent.id, ...payload })
       setEditingEvent(null)
     } else {
-      await createEvent.mutateAsync(formData)
+      await createEvent.mutateAsync(payload)
       setIsAdding(false)
     }
 
-    setFormData({ title: '', description: '', event_date: '', location: '', is_public: false })
+    setFormData({ title: '', description: '', event_date: '', location: '', is_public: false, recurrence_rule: '' })
   }
 
   const handleEdit = (event: ProviderEvent) => {
@@ -1138,6 +1145,7 @@ function EventsTab({ provider }: { provider: ProviderDetail }) {
       event_date: event.event_date.split('T')[0],
       location: event.location || '',
       is_public: event.is_public,
+      recurrence_rule: event.recurrence_rule || '',
     })
     setIsAdding(true)
   }
@@ -1157,12 +1165,37 @@ function EventsTab({ provider }: { provider: ProviderDetail }) {
 
   return (
     <div className="space-y-4">
-      {!isAdding ? (
-        <Button onClick={() => setIsAdding(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Event
-        </Button>
-      ) : (
+      <div className="flex items-center justify-between">
+        {!isAdding ? (
+          <Button onClick={() => setIsAdding(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Event
+          </Button>
+        ) : (
+          <div />
+        )}
+        <div className="flex items-center gap-1 border rounded-md p-0.5">
+          <Button
+            variant={calendarView ? 'ghost' : 'secondary'}
+            size="sm"
+            className="h-7 px-2"
+            onClick={() => setCalendarView(false)}
+          >
+            <LayoutList className="h-4 w-4 mr-1" />
+            List
+          </Button>
+          <Button
+            variant={calendarView ? 'secondary' : 'ghost'}
+            size="sm"
+            className="h-7 px-2"
+            onClick={() => setCalendarView(true)}
+          >
+            <CalendarDays className="h-4 w-4 mr-1" />
+            Calendar
+          </Button>
+        </div>
+      </div>
+      {isAdding && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">{editingEvent ? 'Edit Event' : 'Add New Event'}</CardTitle>
@@ -1218,6 +1251,25 @@ function EventsTab({ provider }: { provider: ProviderDetail }) {
                   Make this event public
                 </label>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="recurrence_rule">Recurrence</Label>
+                <Select
+                  value={formData.recurrence_rule || 'none'}
+                  onValueChange={(val) => setFormData({ ...formData, recurrence_rule: val === 'none' ? '' : val })}
+                >
+                  <SelectTrigger id="recurrence_rule">
+                    <SelectValue placeholder="No recurrence" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No recurrence</SelectItem>
+                    <SelectItem value="FREQ=DAILY">Daily</SelectItem>
+                    <SelectItem value="FREQ=WEEKLY">Weekly</SelectItem>
+                    <SelectItem value="FREQ=WEEKLY;INTERVAL=2">Bi-weekly</SelectItem>
+                    <SelectItem value="FREQ=MONTHLY">Monthly</SelectItem>
+                    <SelectItem value="FREQ=YEARLY">Annually</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="flex gap-2">
                 <Button type="submit">
                   {editingEvent ? 'Update Event' : 'Create Event'}
@@ -1228,7 +1280,7 @@ function EventsTab({ provider }: { provider: ProviderDetail }) {
                   onClick={() => {
                     setIsAdding(false)
                     setEditingEvent(null)
-                    setFormData({ title: '', description: '', event_date: '', location: '', is_public: false })
+                    setFormData({ title: '', description: '', event_date: '', location: '', is_public: false, recurrence_rule: '' })
                   }}
                 >
                   Cancel
@@ -1243,53 +1295,64 @@ function EventsTab({ provider }: { provider: ProviderDetail }) {
         <div className="py-12 text-center text-muted-foreground">
           No events yet. Create your first event!
         </div>
+      ) : calendarView ? (
+        <EventCalendar events={provider.events} />
       ) : (
         <div className="space-y-3">
-          {provider.events.map((event) => (
-            <Card key={event.id}>
-              <CardContent className="pt-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold">{event.title}</h3>
-                      <Badge className={statusColors[event.status]}>{event.status}</Badge>
-                      {event.is_public && <Badge variant="outline">Public</Badge>}
+          {provider.events.map((event) => {
+            const recurrenceLabel = formatRecurrence(event.recurrence_rule)
+            return (
+              <Card key={event.id}>
+                <CardContent className="pt-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-semibold">{event.title}</h3>
+                        <Badge className={statusColors[event.status]}>{event.status}</Badge>
+                        {event.is_public && <Badge variant="outline">Public</Badge>}
+                        {recurrenceLabel && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
+                            <RefreshCw className="h-3 w-3" />
+                            {recurrenceLabel}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {new Date(event.event_date).toLocaleDateString('en-US', {
+                          weekday: 'long',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        })}
+                      </p>
+                      {event.location && (
+                        <p className="text-sm text-muted-foreground">{event.location}</p>
+                      )}
+                      {event.description && (
+                        <p className="mt-2 text-sm">{event.description}</p>
+                      )}
                     </div>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {new Date(event.event_date).toLocaleDateString('en-US', {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                      })}
-                    </p>
-                    {event.location && (
-                      <p className="text-sm text-muted-foreground">{event.location}</p>
-                    )}
-                    {event.description && (
-                      <p className="mt-2 text-sm">{event.description}</p>
-                    )}
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEdit(event)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDelete(event.id)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEdit(event)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDelete(event.id)}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
       )}
     </div>
