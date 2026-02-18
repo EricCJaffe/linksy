@@ -220,11 +220,17 @@ export function FindHelpWidget({ hostProviderId, hostProviderName, widgetConfig 
   }
 
   const primaryColor = widgetConfig?.primary_color ?? '#2563eb'
+  const secondaryColor = widgetConfig?.secondary_color
+  const headerBgColor = widgetConfig?.header_bg_color
+  const fontFamily = widgetConfig?.font_family
 
   return (
-    <div className="flex flex-col h-screen bg-background">
+    <div className="flex flex-col h-screen bg-background" style={fontFamily ? { fontFamily } : undefined}>
       {/* Header */}
-      <div className="border-b px-4 py-3 flex items-center gap-3" style={{ borderColor: primaryColor + '33' }}>
+      <div
+        className="border-b px-4 py-3 flex items-center gap-3"
+        style={{ borderColor: primaryColor + '33', ...(headerBgColor ? { backgroundColor: headerBgColor } : {}) }}
+      >
         {widgetConfig?.logo_url && (
           <img src={widgetConfig.logo_url} alt="" className="h-8 w-auto object-contain" />
         )}
@@ -358,7 +364,14 @@ export function FindHelpWidget({ hostProviderId, hostProviderName, widgetConfig 
                               </p>
                             )}
                             {provider.distance !== null && (
-                              <Badge className="mt-1 text-xs bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100 inline-flex items-center gap-1">
+                              <Badge
+                                className={`mt-1 text-xs inline-flex items-center gap-1 ${
+                                  secondaryColor ? '' : 'bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100'
+                                }`}
+                                style={secondaryColor
+                                  ? { backgroundColor: secondaryColor + '20', color: secondaryColor, borderColor: secondaryColor + '40' }
+                                  : undefined}
+                              >
                                 <MapPin className="h-3 w-3" />
                                 {provider.distance} mi away
                               </Badge>
@@ -369,7 +382,8 @@ export function FindHelpWidget({ hostProviderId, hostProviderName, widgetConfig 
                               <a
                                 href={`tel:${provider.phone.replace(/\D/g, '')}`}
                                 onClick={() => trackInteraction(provider.id, 'phone_click')}
-                                className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                                className={`inline-flex items-center gap-1 text-xs hover:underline ${secondaryColor ? '' : 'text-primary'}`}
+                                style={secondaryColor ? { color: secondaryColor } : undefined}
                               >
                                 <Phone className="h-3 w-3" />
                                 {provider.phone}
@@ -381,7 +395,8 @@ export function FindHelpWidget({ hostProviderId, hostProviderName, widgetConfig 
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 onClick={() => trackInteraction(provider.id, 'website_click')}
-                                className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                                className={`inline-flex items-center gap-1 text-xs hover:underline ${secondaryColor ? '' : 'text-primary'}`}
+                                style={secondaryColor ? { color: secondaryColor } : undefined}
                               >
                                 <Globe className="h-3 w-3" />
                                 Website

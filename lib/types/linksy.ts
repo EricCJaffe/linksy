@@ -53,6 +53,9 @@ export type SupportTicketCategory = 'technical' | 'account' | 'billing' | 'featu
 export interface HostWidgetConfig {
   welcome_message?: string
   primary_color?: string
+  secondary_color?: string
+  header_bg_color?: string
+  font_family?: string
   logo_url?: string
   bot_name?: string
   search_radius_miles?: number

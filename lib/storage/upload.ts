@@ -79,6 +79,25 @@ export async function uploadLogo(file: File, tenantId: string): Promise<string> 
 }
 
 /**
+ * Upload a widget logo image for a host provider
+ * @param file - The logo image file
+ * @param providerId - The provider's ID
+ * @returns The public URL of the uploaded logo
+ */
+export async function uploadWidgetLogo(file: File, providerId: string): Promise<string> {
+  if (!file.type.startsWith('image/')) {
+    throw new Error('File must be an image')
+  }
+
+  if (file.size > 2 * 1024 * 1024) {
+    throw new Error('File size must be less than 2MB')
+  }
+
+  const path = `widget-logos/${providerId}/${Date.now()}-${file.name}`
+  return uploadFile(file, 'tenant-uploads', path)
+}
+
+/**
  * Delete a file from Supabase Storage
  * @param bucket - The storage bucket name
  * @param path - The path to the file

@@ -31,6 +31,9 @@ import { useUpdateProviderContact, useDeleteProviderContact, useInviteProviderCo
 import { useCreateProviderEvent, useUpdateProviderEvent, useDeleteProviderEvent } from '@/lib/hooks/useProviderEvents'
 import { SupportTicketsTab } from '@/components/support/support-tickets-tab'
 import { ContactManagementDialog } from '@/components/providers/contact-management-dialog'
+import { ImageUpload } from '@/components/ui/image-upload'
+import { WidgetPreview } from '@/components/widget/widget-preview'
+import { uploadWidgetLogo } from '@/lib/storage/upload'
 import type { ProviderDetail, NoteType, TicketStatus, ProviderContact, ProviderEvent } from '@/lib/types/linksy'
 import { Plus, Copy, ExternalLink, Lock, MapPin, Pencil, Trash2, CheckCircle, Circle } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
@@ -1587,48 +1590,114 @@ function HostSettingsTab({ provider }: { provider: ProviderDetail }) {
           <CardHeader>
             <CardTitle className="text-base">Widget Configuration</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-1">
-              <Label>Bot Name</Label>
-              <Input
-                value={config.bot_name ?? ''}
-                onChange={(e) => setConfig((c) => ({ ...c, bot_name: e.target.value || undefined }))}
-                placeholder="Linksy"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label>Welcome Message</Label>
-              <Textarea
-                value={config.welcome_message ?? ''}
-                onChange={(e) => setConfig((c) => ({ ...c, welcome_message: e.target.value || undefined }))}
-                placeholder="Hello! I'm your community resource assistant…"
-                rows={3}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label>Primary Color</Label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={config.primary_color ?? '#2563eb'}
-                  onChange={(e) => setConfig((c) => ({ ...c, primary_color: e.target.value }))}
-                  className="h-9 w-16 cursor-pointer rounded border"
-                />
-                <Input
-                  value={config.primary_color ?? ''}
-                  onChange={(e) => setConfig((c) => ({ ...c, primary_color: e.target.value || undefined }))}
-                  placeholder="#2563eb"
-                  className="font-mono"
-                />
+          <CardContent>
+            <div className="grid gap-8 lg:grid-cols-2">
+              {/* Controls column */}
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <Label>Bot Name</Label>
+                  <Input
+                    value={config.bot_name ?? ''}
+                    onChange={(e) => setConfig((c) => ({ ...c, bot_name: e.target.value || undefined }))}
+                    placeholder="Linksy"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Welcome Message</Label>
+                  <Textarea
+                    value={config.welcome_message ?? ''}
+                    onChange={(e) => setConfig((c) => ({ ...c, welcome_message: e.target.value || undefined }))}
+                    placeholder="Hello! I'm your community resource assistant…"
+                    rows={3}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Widget Logo</Label>
+                  <ImageUpload
+                    inputId="widget-logo-upload"
+                    value={config.logo_url}
+                    onChange={(url) => setConfig((c) => ({ ...c, logo_url: url }))}
+                    onRemove={() => setConfig((c) => ({ ...c, logo_url: undefined }))}
+                    uploadFn={(file) => uploadWidgetLogo(file, provider.id)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Primary Color</Label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={config.primary_color ?? '#2563eb'}
+                      onChange={(e) => setConfig((c) => ({ ...c, primary_color: e.target.value }))}
+                      className="h-9 w-16 cursor-pointer rounded border"
+                    />
+                    <Input
+                      value={config.primary_color ?? ''}
+                      onChange={(e) => setConfig((c) => ({ ...c, primary_color: e.target.value || undefined }))}
+                      placeholder="#2563eb"
+                      className="font-mono"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label>Header Background Color</Label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={config.header_bg_color ?? '#ffffff'}
+                      onChange={(e) => setConfig((c) => ({ ...c, header_bg_color: e.target.value }))}
+                      className="h-9 w-16 cursor-pointer rounded border"
+                    />
+                    <Input
+                      value={config.header_bg_color ?? ''}
+                      onChange={(e) => setConfig((c) => ({ ...c, header_bg_color: e.target.value || undefined }))}
+                      placeholder="#ffffff"
+                      className="font-mono"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label>Accent / Secondary Color</Label>
+                  <p className="text-xs text-muted-foreground">Used for links, distance badges, and highlights</p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={config.secondary_color ?? config.primary_color ?? '#2563eb'}
+                      onChange={(e) => setConfig((c) => ({ ...c, secondary_color: e.target.value }))}
+                      className="h-9 w-16 cursor-pointer rounded border"
+                    />
+                    <Input
+                      value={config.secondary_color ?? ''}
+                      onChange={(e) => setConfig((c) => ({ ...c, secondary_color: e.target.value || undefined }))}
+                      placeholder="Same as primary"
+                      className="font-mono"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label>Font Family</Label>
+                  <Select
+                    value={config.font_family ?? 'system-default'}
+                    onValueChange={(value) => setConfig((c) => ({ ...c, font_family: value === 'system-default' ? undefined : value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="System default" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="system-default">System default</SelectItem>
+                      <SelectItem value="Inter, system-ui, sans-serif">Inter</SelectItem>
+                      <SelectItem value="Georgia, serif">Georgia</SelectItem>
+                      <SelectItem value="Arial, Helvetica, sans-serif">Arial</SelectItem>
+                      <SelectItem value="'Courier New', Courier, monospace">Courier New</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-            </div>
-            <div className="space-y-1">
-              <Label>Logo URL</Label>
-              <Input
-                value={config.logo_url ?? ''}
-                onChange={(e) => setConfig((c) => ({ ...c, logo_url: e.target.value || undefined }))}
-                placeholder="https://example.com/logo.png"
-              />
+
+              {/* Preview column */}
+              <div className="flex flex-col items-center gap-2">
+                <Label className="text-xs text-muted-foreground self-start">Live Preview</Label>
+                <WidgetPreview config={config} providerName={provider.name} />
+              </div>
             </div>
           </CardContent>
         </Card>

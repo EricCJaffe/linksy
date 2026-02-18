@@ -12,6 +12,7 @@ interface ImageUploadProps {
   disabled?: boolean
   className?: string
   uploadFn: (file: File) => Promise<string>
+  inputId?: string
 }
 
 export function ImageUpload({
@@ -21,6 +22,7 @@ export function ImageUpload({
   disabled,
   className,
   uploadFn,
+  inputId = 'file-upload',
 }: ImageUploadProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
@@ -116,7 +118,7 @@ export function ImageUpload({
           onDragLeave={handleDragLeave}
           onClick={() => {
             if (!disabled && !isUploading) {
-              document.getElementById('file-upload')?.click()
+              document.getElementById(inputId)?.click()
             }
           }}
         >
@@ -137,7 +139,7 @@ export function ImageUpload({
             </>
           )}
           <input
-            id="file-upload"
+            id={inputId}
             type="file"
             accept="image/*"
             className="hidden"
