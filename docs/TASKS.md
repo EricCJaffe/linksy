@@ -5,7 +5,6 @@
 - [ ] Add automated test framework (no tests exist — see `docs/CONTEXT.md` testing section)
 - [ ] Integrate Sentry error tracking (`lib/utils/logger.ts:42` — `TODO: Integrate with Sentry, CloudWatch, or other logging service`)
 - [ ] Wire up error tracking service in error handler (`lib/utils/error-handler.ts:194` — `TODO: Send to error tracking service`)
-- [ ] **Secure/Private Notes** — add `is_private` boolean to `linksy_provider_notes`; filter visibility server-side (plan in `.claude/plans/`); UI toggle + lock badge in provider detail notes tab (see `docs/DECISIONS/0003-private-notes-visibility.md`)
 
 ## Backlog
 
@@ -41,6 +40,7 @@ Items extracted from `FEATURES_CHECKLIST.md` that are partially or not yet imple
 
 ## Done
 
+- [x] Private/Secure Notes — `is_private` column on `linksy_provider_notes`; server-side visibility filter in GET provider detail; toggle switch + amber lock badge in UI; site_admin can edit any note
 - [x] GitHub Actions CI — `.github/workflows/ci.yml` runs `type-check` + `lint` on push/PR to main
 - [x] Provider-scoped analytics — `GET /api/providers/[id]/analytics`, `useProviderAnalytics` hook, engagement cards (profile views, phone/website/directions clicks last 30 days + all time) on My Organization page
 - [x] Event approval queue — admin events page at `/dashboard/admin/events` with Pending/Approved/Rejected tabs + count badges; approve/reject actions
