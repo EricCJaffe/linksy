@@ -17,6 +17,10 @@
 - [x] JavaScript embed snippet — `public/widget.js`; reads `data-slug`, derives base URL from script `src`, injects responsive iframe with `allow="geolocation"`
 - [ ] Voice input (Whisper) — mic button in widget → `MediaRecorder` → `POST /api/linksy/transcribe` → OpenAI Whisper → transcript in textarea; update `widget.js` to add `allow="microphone"` to iframe
 
+### Authentication
+- [ ] Finalize Microsoft OAuth — verify Azure AD app registration, test login flow end-to-end, confirm callback handling and role assignment
+- [ ] Finalize Google OAuth — verify Google Cloud Console setup, test login flow end-to-end, confirm callback handling and role assignment
+
 ### Provider Portal (Phase 2)
 
 ### Infrastructure
