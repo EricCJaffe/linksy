@@ -6,14 +6,30 @@ import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, MapPin, Phone, Globe, Mail, Navigation, Send, ChevronRight, List, X, AlertTriangle } from 'lucide-react'
-import { CreateTicketDialog } from '@/components/tickets/create-ticket-dialog'
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion'
+  Loader2,
+  MapPin,
+  Phone,
+  Globe,
+  Mail,
+  Navigation,
+  Send,
+  ChevronRight,
+  X,
+  AlertTriangle,
+  Heart,
+  Utensils,
+  Home,
+  Briefcase,
+  GraduationCap,
+  HeartPulse,
+  Shield,
+  Baby,
+  Users,
+  Sparkles,
+} from 'lucide-react'
+import { CreateTicketDialog } from '@/components/tickets/create-ticket-dialog'
+import type { LucideIcon } from 'lucide-react'
 
 interface SearchResult {
   id: string
@@ -148,6 +164,85 @@ export default function FindHelpPage() {
   const [categories, setCategories] = useState<NeedCategory[]>([])
   const [categoryProviders, setCategoryProviders] = useState<{ [categoryId: string]: SearchResult[] }>({})
   const [loadingCategories, setLoadingCategories] = useState<{ [categoryId: string]: boolean }>({})
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
+
+  const selectedCategory = selectedCategoryId
+    ? categories.find((c) => c.id === selectedCategoryId) || null
+    : null
+
+  const getCategoryVisual = (name: string): { icon: LucideIcon; chipClass: string; cardClass: string } => {
+    const normalized = name.toLowerCase()
+
+    if (normalized.includes('food') || normalized.includes('meal') || normalized.includes('nutrition')) {
+      return {
+        icon: Utensils,
+        chipClass: 'bg-orange-100 text-orange-700',
+        cardClass: 'border-orange-200 hover:border-orange-300 hover:bg-orange-50/60',
+      }
+    }
+
+    if (normalized.includes('housing') || normalized.includes('shelter') || normalized.includes('rent')) {
+      return {
+        icon: Home,
+        chipClass: 'bg-indigo-100 text-indigo-700',
+        cardClass: 'border-indigo-200 hover:border-indigo-300 hover:bg-indigo-50/60',
+      }
+    }
+
+    if (normalized.includes('job') || normalized.includes('employment') || normalized.includes('career')) {
+      return {
+        icon: Briefcase,
+        chipClass: 'bg-amber-100 text-amber-700',
+        cardClass: 'border-amber-200 hover:border-amber-300 hover:bg-amber-50/60',
+      }
+    }
+
+    if (normalized.includes('education') || normalized.includes('school') || normalized.includes('training')) {
+      return {
+        icon: GraduationCap,
+        chipClass: 'bg-violet-100 text-violet-700',
+        cardClass: 'border-violet-200 hover:border-violet-300 hover:bg-violet-50/60',
+      }
+    }
+
+    if (normalized.includes('health') || normalized.includes('medical') || normalized.includes('mental')) {
+      return {
+        icon: HeartPulse,
+        chipClass: 'bg-rose-100 text-rose-700',
+        cardClass: 'border-rose-200 hover:border-rose-300 hover:bg-rose-50/60',
+      }
+    }
+
+    if (normalized.includes('safety') || normalized.includes('legal') || normalized.includes('crisis')) {
+      return {
+        icon: Shield,
+        chipClass: 'bg-red-100 text-red-700',
+        cardClass: 'border-red-200 hover:border-red-300 hover:bg-red-50/60',
+      }
+    }
+
+    if (normalized.includes('child') || normalized.includes('family') || normalized.includes('parent')) {
+      return {
+        icon: Baby,
+        chipClass: 'bg-sky-100 text-sky-700',
+        cardClass: 'border-sky-200 hover:border-sky-300 hover:bg-sky-50/60',
+      }
+    }
+
+    if (normalized.includes('community') || normalized.includes('social') || normalized.includes('support')) {
+      return {
+        icon: Users,
+        chipClass: 'bg-emerald-100 text-emerald-700',
+        cardClass: 'border-emerald-200 hover:border-emerald-300 hover:bg-emerald-50/60',
+      }
+    }
+
+    return {
+      icon: Heart,
+      chipClass: 'bg-blue-100 text-blue-700',
+      cardClass: 'border-blue-200 hover:border-blue-300 hover:bg-blue-50/60',
+    }
+  }
 
   const handleSearch = async () => {
     if (!query.trim()) return
@@ -259,12 +354,14 @@ export default function FindHelpPage() {
     fetchCategoriesWithProviders()
   }, [])
 
-  // Load providers for a category when accordion is opened
+  // Load providers for a category when a category card is selected
   const handleCategoryOpen = async (categoryId: string) => {
+    setSelectedCategoryId(categoryId)
+
     // If already loaded, don't fetch again
     if (categoryProviders[categoryId]) return
 
-    setLoadingCategories({ ...loadingCategories, [categoryId]: true })
+    setLoadingCategories((prev) => ({ ...prev, [categoryId]: true }))
 
     try {
       // Get all needs for this category
@@ -301,11 +398,11 @@ export default function FindHelpPage() {
         provider_needs: provider.provider_needs || [],
       }))
 
-      setCategoryProviders({ ...categoryProviders, [categoryId]: transformedProviders })
+      setCategoryProviders((prev) => ({ ...prev, [categoryId]: transformedProviders }))
     } catch (error) {
       console.error('Error loading providers:', error)
     } finally {
-      setLoadingCategories({ ...loadingCategories, [categoryId]: false })
+      setLoadingCategories((prev) => ({ ...prev, [categoryId]: false }))
     }
   }
 
@@ -487,11 +584,11 @@ export default function FindHelpPage() {
           <p>If this is a medical or safety emergency, please dial <strong>911</strong>.</p>
         </div>
 
-        {/* Traditional Browse by Category Section */}
+        {/* Browse by Category Section */}
         <div className="mt-12">
           <div className="text-center mb-6">
             <h2 className="text-2xl font-bold text-gray-900 mb-2 flex items-center justify-center gap-2">
-              <List className="h-6 w-6" />
+              <Sparkles className="h-6 w-6 text-orange-500" />
               Browse by Category
             </h2>
             <p className="text-gray-600">
@@ -499,53 +596,68 @@ export default function FindHelpPage() {
             </p>
           </div>
 
-          <Card>
-            <CardContent className="pt-6">
-              <Accordion type="single" collapsible className="w-full">
-                {categories.map((category) => (
-                  <AccordionItem key={category.id} value={category.id}>
-                    <AccordionTrigger
-                      onClick={() => handleCategoryOpen(category.id)}
-                      className="text-lg font-semibold hover:no-underline"
-                    >
-                      <div className="flex items-center gap-2">
-                        {category.name}
-                        <Badge variant="secondary" className="text-xs">
-                          {category.providerCount || 0} provider{category.providerCount !== 1 ? 's' : ''}
-                        </Badge>
-                      </div>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      {loadingCategories[category.id] ? (
-                        <div className="flex items-center justify-center py-8">
-                          <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-                          <span className="ml-2 text-sm text-gray-600">Loading providers...</span>
-                        </div>
-                      ) : categoryProviders[category.id] ? (
-                        <div className="space-y-4 pt-2">
-                          {categoryProviders[category.id].length > 0 ? (
-                            <>
-                              <p className="text-sm text-gray-600">
-                                Found {categoryProviders[category.id].length} organization
-                                {categoryProviders[category.id].length !== 1 ? 's' : ''} offering services in this category:
-                              </p>
-                              {categoryProviders[category.id].map((provider) => (
-                                <ProviderCard key={provider.id} provider={provider} sessionId={sessionId} />
-                              ))}
-                            </>
-                          ) : (
-                            <p className="text-sm text-gray-500 py-4 text-center">
-                              No providers found for this category.
-                            </p>
-                          )}
-                        </div>
-                      ) : null}
-                    </AccordionContent>
-                  </AccordionItem>
-                ))}
-              </Accordion>
-            </CardContent>
-          </Card>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {categories.map((category) => {
+              const visual = getCategoryVisual(category.name)
+              const Icon = visual.icon
+              const isSelected = selectedCategoryId === category.id
+
+              return (
+                <button
+                  key={category.id}
+                  onClick={() => handleCategoryOpen(category.id)}
+                  className={[
+                    'text-left rounded-xl border p-4 transition-all duration-200',
+                    'shadow-sm hover:shadow-md',
+                    visual.cardClass,
+                    isSelected ? 'ring-2 ring-offset-1 ring-blue-500 bg-white' : 'bg-white/90',
+                  ].join(' ')}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-gray-900">{category.name}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {category.providerCount || 0} provider{category.providerCount !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                    <span className={`inline-flex h-8 w-8 items-center justify-center rounded-lg ${visual.chipClass}`}>
+                      <Icon className="h-4 w-4" />
+                    </span>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+
+          {selectedCategory && (
+            <Card className="mt-6 border-blue-200 bg-gradient-to-b from-blue-50/60 to-white">
+              <CardContent className="pt-6">
+                {loadingCategories[selectedCategory.id] ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                    <span className="ml-2 text-sm text-gray-600">Loading providers...</span>
+                  </div>
+                ) : categoryProviders[selectedCategory.id] ? (
+                  <div className="space-y-4">
+                    <p className="text-sm text-gray-700">
+                      Found {categoryProviders[selectedCategory.id].length} organization
+                      {categoryProviders[selectedCategory.id].length !== 1 ? 's' : ''} offering services in{' '}
+                      <span className="font-semibold">{selectedCategory.name}</span>.
+                    </p>
+                    {categoryProviders[selectedCategory.id].length > 0 ? (
+                      categoryProviders[selectedCategory.id].map((provider) => (
+                        <ProviderCard key={provider.id} provider={provider} sessionId={sessionId} />
+                      ))
+                    ) : (
+                      <p className="text-sm text-gray-500 py-2 text-center">
+                        No providers found for this category.
+                      </p>
+                    )}
+                  </div>
+                ) : null}
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>
