@@ -87,7 +87,7 @@ export async function PATCH(
     return NextResponse.json({ success: true, status: 'rejected' })
   }
 
-  // Approve: create provider + location, then update application
+  // Approve: create provider + locations + needs + contact, then update application
 
   // Generate unique slug
   const base = application.org_name
@@ -121,7 +121,8 @@ export async function PATCH(
       hours: application.hours || null,
       is_active: true,
       project_status: 'active',
-      referral_type: 'standard',
+      referral_type: application.referral_type || 'standard',
+      referral_instructions: application.referral_instructions || null,
       allow_auto_update: false,
     })
     .select('id')
@@ -132,12 +133,37 @@ export async function PATCH(
     return NextResponse.json({ error: 'Failed to create provider' }, { status: 500 })
   }
 
-  // Create primary location if any address fields provided
-  const hasLocation = application.address || application.city || application.state || application.postal_code
-  if (hasLocation) {
-    const { error: locationError } = await supabase
-      .from('linksy_locations')
-      .insert({
+  // Create locations from structured JSONB if available, else fall back to flat fields
+  const locations: any[] = Array.isArray(application.locations) ? application.locations : []
+
+  if (locations.length > 0) {
+    const locationInserts = locations
+      .filter((loc: any) => loc.address_line1 || loc.city)
+      .map((loc: any) => ({
+        provider_id: provider.id,
+        address_line1: loc.address_line1 || null,
+        address_line2: loc.address_line2 || null,
+        city: loc.city || null,
+        state: loc.state || null,
+        postal_code: loc.zip || loc.postal_code || null,
+        is_primary: loc.is_primary ?? false,
+      }))
+
+    if (locationInserts.length > 0) {
+      const { error: locationError } = await supabase
+        .from('linksy_locations')
+        .insert(locationInserts)
+
+      if (locationError) {
+        console.error('Error creating locations:', locationError)
+      }
+    }
+  } else {
+    // Fall back to flat address fields
+    const hasLocation =
+      application.address || application.city || application.state || application.postal_code
+    if (hasLocation) {
+      const { error: locationError } = await supabase.from('linksy_locations').insert({
         provider_id: provider.id,
         address_line1: application.address || null,
         city: application.city || null,
@@ -146,10 +172,51 @@ export async function PATCH(
         is_primary: true,
       })
 
-    if (locationError) {
-      console.error('Error creating location:', locationError)
-      // Non-fatal — provider was already created
+      if (locationError) {
+        console.error('Error creating location:', locationError)
+      }
     }
+  }
+
+  // Create need associations from structured JSONB
+  const selectedNeeds: string[] = Array.isArray(application.selected_needs)
+    ? application.selected_needs
+    : []
+
+  if (selectedNeeds.length > 0) {
+    const needInserts = selectedNeeds.map((needId: string) => ({
+      provider_id: provider.id,
+      need_id: needId,
+      source: 'application',
+      is_confirmed: true,
+      confirmed_by: auth.user.id,
+      confirmed_at: new Date().toISOString(),
+    }))
+
+    const { error: needsError } = await supabase
+      .from('linksy_provider_needs')
+      .insert(needInserts)
+
+    if (needsError) {
+      console.error('Error creating need associations:', needsError)
+    }
+  }
+
+  // Create contact record
+  const { error: contactError } = await supabase.from('linksy_provider_contacts').insert({
+    provider_id: provider.id,
+    job_title: application.contact_job_title || null,
+    phone: application.contact_phone || null,
+    contact_type: 'provider_employee',
+    provider_role: 'admin',
+    is_primary_contact: true,
+    is_default_referral_handler: true,
+    status: 'invited',
+    invitation_sent_at: new Date().toISOString(),
+  })
+
+  if (contactError) {
+    console.error('Error creating contact:', contactError)
   }
 
   // Update application
