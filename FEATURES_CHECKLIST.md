@@ -416,7 +416,7 @@
 - [ ] Multi-region support (beyond Clay County)
 - [ ] United Way partnership integrations
 - [ ] AIRS/211 taxonomy mapping
-- [ ] Provider self-service onboarding
+- [x] Provider self-service onboarding — 5-step public wizard at `/join/provider`; structured application storage; approval provisions full provider
 - [ ] A/B testing for AI prompts
 - [ ] Provider rating/feedback system
 - [ ] Advanced event recurrence (iCal RRULE)

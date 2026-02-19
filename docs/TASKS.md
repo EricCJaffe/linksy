@@ -2,7 +2,9 @@
 
 ## Active
 
-(nothing — see Backlog)
+### Data Management
+- [ ] Merge contact function — ability to merge duplicate contacts into a single record (dedup provider contacts)
+- [ ] Purge provider function — ability to permanently delete a provider and all associated records (locations, contacts, needs, tickets, notes, events)
 
 ## Backlog
 
@@ -37,6 +39,7 @@
 - [x] Recurrence rule support (iCal RRULE) — `recurrence_rule` column on `linksy_provider_events`; select in event form (Daily/Weekly/Bi-weekly/Monthly/Annually); blue badge in list view; ↻ icon in calendar cells
 - [x] Public hero/landing page — marketing page at `/` with features, how-it-works, and CTA sections; redirects logged-in users to `/dashboard`
 - [x] Provider onboarding page — `app/join/provider/page.tsx`; public form → `POST /api/onboarding/provider`; emails admin on submit
+- [x] Multi-step provider application wizard — rewrote `/join/provider` as 5-step form (basic info, locations, services/needs, contact, review); structured JSONB columns on `linksy_provider_applications`; public need-categories API; approval flow now provisions all locations, need associations, and contacts from structured data
 - [x] Host onboarding page — `app/join/host/page.tsx`; public form with embed code preview → `POST /api/onboarding/host`; emails admin on submit
 - [x] Search-to-referral funnel visualization — 3-stage funnel (searches → engaged → converted) with rates; in Search & AI tab of reports dashboard; data from `services_clicked` and `created_ticket` on `linksy_search_sessions`
 - [x] Geographic distribution of searches — top zip codes bar chart in Search & AI tab; sourced from `zip_code_searched` on `linksy_search_sessions`
