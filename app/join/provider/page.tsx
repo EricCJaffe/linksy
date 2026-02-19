@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { CheckCircle, ArrowLeft } from 'lucide-react'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
 
 export default function ProviderOnboardingPage() {
   const [form, setForm] = useState({
@@ -14,9 +15,12 @@ export default function ProviderOnboardingPage() {
     contact_email: '',
     contact_phone: '',
     website: '',
+    phone: '',
+    hours: '',
     address: '',
     city: '',
     state: '',
+    postal_code: '',
   })
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
@@ -124,22 +128,18 @@ export default function ProviderOnboardingPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                <textarea
+                <RichTextEditor
                   value={form.description}
-                  onChange={set('description')}
-                  rows={3}
+                  onChange={(html) => setForm((f) => ({ ...f, description: html }))}
                   placeholder="Briefly describe your organization's mission and who you serve…"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Services Offered</label>
-                <textarea
+                <RichTextEditor
                   value={form.services}
-                  onChange={set('services')}
-                  rows={2}
+                  onChange={(html) => setForm((f) => ({ ...f, services: html }))}
                   placeholder="e.g. Food assistance, housing support, job training…"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div>
@@ -149,6 +149,26 @@ export default function ProviderOnboardingPage() {
                   value={form.website}
                   onChange={set('website')}
                   placeholder="https://yourorg.org"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                <input
+                  type="tel"
+                  value={form.phone}
+                  onChange={set('phone')}
+                  placeholder="(555) 000-0000"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Hours of Operation</label>
+                <input
+                  type="text"
+                  value={form.hours}
+                  onChange={set('hours')}
+                  placeholder="Mon–Fri 9am–5pm"
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -169,7 +189,7 @@ export default function ProviderOnboardingPage() {
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
                   <input
@@ -188,6 +208,17 @@ export default function ProviderOnboardingPage() {
                     onChange={set('state')}
                     placeholder="IL"
                     maxLength={2}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">ZIP Code</label>
+                  <input
+                    type="text"
+                    value={form.postal_code}
+                    onChange={set('postal_code')}
+                    placeholder="62704"
+                    maxLength={10}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>

@@ -7,7 +7,14 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { AlertCircle, TrendingUp, Users, BarChart3, History, Search, Phone, Globe, AlertTriangle, Navigation, MapPin, Clock, GitMerge } from 'lucide-react'
+import { AlertCircle, TrendingUp, Users, BarChart3, History, Search, Phone, Globe, AlertTriangle, Navigation, MapPin, Clock, GitMerge, PieChart as PieChartIcon } from 'lucide-react'
+import {
+  MonthlyTrendsChart as RechartsMonthlyChart,
+  CategoryBreakdownChart,
+  StatusPieChart,
+  TopProvidersChart,
+  SourceBreakdownChart,
+} from '@/components/analytics/report-charts'
 
 interface FunnelData {
   totalSessions: number
@@ -134,7 +141,7 @@ const INTERACTION_LABELS: Record<string, { label: string; icon: React.ReactNode 
 }
 
 export default function ReportsPage() {
-  const [activeTab, setActiveTab] = useState<'referrals' | 'search'>('referrals')
+  const [activeTab, setActiveTab] = useState<'referrals' | 'search' | 'charts'>('referrals')
   const [data, setData] = useState<ReportsData | null>(null)
   const [searchData, setSearchData] = useState<SearchAnalyticsData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -247,6 +254,17 @@ export default function ReportsPage() {
           {(searchData?.totalCrisisDetections ?? 0) > 0 && (
             <Badge variant="destructive" className="ml-2 text-xs">{searchData!.totalCrisisDetections}</Badge>
           )}
+        </button>
+        <button
+          onClick={() => setActiveTab('charts')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'charts'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <PieChartIcon className="h-4 w-4 inline mr-1.5" />
+          Visual Charts
         </button>
       </div>
 
@@ -787,6 +805,33 @@ export default function ReportsPage() {
         </Card>
       )}
       </div>
+      )}
+
+      {/* Visual Charts Tab (Recharts) */}
+      {activeTab === 'charts' && (
+        <div className="space-y-6">
+          {isLoading ? (
+            <div className="grid gap-4 md:grid-cols-2">
+              {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[350px]" />)}
+            </div>
+          ) : data ? (
+            <>
+              <div className="grid gap-6 md:grid-cols-2">
+                <RechartsMonthlyChart data={data.monthlyTrends} />
+                <StatusPieChart data={data.referralsByStatus} />
+              </div>
+              <div className="grid gap-6 md:grid-cols-2">
+                <CategoryBreakdownChart data={data.referralsByCategory} />
+                <TopProvidersChart data={data.topReferrers} />
+              </div>
+              {data.referralsBySource.length > 0 && (
+                <SourceBreakdownChart data={data.referralsBySource} />
+              )}
+            </>
+          ) : (
+            <p className="text-muted-foreground">No data available</p>
+          )}
+        </div>
       )}
     </div>
   )

@@ -5,7 +5,8 @@ import { useParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
+import { RichTextDisplay } from '@/components/ui/rich-text-display'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useSupportTicket, useCreateSupportTicketComment } from '@/lib/hooks/useSupportTickets'
@@ -144,7 +145,7 @@ export default function SupportTicketDetailPage() {
                         {new Date(c.created_at).toLocaleString()}
                       </span>
                     </div>
-                    <p className="text-sm whitespace-pre-wrap">{c.content}</p>
+                    <RichTextDisplay content={c.content} className="text-sm" />
                   </div>
                 ))}
             </div>
@@ -154,11 +155,10 @@ export default function SupportTicketDetailPage() {
 
           {ticket.status !== 'closed' && (
             <div className="space-y-2 pt-4 border-t">
-              <Textarea
-                placeholder="Add a comment..."
+              <RichTextEditor
                 value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                rows={3}
+                onChange={setComment}
+                placeholder="Add a comment..."
               />
               <Button
                 onClick={handleAddComment}

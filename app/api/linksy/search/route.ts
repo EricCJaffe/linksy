@@ -25,6 +25,32 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Query is required' }, { status: 400 })
     }
 
+    // Check host's excluded search terms
+    if (hostProviderId) {
+      const supabaseForExclusion = await createServiceClient()
+      const { data: hostData } = await supabaseForExclusion
+        .from('linksy_providers')
+        .select('excluded_search_terms')
+        .eq('id', hostProviderId)
+        .single()
+
+      const excludedTerms: string[] = hostData?.excluded_search_terms || []
+      const queryLower = query.trim().toLowerCase()
+      const isExcluded = excludedTerms.some((term: string) =>
+        queryLower.includes(term.toLowerCase())
+      )
+
+      if (isExcluded) {
+        return NextResponse.json({
+          query,
+          needs: [],
+          providers: [],
+          message: "I'm sorry, I can't help with that specific request through this service. Please contact 211 or your local community resource center for assistance.",
+          filtered: true,
+        })
+      }
+    }
+
     // Resolve location: use explicit lat/lng if provided, otherwise geocode the zipCode
     let resolvedLocation: { lat: number; lng: number } | null = location ?? null
     if (!resolvedLocation && zipCode) {
@@ -137,7 +163,7 @@ export async function POST(request: Request) {
     let providersQuery = supabase
       .from('linksy_providers')
       .select(providerSelect)
-      .eq('is_active', true)
+      .eq('provider_status', 'active')
       .in('provider_needs.need_id', needIds)
       .limit(10)
 

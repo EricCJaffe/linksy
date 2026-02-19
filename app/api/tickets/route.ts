@@ -73,6 +73,7 @@ export async function GET(request: Request) {
     client_perception: t.client_perception,
     follow_up_sent: t.follow_up_sent,
     source: t.source,
+    sla_due_at: t.sla_due_at,
     created_at: t.created_at,
     updated_at: t.updated_at,
     provider: t.linksy_providers ? { name: t.linksy_providers.name } : null,
@@ -97,6 +98,48 @@ export async function POST(request: Request) {
 
   const body = await request.json()
   const supabase = await createServiceClient()
+
+  // Duplicate referral detection: same client_email + provider_id + need_id within 7 days
+  if (body.client_email && body.provider_id && !body.force) {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+    let dupQuery = supabase
+      .from('linksy_tickets')
+      .select('id, ticket_number, created_at')
+      .eq('client_email', body.client_email)
+      .eq('provider_id', body.provider_id)
+      .gte('created_at', sevenDaysAgo)
+      .eq('status', 'pending')
+
+    if (body.need_id) {
+      dupQuery = dupQuery.eq('need_id', body.need_id)
+    }
+
+    const { data: duplicates } = await dupQuery.limit(1)
+    if (duplicates && duplicates.length > 0) {
+      return NextResponse.json({
+        error: 'Duplicate referral detected',
+        duplicate: duplicates[0],
+        message: `A pending referral for this client and provider already exists (ticket #${duplicates[0].ticket_number}). Set force: true to create anyway.`,
+      }, { status: 409 })
+    }
+  }
+
+  // Rate limiting: max 5 tickets per email per hour
+  if (body.client_email) {
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+    const { count: recentCount } = await supabase
+      .from('linksy_tickets')
+      .select('id', { count: 'exact', head: true })
+      .eq('client_email', body.client_email)
+      .gte('created_at', oneHourAgo)
+
+    if ((recentCount ?? 0) >= 5) {
+      return NextResponse.json({
+        error: 'Rate limit exceeded',
+        message: 'Too many referrals for this email address. Please wait before creating more.',
+      }, { status: 429 })
+    }
+  }
 
   // Auto-assign to default referral handler if provider is specified
   let defaultHandlerUserId = body.client_user_id || null

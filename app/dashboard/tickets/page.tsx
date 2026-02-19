@@ -26,7 +26,8 @@ import {
   TableRow,
   TableCell,
 } from '@/components/ui/table'
-import { Globe, Search, Download } from 'lucide-react'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Globe, Search, Download, CheckSquare } from 'lucide-react'
 import type { TicketFilters, TicketStatus } from '@/lib/types/linksy'
 
 const LIMIT = 50
@@ -76,6 +77,8 @@ export default function TicketsPage() {
     offset: 0,
   })
   const [publicReferralStats, setPublicReferralStats] = useState({ total: 0, pending: 0 })
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false)
 
   const debouncedQ = useDebounce(filters.q, 300)
   const queryFilters = { ...filters, q: debouncedQ }
@@ -106,6 +109,7 @@ export default function TicketsPage() {
 
   const handleFilterChange = (updates: Partial<TicketFilters>) => {
     setFilters((prev) => ({ ...prev, ...updates, offset: 0 }))
+    setSelectedIds(new Set())
   }
 
   const handlePageChange = (newOffset: number) => {
@@ -114,6 +118,47 @@ export default function TicketsPage() {
 
   const currentPage = Math.floor((filters.offset || 0) / LIMIT) + 1
   const totalPages = data ? Math.ceil(data.pagination.total / LIMIT) : 0
+  const tickets = data?.tickets || []
+
+  const allOnPageSelected = tickets.length > 0 && tickets.every((t) => selectedIds.has(t.id))
+  const someSelected = selectedIds.size > 0
+
+  const toggleSelectAll = () => {
+    if (allOnPageSelected) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(tickets.map((t) => t.id)))
+    }
+  }
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const handleBulkStatusChange = async (newStatus: TicketStatus) => {
+    if (selectedIds.size === 0) return
+    setIsBulkUpdating(true)
+    try {
+      const res = await fetch('/api/tickets/bulk', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: Array.from(selectedIds), status: newStatus }),
+      })
+      if (!res.ok) throw new Error('Bulk update failed')
+      setSelectedIds(new Set())
+      // Force refetch
+      handleFilterChange({})
+    } catch (err) {
+      alert('Failed to update tickets: ' + (err instanceof Error ? err.message : 'Unknown error'))
+    } finally {
+      setIsBulkUpdating(false)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -213,6 +258,37 @@ export default function TicketsPage() {
         </Select>
       </div>
 
+      {/* Bulk action bar */}
+      {someSelected && isSiteAdmin && (
+        <div className="flex items-center gap-3 rounded-md border bg-muted/50 px-4 py-2">
+          <CheckSquare className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm font-medium">{selectedIds.size} selected</span>
+          <Select
+            value=""
+            onValueChange={(v) => handleBulkStatusChange(v as TicketStatus)}
+          >
+            <SelectTrigger className="w-[200px] ml-auto" disabled={isBulkUpdating}>
+              <SelectValue placeholder="Change status to..." />
+            </SelectTrigger>
+            <SelectContent>
+              {(Object.keys(ticketStatusLabels) as TicketStatus[]).map((s) => (
+                <SelectItem key={s} value={s}>
+                  {ticketStatusLabels[s]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setSelectedIds(new Set())}
+            disabled={isBulkUpdating}
+          >
+            Clear
+          </Button>
+        </div>
+      )}
+
       {error && (
         <div className="rounded-md border border-destructive p-4 text-destructive">
           Failed to load tickets. Please try again.
@@ -223,6 +299,15 @@ export default function TicketsPage() {
         <Table>
           <TableHeader>
             <TableRow>
+              {isSiteAdmin && (
+                <TableHead className="w-10">
+                  <Checkbox
+                    checked={allOnPageSelected}
+                    onCheckedChange={toggleSelectAll}
+                    aria-label="Select all on page"
+                  />
+                </TableHead>
+              )}
               <TableHead>Referral #</TableHead>
               <TableHead>Client</TableHead>
               <TableHead>Provider</TableHead>
@@ -236,6 +321,7 @@ export default function TicketsPage() {
             {isLoading ? (
               Array.from({ length: 10 }).map((_, i) => (
                 <TableRow key={i}>
+                  {isSiteAdmin && <TableCell><Skeleton className="h-4 w-4" /></TableCell>}
                   <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-32" /></TableCell>
@@ -245,15 +331,24 @@ export default function TicketsPage() {
                   <TableCell><Skeleton className="h-10 w-[180px]" /></TableCell>
                 </TableRow>
               ))
-            ) : data?.tickets.length === 0 ? (
+            ) : tickets.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={isSiteAdmin ? 8 : 7} className="h-24 text-center text-muted-foreground">
                   No referrals found.
                 </TableCell>
               </TableRow>
             ) : (
-              data?.tickets.map((ticket) => (
-                <TableRow key={ticket.id}>
+              tickets.map((ticket) => (
+                <TableRow key={ticket.id} className={selectedIds.has(ticket.id) ? 'bg-muted/50' : ''}>
+                  {isSiteAdmin && (
+                    <TableCell onClick={(e) => { e.stopPropagation(); toggleSelect(ticket.id) }}>
+                      <Checkbox
+                        checked={selectedIds.has(ticket.id)}
+                        onCheckedChange={() => toggleSelect(ticket.id)}
+                        aria-label={`Select ticket ${ticket.ticket_number}`}
+                      />
+                    </TableCell>
+                  )}
                   <TableCell
                     className="font-medium cursor-pointer"
                     onClick={() => router.push(`/dashboard/tickets/${ticket.id}`)}
@@ -293,7 +388,15 @@ export default function TicketsPage() {
                     className="text-muted-foreground cursor-pointer"
                     onClick={() => router.push(`/dashboard/tickets/${ticket.id}`)}
                   >
-                    {new Date(ticket.created_at).toLocaleDateString()}
+                    <div className="flex items-center gap-2">
+                      {new Date(ticket.created_at).toLocaleDateString()}
+                      {ticket.status === 'pending' && ticket.sla_due_at && (() => {
+                        const hoursLeft = (new Date(ticket.sla_due_at).getTime() - Date.now()) / (1000 * 60 * 60)
+                        if (hoursLeft < 0) return <span className="inline-block h-2 w-2 rounded-full bg-red-500" title="SLA overdue" />
+                        if (hoursLeft < 12) return <span className="inline-block h-2 w-2 rounded-full bg-yellow-500" title="SLA approaching" />
+                        return <span className="inline-block h-2 w-2 rounded-full bg-green-500" title="SLA on track" />
+                      })()}
+                    </div>
                   </TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <Select

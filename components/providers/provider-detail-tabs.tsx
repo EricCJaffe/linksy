@@ -7,6 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
+import { RichTextDisplay } from '@/components/ui/rich-text-display'
+import { FileAttachmentEdit, FileAttachmentDisplay } from '@/components/ui/file-attachment'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -34,8 +37,8 @@ import { SupportTicketsTab } from '@/components/support/support-tickets-tab'
 import { ContactManagementDialog } from '@/components/providers/contact-management-dialog'
 import { ImageUpload } from '@/components/ui/image-upload'
 import { WidgetPreview } from '@/components/widget/widget-preview'
-import { uploadWidgetLogo } from '@/lib/storage/upload'
-import type { ProviderDetail, NoteType, TicketStatus, ProviderContact, ProviderEvent } from '@/lib/types/linksy'
+import { uploadWidgetLogo, uploadNoteAttachment } from '@/lib/storage/upload'
+import type { ProviderDetail, NoteType, NoteAttachment, TicketStatus, ProviderContact, ProviderEvent } from '@/lib/types/linksy'
 import { Plus, Copy, ExternalLink, Lock, MapPin, Pencil, Trash2, CheckCircle, Circle, BarChart2, FileText, LayoutList, CalendarDays, RefreshCw } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import type { HostWidgetConfig } from '@/lib/types/linksy'
@@ -376,6 +379,8 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
     allow_auto_update: provider.allow_auto_update,
     sector: provider.sector,
     is_active: provider.is_active,
+    provider_status: provider.provider_status || 'active',
+    accepting_referrals: provider.accepting_referrals ?? true,
   })
 
   const handleSave = () => {
@@ -402,6 +407,8 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
       allow_auto_update: provider.allow_auto_update,
       sector: provider.sector,
       is_active: provider.is_active,
+      provider_status: provider.provider_status || 'active',
+      accepting_referrals: provider.accepting_referrals ?? true,
     })
     setIsEditing(false)
   }
@@ -435,10 +442,9 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
           <CardTitle className="text-base">Description</CardTitle>
         </CardHeader>
         <CardContent>
-          <Textarea
+          <RichTextEditor
             value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            rows={5}
+            onChange={(html) => setFormData({ ...formData, description: html })}
             disabled={!isEditing}
           />
         </CardContent>
@@ -535,17 +541,38 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="provider_status">Provider Status</Label>
+              <Select
+                value={formData.provider_status}
+                onValueChange={(value) => setFormData({
+                  ...formData,
+                  provider_status: value as any,
+                  is_active: value !== 'inactive',
+                })}
+                disabled={!isEditing}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="paused">Paused</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="flex items-center gap-2">
               <Checkbox
-                id="is_active"
-                checked={formData.is_active}
+                id="accepting_referrals"
+                checked={formData.accepting_referrals}
                 onCheckedChange={(checked) =>
-                  setFormData({ ...formData, is_active: checked as boolean })
+                  setFormData({ ...formData, accepting_referrals: checked as boolean })
                 }
                 disabled={!isEditing}
               />
-              <label htmlFor="is_active" className="text-sm font-medium">
-                Active Provider
+              <label htmlFor="accepting_referrals" className="text-sm font-medium">
+                Accepting Referrals
               </label>
             </div>
             <div className="flex items-center gap-2">
@@ -589,13 +616,12 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
           {formData.referral_type === 'contact_directly' && (
             <div className="space-y-2">
               <Label htmlFor="referral_instructions">Referral Instructions</Label>
-              <Textarea
+              <RichTextEditor
                 value={formData.referral_instructions}
-                onChange={(e) =>
-                  setFormData({ ...formData, referral_instructions: e.target.value })
+                onChange={(html) =>
+                  setFormData({ ...formData, referral_instructions: html })
                 }
                 disabled={!isEditing}
-                rows={3}
                 placeholder="Instructions for contacting this organization directly"
               />
             </div>
@@ -1233,11 +1259,9 @@ function EventsTab({ provider }: { provider: ProviderDetail }) {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
+                <RichTextEditor
                   value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  rows={3}
+                  onChange={(html) => setFormData({ ...formData, description: html })}
                   placeholder="Details about the event..."
                 />
               </div>
@@ -1329,7 +1353,9 @@ function EventsTab({ provider }: { provider: ProviderDetail }) {
                         <p className="text-sm text-muted-foreground">{event.location}</p>
                       )}
                       {event.description && (
-                        <p className="mt-2 text-sm">{event.description}</p>
+                        <div className="mt-2">
+                          <RichTextDisplay content={event.description} className="text-sm" />
+                        </div>
                       )}
                     </div>
                     <div className="flex gap-2">
@@ -1365,9 +1391,11 @@ function NotesTab({ provider }: { provider: ProviderDetail }) {
   const [newNoteType, setNewNoteType] = useState<NoteType>('general')
   const [newNoteContent, setNewNoteContent] = useState('')
   const [newNotePrivate, setNewNotePrivate] = useState(false)
+  const [newNoteAttachments, setNewNoteAttachments] = useState<NoteAttachment[]>([])
   const [editNoteType, setEditNoteType] = useState<NoteType>('general')
   const [editNoteContent, setEditNoteContent] = useState('')
   const [editNotePrivate, setEditNotePrivate] = useState(false)
+  const [editNoteAttachments, setEditNoteAttachments] = useState<NoteAttachment[]>([])
 
   const createNote = useCreateNote(provider.id)
   const updateNote = useUpdateNote(provider.id)
@@ -1380,10 +1408,12 @@ function NotesTab({ provider }: { provider: ProviderDetail }) {
         note_type: newNoteType,
         content: newNoteContent,
         is_private: newNotePrivate,
+        attachments: newNoteAttachments.length > 0 ? newNoteAttachments : undefined,
       })
       setNewNoteContent('')
       setNewNoteType('general')
       setNewNotePrivate(false)
+      setNewNoteAttachments([])
       setIsAddingNote(false)
     } catch (error) {
       console.error('Failed to create note:', error)
@@ -1399,6 +1429,7 @@ function NotesTab({ provider }: { provider: ProviderDetail }) {
         note_type: editNoteType,
         content: editNoteContent,
         is_private: editNotePrivate,
+        attachments: editNoteAttachments,
       })
       setEditingNoteId(null)
       setEditNoteContent('')
@@ -1414,6 +1445,7 @@ function NotesTab({ provider }: { provider: ProviderDetail }) {
     setEditNoteType(note.note_type)
     setEditNoteContent(note.content)
     setEditNotePrivate(note.is_private)
+    setEditNoteAttachments(note.attachments || [])
   }
 
   const cancelEditing = () => {
@@ -1421,6 +1453,7 @@ function NotesTab({ provider }: { provider: ProviderDetail }) {
     setEditNoteContent('')
     setEditNoteType('general')
     setEditNotePrivate(false)
+    setEditNoteAttachments([])
   }
 
   return (
@@ -1453,13 +1486,17 @@ function NotesTab({ provider }: { provider: ProviderDetail }) {
             </div>
             <div className="space-y-2">
               <Label>Content</Label>
-              <Textarea
+              <RichTextEditor
                 value={newNoteContent}
-                onChange={(e) => setNewNoteContent(e.target.value)}
+                onChange={setNewNoteContent}
                 placeholder="Enter note content..."
-                rows={4}
               />
             </div>
+            <FileAttachmentEdit
+              value={newNoteAttachments}
+              onChange={setNewNoteAttachments}
+              uploadFn={(file) => uploadNoteAttachment(file, provider.id)}
+            />
             <div className="flex items-center gap-2">
               <Switch id="new-note-private" checked={newNotePrivate} onCheckedChange={setNewNotePrivate} />
               <Label htmlFor="new-note-private" className="flex items-center gap-1 cursor-pointer">
@@ -1477,6 +1514,7 @@ function NotesTab({ provider }: { provider: ProviderDetail }) {
                   setNewNoteContent('')
                   setNewNoteType('general')
                   setNewNotePrivate(false)
+                  setNewNoteAttachments([])
                 }}
               >
                 Cancel
@@ -1512,12 +1550,16 @@ function NotesTab({ provider }: { provider: ProviderDetail }) {
                   </div>
                   <div className="space-y-2">
                     <Label>Content</Label>
-                    <Textarea
+                    <RichTextEditor
                       value={editNoteContent}
-                      onChange={(e) => setEditNoteContent(e.target.value)}
-                      rows={4}
+                      onChange={setEditNoteContent}
                     />
                   </div>
+                  <FileAttachmentEdit
+                    value={editNoteAttachments}
+                    onChange={setEditNoteAttachments}
+                    uploadFn={(file) => uploadNoteAttachment(file, provider.id)}
+                  />
                   <div className="flex items-center gap-2">
                     <Switch id="edit-note-private" checked={editNotePrivate} onCheckedChange={setEditNotePrivate} />
                     <Label htmlFor="edit-note-private" className="flex items-center gap-1 cursor-pointer">
@@ -1553,14 +1595,15 @@ function NotesTab({ provider }: { provider: ProviderDetail }) {
                         {note.user?.full_name || note.user?.email || 'System'}
                       </span>
                       <span className="text-sm text-muted-foreground">
-                        {new Date(note.created_at).toLocaleDateString()}
+                        {new Date(note.created_at).toLocaleString()}
                       </span>
                     </div>
                     <Button variant="ghost" size="sm" onClick={() => startEditingNote(note)}>
                       Edit
                     </Button>
                   </div>
-                  <p className="text-sm whitespace-pre-wrap">{note.content}</p>
+                  <RichTextDisplay content={note.content} className="text-sm" />
+                  <FileAttachmentDisplay attachments={note.attachments} />
                 </>
               )}
             </CardContent>
@@ -1739,11 +1782,10 @@ function HostSettingsTab({ provider }: { provider: ProviderDetail }) {
                 </div>
                 <div className="space-y-1">
                   <Label>Welcome Message</Label>
-                  <Textarea
+                  <RichTextEditor
                     value={config.welcome_message ?? ''}
-                    onChange={(e) => setConfig((c) => ({ ...c, welcome_message: e.target.value || undefined }))}
+                    onChange={(html) => setConfig((c) => ({ ...c, welcome_message: html || undefined }))}
                     placeholder="Hello! I'm your community resource assistant…"
-                    rows={3}
                   />
                 </div>
                 <div className="space-y-1">

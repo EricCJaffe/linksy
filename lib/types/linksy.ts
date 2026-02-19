@@ -43,6 +43,8 @@ export type TicketStatus =
   | 'client_not_eligible'
   | 'unable_to_assist'
   | 'client_unresponsive'
+export type ProviderStatusEnum = 'active' | 'paused' | 'inactive'
+export type ApplicationStatus = 'pending' | 'approved' | 'rejected'
 export type EventStatus = 'pending' | 'approved' | 'rejected' | 'cancelled'
 export type NoteType = 'general' | 'outreach' | 'update' | 'internal'
 export type SupportTicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed'
@@ -72,6 +74,8 @@ export interface Provider {
   website: string | null
   hours: string | null
   is_active: boolean
+  provider_status: ProviderStatusEnum
+  accepting_referrals: boolean
   referral_type: ReferralType
   referral_instructions: string | null
   project_status: ProjectStatus
@@ -126,6 +130,13 @@ export interface ProviderNeed {
   need?: Need
 }
 
+export interface NoteAttachment {
+  name: string
+  url: string
+  size: number
+  type: string
+}
+
 export interface ProviderNote {
   id: string
   provider_id: string
@@ -133,6 +144,7 @@ export interface ProviderNote {
   note_type: NoteType
   is_private: boolean
   content: string
+  attachments?: NoteAttachment[]
   created_at: string
   user?: { full_name: string | null; email: string }
 }
@@ -213,6 +225,7 @@ export interface Ticket {
   follow_up_sent: boolean | null
   source: string | null
   search_session_id: string | null
+  sla_due_at: string | null
   created_at: string
   updated_at: string
   need?: Need
@@ -300,11 +313,92 @@ export interface Doc {
   updated_at: string
 }
 
+// Provider Applications
+export interface ProviderApplication {
+  id: string
+  org_name: string
+  sector: string | null
+  description: string | null
+  services: string | null
+  website: string | null
+  phone: string | null
+  hours: string | null
+  address: string | null
+  city: string | null
+  state: string | null
+  postal_code: string | null
+  contact_name: string
+  contact_email: string
+  contact_phone: string | null
+  status: ApplicationStatus
+  reviewer_id: string | null
+  reviewed_at: string | null
+  reviewer_notes: string | null
+  created_provider_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+// Call logs
+export type CallType = 'inbound' | 'outbound'
+
+export interface CallLog {
+  id: string
+  ticket_id: string | null
+  provider_id: string | null
+  caller_name: string | null
+  call_type: CallType
+  duration_minutes: number | null
+  notes: string | null
+  created_by: string | null
+  created_at: string
+  creator?: { full_name: string | null; email: string }
+}
+
+// Surveys
+export interface Survey {
+  id: string
+  ticket_id: string | null
+  token: string
+  client_email: string | null
+  rating: number | null
+  feedback_text: string | null
+  completed_at: string | null
+  created_at: string
+}
+
+// Email templates
+export interface EmailTemplate {
+  id: string
+  slug: string
+  name: string
+  subject: string
+  body_html: string
+  variables: string[]
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+// Custom fields for dynamic intake forms
+export type CustomFieldType = 'text' | 'select' | 'checkbox' | 'date'
+
+export interface CustomField {
+  id: string
+  provider_id: string
+  field_label: string
+  field_type: CustomFieldType
+  options: string[]
+  is_required: boolean
+  sort_order: number
+  created_at: string
+}
+
 // Filter params for provider list
 export interface ProviderFilters {
   q?: string
   sector?: Sector | 'all'
-  status?: 'active' | 'inactive' | 'all'
+  status?: 'active' | 'inactive' | 'paused' | 'all'
   referral_type?: ReferralType | 'all'
   limit?: number
   offset?: number

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
@@ -252,11 +253,9 @@ export default function NewProviderPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
+                <RichTextEditor
                   value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  rows={3}
+                  onChange={(html) => setFormData({ ...formData, description: html })}
                   placeholder="Brief description of the organization..."
                 />
               </div>
@@ -353,11 +352,9 @@ export default function NewProviderPage() {
               {formData.referral_type === 'contact_directly' && (
                 <div className="space-y-2">
                   <Label htmlFor="referral_instructions">Referral Instructions</Label>
-                  <Textarea
-                    id="referral_instructions"
+                  <RichTextEditor
                     value={formData.referral_instructions}
-                    onChange={(e) => setFormData({ ...formData, referral_instructions: e.target.value })}
-                    rows={2}
+                    onChange={(html) => setFormData({ ...formData, referral_instructions: html })}
                     placeholder="Instructions for contacting this organization..."
                   />
                 </div>

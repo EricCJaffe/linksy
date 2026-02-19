@@ -54,9 +54,11 @@ export async function GET(request: Request) {
   }
 
   if (status === 'active') {
-    query = query.eq('is_active', true)
+    query = query.eq('provider_status', 'active')
+  } else if (status === 'paused') {
+    query = query.eq('provider_status', 'paused')
   } else if (status === 'inactive') {
-    query = query.eq('is_active', false)
+    query = query.eq('provider_status', 'inactive')
   }
 
   if (referralType !== 'all') {
@@ -91,6 +93,8 @@ export async function GET(request: Request) {
     website: p.website,
     hours: p.hours,
     is_active: p.is_active,
+    provider_status: p.provider_status,
+    accepting_referrals: p.accepting_referrals,
     referral_type: p.referral_type,
     referral_instructions: p.referral_instructions,
     project_status: p.project_status,
@@ -119,7 +123,8 @@ export async function POST(request: Request) {
 
   const body = await request.json()
   const { name, description, sector, phone, email, website, hours,
-          project_status, referral_type, referral_instructions, is_active } = body
+          project_status, referral_type, referral_instructions, is_active,
+          provider_status, accepting_referrals } = body
 
   if (!name || !sector) {
     return NextResponse.json({ error: 'name and sector are required' }, { status: 400 })
@@ -156,6 +161,8 @@ export async function POST(request: Request) {
       referral_type: referral_type || 'standard',
       referral_instructions: referral_instructions || null,
       is_active: is_active ?? true,
+      provider_status: provider_status || 'active',
+      accepting_referrals: accepting_referrals ?? true,
       allow_auto_update: false,
     })
     .select()

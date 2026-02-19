@@ -1,7 +1,7 @@
 'use client'
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import type { Provider, ProviderDetail, ProviderFilters, NeedCategory, ProviderNote, NoteType } from '@/lib/types/linksy'
+import type { Provider, ProviderDetail, ProviderFilters, NeedCategory, ProviderNote, NoteType, NoteAttachment } from '@/lib/types/linksy'
 
 function buildProviderParams(filters: ProviderFilters): string {
   const params = new URLSearchParams()
@@ -85,11 +85,11 @@ export function useCreateNote(providerId: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ note_type, content, is_private }: { note_type: NoteType; content: string; is_private?: boolean }) => {
+    mutationFn: async ({ note_type, content, is_private, attachments }: { note_type: NoteType; content: string; is_private?: boolean; attachments?: NoteAttachment[] }) => {
       const res = await fetch(`/api/providers/${providerId}/notes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ note_type, content, is_private }),
+        body: JSON.stringify({ note_type, content, is_private, attachments }),
       })
       if (!res.ok) throw new Error('Failed to create note')
       return res.json() as Promise<ProviderNote>
@@ -122,11 +122,11 @@ export function useUpdateNote(providerId: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ noteId, note_type, content, is_private }: { noteId: string; note_type?: NoteType; content?: string; is_private?: boolean }) => {
+    mutationFn: async ({ noteId, note_type, content, is_private, attachments }: { noteId: string; note_type?: NoteType; content?: string; is_private?: boolean; attachments?: NoteAttachment[] }) => {
       const res = await fetch(`/api/providers/${providerId}/notes/${noteId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ note_type, content, is_private }),
+        body: JSON.stringify({ note_type, content, is_private, attachments }),
       })
       if (!res.ok) throw new Error('Failed to update note')
       return res.json() as Promise<ProviderNote>

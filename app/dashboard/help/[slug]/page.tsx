@@ -5,7 +5,7 @@ import { ArrowLeft, BookOpen } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { useDoc } from '@/lib/hooks/useDocs'
 import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
-import ReactMarkdown from 'react-markdown'
+import { RichTextDisplay } from '@/components/ui/rich-text-display'
 
 const ROLE_LABELS: Record<string, string> = {
   user: 'All Users',
@@ -87,9 +87,7 @@ export default function DocPage({ params }: { params: { slug: string } }) {
       </div>
 
       {/* Content */}
-      <div className="prose prose-slate max-w-none dark:prose-invert">
-        <ReactMarkdown>{doc.content}</ReactMarkdown>
-      </div>
+      <RichTextDisplay content={doc.content} className="prose prose-slate max-w-none dark:prose-invert" />
     </div>
   )
 }

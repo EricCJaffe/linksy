@@ -15,11 +15,11 @@ export async function PATCH(
 
   const { noteId } = params
   const body = await request.json()
-  const { note_type, content, is_private } = body
+  const { note_type, content, is_private, attachments } = body
 
-  if (!note_type && !content && is_private === undefined) {
+  if (!note_type && !content && is_private === undefined && attachments === undefined) {
     return NextResponse.json(
-      { error: 'note_type, content, or is_private is required' },
+      { error: 'note_type, content, is_private, or attachments is required' },
       { status: 400 }
     )
   }
@@ -55,6 +55,7 @@ export async function PATCH(
   if (note_type) updates.note_type = note_type
   if (content) updates.content = content
   if (is_private !== undefined) updates.is_private = is_private
+  if (attachments !== undefined) updates.attachments = attachments
 
   const { data: note, error } = await supabase
     .from('linksy_provider_notes')

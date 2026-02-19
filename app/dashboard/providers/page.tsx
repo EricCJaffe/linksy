@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Plus, Download, CheckSquare } from 'lucide-react'
+import { Plus, Download, CheckSquare, AlertTriangle } from 'lucide-react'
 import {
   Table,
   TableHeader,
@@ -19,6 +19,8 @@ import {
   TableRow,
   TableCell,
 } from '@/components/ui/table'
+import { usePendingApplicationCount } from '@/lib/hooks/useProviderApplications'
+import Link from 'next/link'
 import type { ProviderFilters } from '@/lib/types/linksy'
 
 const LIMIT = 50
@@ -45,6 +47,7 @@ export default function ProvidersPage() {
   const queryFilters = { ...filters, q: debouncedQ }
   const { data, isLoading, error, refetch } = useProviders(queryFilters)
   const isSiteAdmin = user?.profile?.role === 'site_admin'
+  const { data: pendingCount } = usePendingApplicationCount()
 
   const handleFilterChange = (updates: Partial<ProviderFilters>) => {
     setFilters((prev) => ({ ...prev, ...updates }))
@@ -114,7 +117,7 @@ export default function ProvidersPage() {
         p.name,
         sectorLabels[p.sector] || p.sector,
         p.phone || '',
-        p.is_active ? 'Active' : 'Inactive',
+        p.provider_status === 'active' ? 'Active' : p.provider_status === 'paused' ? 'Paused' : 'Inactive',
         p.referral_type === 'contact_directly' ? 'Contact Directly' : 'Standard',
       ])
       const csv = [headers, ...rows]
@@ -154,6 +157,21 @@ export default function ProvidersPage() {
           </div>
         )}
       </div>
+
+      {isSiteAdmin && pendingCount != null && pendingCount > 0 && (
+        <div className="flex items-center gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3">
+          <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+          <span className="text-sm text-amber-800">
+            <strong>{pendingCount}</strong> provider application{pendingCount !== 1 ? 's' : ''} awaiting review
+          </span>
+          <Link
+            href="/dashboard/admin/provider-applications"
+            className="ml-auto text-sm font-medium text-amber-700 hover:text-amber-900 underline underline-offset-2"
+          >
+            Review now
+          </Link>
+        </div>
+      )}
 
       <ProviderFiltersBar filters={filters} onChange={handleFilterChange} />
 
@@ -266,9 +284,20 @@ export default function ProvidersPage() {
                     {provider.location_count}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={provider.is_active ? 'default' : 'outline'}>
-                      {provider.is_active ? 'Active' : 'Inactive'}
-                    </Badge>
+                    <div className="flex items-center gap-1.5">
+                      <Badge variant={
+                        provider.provider_status === 'active' ? 'default' :
+                        provider.provider_status === 'paused' ? 'secondary' : 'outline'
+                      }>
+                        {provider.provider_status === 'active' ? 'Active' :
+                         provider.provider_status === 'paused' ? 'Paused' : 'Inactive'}
+                      </Badge>
+                      {!provider.accepting_referrals && (
+                        <Badge variant="outline" className="border-amber-500 text-amber-700 bg-amber-50 text-xs">
+                          Not Accepting
+                        </Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <Badge variant="secondary">

@@ -146,9 +146,10 @@ export async function PATCH(
 
   // Additional fields only admins can edit
   const adminOnlyFields = [
-    'name', 'sector', 'is_active', 'referral_type', 'project_status',
-    'allow_auto_update',
+    'name', 'sector', 'is_active', 'provider_status', 'accepting_referrals',
+    'referral_type', 'project_status', 'allow_auto_update',
     'is_host', 'host_embed_active', 'host_widget_config', 'host_monthly_token_budget',
+    'excluded_search_terms',
   ]
 
   let allowedFields: string[]

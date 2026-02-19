@@ -97,6 +97,40 @@ export async function uploadWidgetLogo(file: File, providerId: string): Promise<
   return uploadFile(file, 'tenant-uploads', path)
 }
 
+const ALLOWED_ATTACHMENT_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/csv',
+  'text/plain',
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+  'image/webp',
+]
+
+/**
+ * Upload a file attachment for a provider note
+ * @param file - The file to upload
+ * @param providerId - The provider's ID
+ * @returns The public URL of the uploaded file
+ */
+export async function uploadNoteAttachment(file: File, providerId: string): Promise<string> {
+  if (!ALLOWED_ATTACHMENT_TYPES.includes(file.type)) {
+    throw new Error('File type not allowed. Supported: images, PDF, Word, Excel, CSV, text.')
+  }
+
+  if (file.size > 10 * 1024 * 1024) {
+    throw new Error('File size must be less than 10MB')
+  }
+
+  const sanitized = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
+  const path = `note-attachments/${providerId}/${Date.now()}-${sanitized}`
+  return uploadFile(file, 'tenant-uploads', path)
+}
+
 /**
  * Delete a file from Supabase Storage
  * @param bucket - The storage bucket name

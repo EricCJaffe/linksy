@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useDocs, useCreateDoc, useUpdateDoc, useDeleteDoc } from '@/lib/hooks/useDocs'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import type { Doc, DocRole } from '@/lib/types/linksy'
 
 const ROLE_OPTIONS: { value: DocRole; label: string }[] = [
@@ -80,7 +81,6 @@ export default function AdminDocsPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingDoc, setEditingDoc] = useState<Doc | null>(null)
   const [form, setForm] = useState<DocFormData>(EMPTY_FORM)
-  const [showPreview, setShowPreview] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -89,7 +89,6 @@ export default function AdminDocsPage() {
     setEditingDoc(null)
     setForm(EMPTY_FORM)
     setError('')
-    setShowPreview(false)
     setDialogOpen(true)
   }
 
@@ -106,7 +105,6 @@ export default function AdminDocsPage() {
       sort_order: doc.sort_order,
     })
     setError('')
-    setShowPreview(false)
     setDialogOpen(true)
   }
 
@@ -326,30 +324,12 @@ export default function AdminDocsPage() {
               </div>
 
               <div className="col-span-2 space-y-1">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="content">Content (Markdown)</Label>
-                  <button
-                    type="button"
-                    onClick={() => setShowPreview((v) => !v)}
-                    className="text-xs text-muted-foreground underline"
-                  >
-                    {showPreview ? 'Edit' : 'Preview'}
-                  </button>
-                </div>
-                {showPreview ? (
-                  <div className="min-h-[200px] rounded-md border border-input bg-background px-3 py-2 text-sm prose prose-slate max-w-none overflow-auto">
-                    {/* Simple preview — just show raw content with line breaks for now */}
-                    <pre className="whitespace-pre-wrap font-sans text-sm">{form.content || '(empty)'}</pre>
-                  </div>
-                ) : (
-                  <textarea
-                    id="content"
-                    className="w-full min-h-[200px] rounded-md border border-input bg-background px-3 py-2 text-sm font-mono ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-y"
-                    value={form.content}
-                    onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
-                    placeholder="Write your article in Markdown..."
-                  />
-                )}
+                <Label htmlFor="content">Content</Label>
+                <RichTextEditor
+                  value={form.content}
+                  onChange={(html) => setForm((f) => ({ ...f, content: html }))}
+                  placeholder="Write your article content..."
+                />
               </div>
 
               <div className="col-span-2 flex items-center gap-3">

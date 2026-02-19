@@ -15,7 +15,7 @@ export async function POST(
 
   const { id: providerId } = params
   const body = await request.json()
-  const { note_type, content, is_private = false } = body
+  const { note_type, content, is_private = false, attachments } = body
 
   if (!note_type || !content) {
     return NextResponse.json(
@@ -41,6 +41,7 @@ export async function POST(
       note_type,
       content,
       is_private,
+      ...(attachments !== undefined && { attachments }),
     })
     .select('*')
     .single()

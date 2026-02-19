@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Loader2, MapPin, Phone, Globe, Send, AlertTriangle, X, Navigation } from 'lucide-react'
 import type { HostWidgetConfig } from '@/lib/types/linksy'
+import { RichTextDisplay } from '@/components/ui/rich-text-display'
 
 interface SearchResult {
   id: string
@@ -405,9 +406,9 @@ export function FindHelpWidget({ hostProviderId, hostProviderName, widgetConfig 
                           </div>
                         </div>
                         {provider.description && (
-                          <p className="mt-2 text-xs text-muted-foreground line-clamp-2">
-                            {provider.description}
-                          </p>
+                          <div className="mt-2 line-clamp-2">
+                            <RichTextDisplay content={provider.description} className="text-xs text-muted-foreground" />
+                          </div>
                         )}
                         {provider.referral_type === 'contact_directly' && provider.referral_instructions && (
                           <p className="mt-1.5 text-xs text-amber-700 bg-amber-50 rounded px-2 py-1">

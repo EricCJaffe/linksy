@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
+import { RichTextDisplay } from '@/components/ui/rich-text-display'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   Select,
@@ -13,8 +14,11 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select'
-import { Globe, Lock } from 'lucide-react'
+import { Globe, Lock, Phone, Plus, Trash2 } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { useUpdateTicket, useCreateTicketComment } from '@/lib/hooks/useTickets'
+import { useCallLogs, useCreateCallLog, useDeleteCallLog } from '@/lib/hooks/useCallLogs'
 import type { Ticket, TicketStatus } from '@/lib/types/linksy'
 
 interface TicketDetailPanelProps {
@@ -207,7 +211,7 @@ export function TicketDetailPanel({ ticket }: TicketDetailPanelProps) {
                       {new Date(comment.created_at).toLocaleString()}
                     </span>
                   </div>
-                  <p className="whitespace-pre-wrap">{comment.content}</p>
+                  <RichTextDisplay content={comment.content} />
                 </div>
               ))}
             </div>
@@ -217,11 +221,10 @@ export function TicketDetailPanel({ ticket }: TicketDetailPanelProps) {
 
           {/* Add comment form */}
           <div className="space-y-3 border-t pt-4">
-            <Textarea
-              placeholder="Add a comment..."
+            <RichTextEditor
               value={commentText}
-              onChange={(e) => setCommentText(e.target.value)}
-              rows={3}
+              onChange={setCommentText}
+              placeholder="Add a comment..."
             />
             <div className="flex items-center justify-between">
               <label className="flex items-center gap-2 text-sm cursor-pointer">
@@ -242,6 +245,145 @@ export function TicketDetailPanel({ ticket }: TicketDetailPanelProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Call Logs */}
+      <CallLogSection ticketId={ticket.id} providerId={ticket.provider_id || undefined} />
     </div>
+  )
+}
+
+function CallLogSection({ ticketId, providerId }: { ticketId: string; providerId?: string }) {
+  const { data, isLoading } = useCallLogs(ticketId)
+  const createCallLog = useCreateCallLog()
+  const deleteCallLog = useDeleteCallLog()
+  const [isAdding, setIsAdding] = useState(false)
+  const [form, setForm] = useState({
+    caller_name: '',
+    call_type: 'outbound' as 'inbound' | 'outbound',
+    duration_minutes: '',
+    notes: '',
+  })
+
+  const handleSubmit = () => {
+    createCallLog.mutate(
+      {
+        ticket_id: ticketId,
+        provider_id: providerId,
+        caller_name: form.caller_name || undefined,
+        call_type: form.call_type,
+        duration_minutes: form.duration_minutes ? parseInt(form.duration_minutes, 10) : undefined,
+        notes: form.notes || undefined,
+      },
+      {
+        onSuccess: () => {
+          setForm({ caller_name: '', call_type: 'outbound', duration_minutes: '', notes: '' })
+          setIsAdding(false)
+        },
+      }
+    )
+  }
+
+  const callLogs = data?.callLogs || []
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Phone className="h-4 w-4" />
+            Call Logs {callLogs.length > 0 && `(${callLogs.length})`}
+          </CardTitle>
+          <Button size="sm" variant="outline" onClick={() => setIsAdding(!isAdding)}>
+            <Plus className="h-4 w-4 mr-1" />
+            Log Call
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {isAdding && (
+          <div className="space-y-3 rounded-md border p-3">
+            <div className="grid gap-3 md:grid-cols-3">
+              <div>
+                <Label>Caller Name</Label>
+                <Input
+                  value={form.caller_name}
+                  onChange={(e) => setForm({ ...form, caller_name: e.target.value })}
+                  placeholder="Caller name"
+                />
+              </div>
+              <div>
+                <Label>Type</Label>
+                <Select value={form.call_type} onValueChange={(v) => setForm({ ...form, call_type: v as any })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="inbound">Inbound</SelectItem>
+                    <SelectItem value="outbound">Outbound</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Duration (min)</Label>
+                <Input
+                  type="number"
+                  value={form.duration_minutes}
+                  onChange={(e) => setForm({ ...form, duration_minutes: e.target.value })}
+                  placeholder="Minutes"
+                />
+              </div>
+            </div>
+            <div>
+              <Label>Notes</Label>
+              <RichTextEditor
+                value={form.notes}
+                onChange={(v) => setForm({ ...form, notes: v })}
+                placeholder="Call notes..."
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button size="sm" variant="outline" onClick={() => setIsAdding(false)}>Cancel</Button>
+              <Button size="sm" onClick={handleSubmit} disabled={createCallLog.isPending}>
+                {createCallLog.isPending ? 'Saving...' : 'Save'}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground">Loading call logs...</p>
+        ) : callLogs.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No call logs yet.</p>
+        ) : (
+          <div className="space-y-3">
+            {callLogs.map((log) => (
+              <div key={log.id} className="rounded-md border p-3 text-sm">
+                <div className="mb-1 flex items-center gap-2">
+                  <Badge variant={log.call_type === 'inbound' ? 'default' : 'secondary'}>
+                    {log.call_type === 'inbound' ? 'Inbound' : 'Outbound'}
+                  </Badge>
+                  {log.caller_name && <span className="font-medium">{log.caller_name}</span>}
+                  {log.duration_minutes && (
+                    <span className="text-muted-foreground">{log.duration_minutes} min</span>
+                  )}
+                  <span className="text-muted-foreground ml-auto">
+                    {log.creator?.full_name || log.creator?.email || 'Unknown'} — {new Date(log.created_at).toLocaleString()}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 w-6 p-0"
+                    onClick={() => {
+                      if (confirm('Delete this call log?')) deleteCallLog.mutate(log.id)
+                    }}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+                {log.notes && <RichTextDisplay content={log.notes} />}
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }

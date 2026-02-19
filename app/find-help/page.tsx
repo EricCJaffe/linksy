@@ -29,6 +29,7 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { CreateTicketDialog } from '@/components/tickets/create-ticket-dialog'
+import { RichTextDisplay } from '@/components/ui/rich-text-display'
 import type { LucideIcon } from 'lucide-react'
 
 interface SearchResult {
@@ -707,7 +708,7 @@ function ProviderCard({ provider, sessionId }: { provider: SearchResult; session
         </CardHeader>
       <CardContent className="space-y-3">
         {provider.description && (
-          <p className="text-sm text-gray-700">{provider.description}</p>
+          <RichTextDisplay content={provider.description} className="text-sm text-gray-700" />
         )}
 
         {/* Services provided */}
