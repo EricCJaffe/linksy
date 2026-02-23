@@ -7,6 +7,7 @@ import { BookOpen, Search, ChevronRight } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { useDocs } from '@/lib/hooks/useDocs'
 import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
 
@@ -73,6 +74,9 @@ export default function HelpPage() {
             Guides and reference articles for using Linksy.
           </p>
         </div>
+        <Button size="sm" onClick={() => router.push('/dashboard/support')}>
+          Linksy Support
+        </Button>
       </div>
 
       {/* Search */}

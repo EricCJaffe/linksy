@@ -17,6 +17,7 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, CheckCircle2, HelpCircle } from 'lucide-react'
 import { useProviderAccess } from '@/lib/hooks/useProviderAccess'
+import { SupportTicketsTab } from '@/components/support/support-tickets-tab'
 import type { SupportTicketCategory, SupportTicketPriority } from '@/lib/types/linksy'
 
 const categoryLabels: Record<SupportTicketCategory, string> = {
@@ -223,6 +224,18 @@ export default function SubmitSupportTicketPage() {
               )}
             </Button>
           </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Current Support Tickets</CardTitle>
+          <CardDescription>
+            View the status of your existing support requests.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <SupportTicketsTab />
         </CardContent>
       </Card>
     </div>

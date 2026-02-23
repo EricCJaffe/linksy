@@ -5,6 +5,7 @@ import { ArrowLeft, Phone, Mail, Globe, Clock } from 'lucide-react'
 import { useProvider } from '@/lib/hooks/useProviders'
 import { ProviderDetailTabs } from '@/components/providers/provider-detail-tabs'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 
 const sectorLabels: Record<string, string> = {
@@ -78,24 +79,29 @@ export default function ProviderDetailPage({
         Back to Providers
       </Link>
 
-      <div className="flex items-center gap-3">
-        <h1 className="text-3xl font-bold">{provider.name}</h1>
-        <Badge variant="outline" className={sectorBadgeClass[provider.sector] || 'bg-muted text-muted-foreground'}>
-          {sectorLabels[provider.sector] || provider.sector}
-        </Badge>
-        <Badge
-          variant="outline"
-          className={statusBadgeClass[provider.provider_status] || 'bg-muted text-muted-foreground'}
-        >
-          {provider.provider_status === 'active' ? 'Active' :
-            provider.provider_status === 'paused' ? 'Paused' : 'Inactive'}
-        </Badge>
-        <Badge
-          variant="outline"
-          className={referralTypeBadgeClass[provider.referral_type] || 'bg-muted text-muted-foreground'}
-        >
-          {provider.referral_type === 'contact_directly' ? 'Contact Directly' : 'Standard'}
-        </Badge>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-3xl font-bold">{provider.name}</h1>
+          <Badge variant="outline" className={sectorBadgeClass[provider.sector] || 'bg-muted text-muted-foreground'}>
+            {sectorLabels[provider.sector] || provider.sector}
+          </Badge>
+          <Badge
+            variant="outline"
+            className={statusBadgeClass[provider.provider_status] || 'bg-muted text-muted-foreground'}
+          >
+            {provider.provider_status === 'active' ? 'Active' :
+              provider.provider_status === 'paused' ? 'Paused' : 'Inactive'}
+          </Badge>
+          <Badge
+            variant="outline"
+            className={referralTypeBadgeClass[provider.referral_type] || 'bg-muted text-muted-foreground'}
+          >
+            {provider.referral_type === 'contact_directly' ? 'Contact Directly' : 'Standard'}
+          </Badge>
+        </div>
+        <Button size="sm" asChild>
+          <Link href="/dashboard/support">Linksy Support</Link>
+        </Button>
       </div>
 
       <div className="flex flex-wrap gap-6 text-sm text-muted-foreground">

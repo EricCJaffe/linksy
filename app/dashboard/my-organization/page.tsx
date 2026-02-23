@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useProviderAccess } from '@/lib/hooks/useProviderAccess'
 import { useProvider, useProviders, useProviderAnalytics } from '@/lib/hooks/useProviders'
 import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
@@ -8,6 +9,7 @@ import { ProviderDetailTabs } from '@/components/providers/provider-detail-tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AlertCircle, FileText, CheckCircle, Users, Phone, Globe, MapPin, Eye } from 'lucide-react'
 
@@ -116,13 +118,18 @@ export default function MyOrganizationPage() {
         </div>
       )}
 
-      <div>
-        <h1 className="text-3xl font-bold">{provider.name}</h1>
-        <p className="text-muted-foreground">
-          {isSiteAdmin
-            ? 'Previewing provider portal view'
-            : 'Manage your organization\'s information and referrals'}
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">{provider.name}</h1>
+          <p className="text-muted-foreground">
+            {isSiteAdmin
+              ? 'Previewing provider portal view'
+              : 'Manage your organization\'s information and referrals'}
+          </p>
+        </div>
+        <Button size="sm" asChild>
+          <Link href="/dashboard/support">Linksy Support</Link>
+        </Button>
       </div>
 
       {/* Provider Stats Cards */}
