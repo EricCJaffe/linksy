@@ -61,6 +61,8 @@ export interface HostWidgetConfig {
   logo_url?: string
   bot_name?: string
   search_radius_miles?: number
+  search_rate_limit_per_minute?: number
+  ticket_rate_limit_per_hour?: number
 }
 
 export interface Provider {
