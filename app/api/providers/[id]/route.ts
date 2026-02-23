@@ -92,13 +92,20 @@ export async function GET(
     ),
     Promise.all(
       (notesRes.data || []).map(async (note) => {
-        if (!note.user_id) {
+        const noteUserId = (note as any).author_id ?? (note as any).user_id
+        if (!noteUserId) {
+          if ((note as any).author_name) {
+            return {
+              ...note,
+              user: { full_name: (note as any).author_name, email: null },
+            }
+          }
           return { ...note, user: null }
         }
         const { data: user } = await supabase
           .from('users')
           .select('full_name, email')
-          .eq('id', note.user_id)
+          .eq('id', noteUserId)
           .maybeSingle()
 
         return { ...note, user }

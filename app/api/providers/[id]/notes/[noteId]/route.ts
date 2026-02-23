@@ -12,6 +12,46 @@ function getMissingColumnName(errorMessage: string): string | null {
   return null
 }
 
+async function getNoteOwner(
+  supabase: Awaited<ReturnType<typeof createServiceClient>>,
+  noteId: string
+) {
+  for (const ownerColumn of ['author_id', 'user_id'] as const) {
+    const attempt = await supabase
+      .from('linksy_provider_notes')
+      .select(`id, ${ownerColumn}`)
+      .eq('id', noteId)
+      .single()
+
+    if (!attempt.error) {
+      return {
+        note: attempt.data as Record<string, any>,
+        ownerId: (attempt.data as any)?.[ownerColumn] as string | null,
+        ownershipCheckBypassed: false,
+      }
+    }
+
+    const missingColumn = getMissingColumnName(attempt.error.message || '')
+    if (missingColumn === ownerColumn) continue
+  }
+
+  const fallback = await supabase
+    .from('linksy_provider_notes')
+    .select('id')
+    .eq('id', noteId)
+    .single()
+
+  if (fallback.error || !fallback.data) {
+    return { note: null, ownerId: null, ownershipCheckBypassed: true }
+  }
+
+  return {
+    note: fallback.data as Record<string, any>,
+    ownerId: null,
+    ownershipCheckBypassed: true,
+  }
+}
+
 /**
  * PATCH /api/providers/[id]/notes/[noteId]
  * Update an existing note
@@ -43,31 +83,14 @@ export async function PATCH(
 
   const supabase = await createServiceClient()
 
-  // Check if note exists and user has permission to edit it (schema-compatible)
-  const ownerCheck = await supabase
-    .from('linksy_provider_notes')
-    .select('id, user_id')
-    .eq('id', noteId)
-    .single()
-
-  let existingNote: any = ownerCheck.data
-  let ownerCheckBypassed = false
-
-  if (ownerCheck.error && getMissingColumnName(ownerCheck.error.message || '') === 'user_id') {
-    const fallback = await supabase
-      .from('linksy_provider_notes')
-      .select('id')
-      .eq('id', noteId)
-      .single()
-    existingNote = fallback.data
-    ownerCheckBypassed = !fallback.error
-  }
+  const ownership = await getNoteOwner(supabase, noteId)
+  const existingNote = ownership.note
 
   if (!existingNote) {
     return NextResponse.json({ error: 'Note not found' }, { status: 404 })
   }
 
-  if (!ownerCheckBypassed && existingNote.user_id !== auth.user.id && !auth.isSiteAdmin) {
+  if (!ownership.ownershipCheckBypassed && ownership.ownerId && ownership.ownerId !== auth.user.id && !auth.isSiteAdmin) {
     return NextResponse.json(
       { error: 'You can only edit your own notes' },
       { status: 403 }
@@ -118,13 +141,16 @@ export async function PATCH(
   }
 
   let user: { full_name: string | null; email: string | null } | null = null
-  if (note?.user_id) {
+  const noteUserId = note?.author_id ?? note?.user_id
+  if (noteUserId) {
     const { data } = await supabase
       .from('users')
       .select('full_name, email')
-      .eq('id', note.user_id)
+      .eq('id', noteUserId)
       .maybeSingle()
     user = data
+  } else if (note?.author_name) {
+    user = { full_name: note.author_name, email: null }
   } else {
     user = {
       full_name: ((auth.user as any).user_metadata?.full_name as string | null) || null,
@@ -149,31 +175,14 @@ export async function DELETE(
   const { noteId } = params
   const supabase = await createServiceClient()
 
-  // Check note ownership when possible
-  const ownerCheck = await supabase
-    .from('linksy_provider_notes')
-    .select('id, user_id')
-    .eq('id', noteId)
-    .single()
-
-  let existingNote: any = ownerCheck.data
-  let ownerCheckBypassed = false
-
-  if (ownerCheck.error && getMissingColumnName(ownerCheck.error.message || '') === 'user_id') {
-    const fallback = await supabase
-      .from('linksy_provider_notes')
-      .select('id')
-      .eq('id', noteId)
-      .single()
-    existingNote = fallback.data
-    ownerCheckBypassed = !fallback.error
-  }
+  const ownership = await getNoteOwner(supabase, noteId)
+  const existingNote = ownership.note
 
   if (!existingNote) {
     return NextResponse.json({ error: 'Note not found' }, { status: 404 })
   }
 
-  if (!ownerCheckBypassed && existingNote.user_id !== auth.user.id && !auth.isSiteAdmin) {
+  if (!ownership.ownershipCheckBypassed && ownership.ownerId && ownership.ownerId !== auth.user.id && !auth.isSiteAdmin) {
     return NextResponse.json(
       { error: 'You can only delete your own notes' },
       { status: 403 }

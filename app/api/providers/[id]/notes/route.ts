@@ -44,9 +44,10 @@ export async function POST(
   const supabase = await createServiceClient()
 
   const insertPayloads: Record<string, any>[] = [
-    // Prefer payloads without user_id first for compatibility with legacy schemas.
+    // Prefer author_id first (current schema), then user_id for legacy compatibility.
     {
       provider_id: providerId,
+      author_id: auth.user.id,
       note_type,
       content,
       is_private,
@@ -59,6 +60,12 @@ export async function POST(
       content,
       is_private,
       ...(attachments !== undefined && { attachments }),
+    },
+    {
+      provider_id: providerId,
+      author_id: auth.user.id,
+      note_type,
+      content,
     },
     {
       provider_id: providerId,
@@ -79,6 +86,8 @@ export async function POST(
   const isCompatibleFallbackError = (message: string) =>
     /could not find the '.*' column/i.test(message) ||
     /column .* does not exist/i.test(message) ||
+    /null value in column .*author_id/i.test(message) ||
+    /violates not-null constraint.*author_id/i.test(message) ||
     /null value in column .*user_id/i.test(message) ||
     /violates not-null constraint.*user_id/i.test(message)
 
@@ -114,13 +123,16 @@ export async function POST(
   }
 
   let user: { full_name: string | null; email: string | null } | null = null
-  if (note?.user_id) {
+  const noteUserId = note?.author_id ?? note?.user_id
+  if (noteUserId) {
     const { data } = await supabase
       .from('users')
       .select('full_name, email')
-      .eq('id', note.user_id)
+      .eq('id', noteUserId)
       .maybeSingle()
     user = data
+  } else if (note?.author_name) {
+    user = { full_name: note.author_name, email: null }
   } else {
     user = {
       full_name: ((auth.user as any).user_metadata?.full_name as string | null) || null,
