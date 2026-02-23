@@ -60,6 +60,15 @@ const noteTypeColors: Record<NoteType, string> = {
   internal: 'bg-gray-100 text-gray-800',
 }
 
+const taxonomyCategoryColorClasses = [
+  'bg-sky-100 text-sky-800 border-sky-200',
+  'bg-emerald-100 text-emerald-800 border-emerald-200',
+  'bg-amber-100 text-amber-800 border-amber-200',
+  'bg-violet-100 text-violet-800 border-violet-200',
+  'bg-rose-100 text-rose-800 border-rose-200',
+  'bg-cyan-100 text-cyan-800 border-cyan-200',
+]
+
 const toAllowChoice = (value: boolean | null | undefined): 'allow' | 'do_not_allow' =>
   value === false ? 'do_not_allow' : 'allow'
 
@@ -448,12 +457,18 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
   const [editTimelineNoteContent, setEditTimelineNoteContent] = useState('')
   const [editTimelineNotePrivate, setEditTimelineNotePrivate] = useState(false)
   const [editTimelineNoteAttachments, setEditTimelineNoteAttachments] = useState<NoteAttachment[]>([])
-  const [selectedNeedId, setSelectedNeedId] = useState('')
+  const [selectedNeedIds, setSelectedNeedIds] = useState<string[]>(provider.provider_needs.map((pn) => pn.need_id))
   const [isUpdatingNeeds, setIsUpdatingNeeds] = useState(false)
 
   const providerNeedIds = new Set(provider.provider_needs.map((pn) => pn.need_id))
-  const allNeeds = (categories || []).flatMap((cat) => cat.needs || [])
-  const unassignedNeeds = allNeeds.filter((need) => !providerNeedIds.has(need.id))
+  const taxonomyCategories = (categories || []).filter((cat) => cat.is_active !== false)
+  const selectedNeedIdSet = new Set(selectedNeedIds)
+  const persistedCategoriesWithNeeds = taxonomyCategories
+    .map((cat) => ({
+      ...cat,
+      selectedNeeds: (cat.needs || []).filter((need) => providerNeedIds.has(need.id)),
+    }))
+    .filter((cat) => cat.selectedNeeds.length > 0)
   const timelineNotes = [...provider.notes]
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 10)
@@ -578,53 +593,78 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
         try {
           await applyPrimaryContact()
           await applyPrimaryLocation()
+          await applyNeedsSelection()
           setIsEditing(false)
           router.refresh()
         } catch (error) {
           console.error('Failed to save summary related changes:', error)
-          alert('Provider saved, but some contact/address updates failed. Please retry.')
+          alert('Provider saved, but some summary updates failed. Please retry.')
         }
       },
     })
   }
 
-  const handleAddNeed = async () => {
-    if (!selectedNeedId) return
-    setIsUpdatingNeeds(true)
-    try {
-      const res = await fetch(`/api/providers/${provider.id}/needs`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ need_id: selectedNeedId }),
-      })
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error(data.error || 'Failed to add need')
+  const toggleCategoryNeeds = (categoryId: string, isChecked: boolean) => {
+    const category = taxonomyCategories.find((cat) => cat.id === categoryId)
+    if (!category) return
+    const categoryNeedIds = (category.needs || []).map((need) => need.id)
+
+    setSelectedNeedIds((prev) => {
+      const next = new Set(prev)
+      if (isChecked) {
+        categoryNeedIds.forEach((id) => next.add(id))
+      } else {
+        categoryNeedIds.forEach((id) => next.delete(id))
       }
-      setSelectedNeedId('')
-      router.refresh()
-    } catch (error) {
-      console.error('Failed to add need:', error)
-      alert('Failed to add need')
-    } finally {
-      setIsUpdatingNeeds(false)
-    }
+      return Array.from(next)
+    })
   }
 
-  const handleRemoveNeed = async (needId: string) => {
+  const toggleSingleNeed = (needId: string, isChecked: boolean) => {
+    setSelectedNeedIds((prev) => {
+      const next = new Set(prev)
+      if (isChecked) {
+        next.add(needId)
+      } else {
+        next.delete(needId)
+      }
+      return Array.from(next)
+    })
+  }
+
+  const applyNeedsSelection = async () => {
+    const selectedSet = new Set(selectedNeedIds)
+    const toAdd = Array.from(selectedSet).filter((needId) => !providerNeedIds.has(needId))
+    const toRemove = Array.from(providerNeedIds).filter((needId) => !selectedSet.has(needId))
+    if (toAdd.length === 0 && toRemove.length === 0) return
+
     setIsUpdatingNeeds(true)
     try {
-      const res = await fetch(`/api/providers/${provider.id}/needs?need_id=${encodeURIComponent(needId)}`, {
-        method: 'DELETE',
-      })
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error(data.error || 'Failed to remove need')
-      }
-      router.refresh()
+      await Promise.all([
+        ...toAdd.map(async (needId) => {
+          const res = await fetch(`/api/providers/${provider.id}/needs`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ need_id: needId }),
+          })
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}))
+            throw new Error(data.error || 'Failed to add need')
+          }
+        }),
+        ...toRemove.map(async (needId) => {
+          const res = await fetch(`/api/providers/${provider.id}/needs?need_id=${encodeURIComponent(needId)}`, {
+            method: 'DELETE',
+          })
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}))
+            throw new Error(data.error || 'Failed to remove need')
+          }
+        }),
+      ])
     } catch (error) {
-      console.error('Failed to remove need:', error)
-      alert('Failed to remove need')
+      console.error('Failed to update needs taxonomy:', error)
+      throw error
     } finally {
       setIsUpdatingNeeds(false)
     }
@@ -779,6 +819,7 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
       latitude: primaryLocation?.latitude || null,
       longitude: primaryLocation?.longitude || null,
     })
+    setSelectedNeedIds(provider.provider_needs.map((pn) => pn.need_id))
     setIsEditing(false)
   }
 
@@ -799,8 +840,8 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
             >
               Cancel
             </Button>
-            <Button onClick={handleSave} size="sm" disabled={updateProvider.isPending}>
-              {updateProvider.isPending ? 'Saving...' : 'Save Changes'}
+            <Button onClick={handleSave} size="sm" disabled={updateProvider.isPending || isUpdatingNeeds}>
+              {updateProvider.isPending || isUpdatingNeeds ? 'Saving...' : 'Save Changes'}
             </Button>
           </div>
         )}
@@ -1078,54 +1119,92 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
               <CardTitle className="text-base">Needs Addressed</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {provider.provider_needs.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No needs assigned yet.</p>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {provider.provider_needs.map((providerNeed) => (
-                    <div
-                      key={providerNeed.id}
-                      className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs"
-                    >
-                      <span>{providerNeed.need?.name || providerNeed.need_id}</span>
-                      {isEditing && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveNeed(providerNeed.need_id)}
-                          className="ml-1 text-muted-foreground hover:text-foreground"
-                          disabled={isUpdatingNeeds}
-                          aria-label={`Remove ${providerNeed.need?.name || 'need'}`}
-                        >
-                          ×
-                        </button>
-                      )}
+              {isEditing && (
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Select categories and needs used for provider matching and AI-guided search/filtering.
+                  </p>
+                  {taxonomyCategories.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No active taxonomy categories found.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {taxonomyCategories.map((category, idx) => {
+                        const categoryNeeds = category.needs || []
+                        const selectedInCategory = categoryNeeds.filter((need) => selectedNeedIdSet.has(need.id))
+                        const categoryIsSelected = selectedInCategory.length > 0
+                        return (
+                          <div key={category.id} className="rounded-lg border p-3">
+                            <div className="flex items-center justify-between gap-2">
+                              <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                                <Checkbox
+                                  checked={categoryIsSelected}
+                                  onCheckedChange={(checked) => toggleCategoryNeeds(category.id, checked === true)}
+                                  disabled={isUpdatingNeeds}
+                                />
+                                <span
+                                  className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${taxonomyCategoryColorClasses[idx % taxonomyCategoryColorClasses.length]}`}
+                                >
+                                  {category.name}
+                                </span>
+                              </label>
+                              <span className="text-xs text-muted-foreground">
+                                {selectedInCategory.length}/{categoryNeeds.length} selected
+                              </span>
+                            </div>
+                            {categoryNeeds.length > 0 ? (
+                              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                                {categoryNeeds.map((need) => (
+                                  <label
+                                    key={need.id}
+                                    className="flex items-center gap-2 rounded-md border bg-muted/30 px-2 py-1.5 text-xs cursor-pointer"
+                                  >
+                                    <Checkbox
+                                      checked={selectedNeedIdSet.has(need.id)}
+                                      onCheckedChange={(checked) => toggleSingleNeed(need.id, checked === true)}
+                                      disabled={isUpdatingNeeds}
+                                    />
+                                    <span>{need.name}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="mt-2 text-xs text-muted-foreground">No needs defined in this category.</p>
+                            )}
+                          </div>
+                        )
+                      })}
                     </div>
-                  ))}
+                  )}
                 </div>
               )}
-              {isEditing && (
-                <div className="grid gap-2 md:grid-cols-[1fr_auto]">
-                  <Select value={selectedNeedId} onValueChange={setSelectedNeedId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Add a need..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {unassignedNeeds.map((need) => (
-                        <SelectItem key={need.id} value={need.id}>
-                          {need.name}
-                        </SelectItem>
+
+              {!isEditing && (
+                <>
+                  {persistedCategoriesWithNeeds.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No needs assigned yet.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {persistedCategoriesWithNeeds.map((category, idx) => (
+                        <div key={category.id} className="rounded-lg border p-3">
+                          <div className="mb-2">
+                            <span
+                              className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${taxonomyCategoryColorClasses[idx % taxonomyCategoryColorClasses.length]}`}
+                            >
+                              {category.name}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {category.selectedNeeds.map((need) => (
+                              <Badge key={need.id} variant="secondary" className="bg-white">
+                                {need.name}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
                       ))}
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleAddNeed}
-                    disabled={!selectedNeedId || isUpdatingNeeds}
-                  >
-                    Add Need
-                  </Button>
-                </div>
+                    </div>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>
