@@ -39,7 +39,7 @@ import { ImageUpload } from '@/components/ui/image-upload'
 import { WidgetPreview } from '@/components/widget/widget-preview'
 import { uploadWidgetLogo, uploadNoteAttachment } from '@/lib/storage/upload'
 import type { Provider, ProviderDetail, NoteType, NoteAttachment, TicketStatus, ProviderContact, ProviderEvent } from '@/lib/types/linksy'
-import { Plus, Copy, ExternalLink, Lock, MapPin, Pencil, Trash2, CheckCircle, Circle, BarChart2, FileText, LayoutList, CalendarDays, RefreshCw } from 'lucide-react'
+import { Plus, Copy, ExternalLink, Lock, MapPin, Pencil, Trash2, CheckCircle, Circle, BarChart2, FileText, LayoutList, CalendarDays, RefreshCw, Pin, PinOff } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import type { HostWidgetConfig } from '@/lib/types/linksy'
 
@@ -662,6 +662,49 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
     }
   }
 
+  const handleDeleteTimelineNote = async (noteId: string) => {
+    if (!confirm('Delete this note?')) return
+    try {
+      const res = await fetch(`/api/providers/${provider.id}/notes/${noteId}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.details || data.error || 'Failed to delete note')
+      }
+      if (editingTimelineNoteId === noteId) cancelEditingTimelineNote()
+      router.refresh()
+    } catch (error) {
+      console.error('Failed to delete note:', error)
+      alert('Failed to delete note')
+    }
+  }
+
+  const handlePinTimelineNote = async (note: ProviderDetail['notes'][number]) => {
+    try {
+      await updateNote.mutateAsync({
+        noteId: note.id,
+        is_pinned: !note.is_pinned,
+      })
+      router.refresh()
+    } catch (error) {
+      console.error('Failed to update pinned state:', error)
+      alert('Failed to pin note')
+    }
+  }
+
+  const copyTimelineNote = async (html: string) => {
+    const plainText = html
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+    try {
+      await navigator.clipboard.writeText(plainText)
+    } catch (error) {
+      console.error('Failed to copy note:', error)
+      alert('Failed to copy note')
+    }
+  }
+
   const handleCancel = () => {
     setFormData({
       name: provider.name || '',
@@ -1194,6 +1237,11 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
                               >
                                 {note.note_type}
                               </Badge>
+                              {note.is_pinned && (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-2 py-0.5 text-[10px] font-semibold text-yellow-800">
+                                  <Pin className="h-3 w-3" /> Pinned
+                                </span>
+                              )}
                               {note.is_private && (
                                 <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
                                   <Lock className="h-3 w-3" /> Private
@@ -1201,11 +1249,22 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
                               )}
                               <span>{new Date(note.created_at).toLocaleString()}</span>
                               <span>•</span>
-                              <span>{note.user?.full_name || note.user?.email || 'System'}</span>
+                              <span>Added by {note.user?.full_name || note.user?.email || 'Unknown user'}</span>
                             </div>
-                            <Button variant="ghost" size="sm" onClick={() => startEditingTimelineNote(note)}>
-                              Edit
-                            </Button>
+                            <div className="flex items-center gap-1">
+                              <Button variant="ghost" size="icon" onClick={() => handlePinTimelineNote(note)} title={note.is_pinned ? 'Unpin note' : 'Pin note'}>
+                                {note.is_pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
+                              </Button>
+                              <Button variant="ghost" size="icon" onClick={() => copyTimelineNote(note.content)} title="Copy note">
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" onClick={() => startEditingTimelineNote(note)} title="Edit note">
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" onClick={() => handleDeleteTimelineNote(note.id)} title="Delete note">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
                           <RichTextDisplay content={note.content} className="text-sm" />
                           <FileAttachmentDisplay attachments={note.attachments} />
@@ -2009,6 +2068,7 @@ function EventsTab({ provider }: { provider: ProviderDetail }) {
 }
 
 function NotesTab({ provider }: { provider: ProviderDetail }) {
+  const router = useRouter()
   const [isAddingNote, setIsAddingNote] = useState(false)
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
   const [newNoteType, setNewNoteType] = useState<NoteType>('general')
@@ -2077,6 +2137,49 @@ function NotesTab({ provider }: { provider: ProviderDetail }) {
     setEditNoteType('general')
     setEditNotePrivate(false)
     setEditNoteAttachments([])
+  }
+
+  const handleDeleteNote = async (noteId: string) => {
+    if (!confirm('Delete this note?')) return
+    try {
+      const res = await fetch(`/api/providers/${provider.id}/notes/${noteId}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.details || data.error || 'Failed to delete note')
+      }
+      if (editingNoteId === noteId) cancelEditing()
+      router.refresh()
+    } catch (error) {
+      console.error('Failed to delete note:', error)
+      alert('Failed to delete note')
+    }
+  }
+
+  const handlePinNote = async (note: ProviderDetail['notes'][number]) => {
+    try {
+      await updateNote.mutateAsync({
+        noteId: note.id,
+        is_pinned: !note.is_pinned,
+      })
+      router.refresh()
+    } catch (error) {
+      console.error('Failed to update pinned state:', error)
+      alert('Failed to pin note')
+    }
+  }
+
+  const copyNoteContent = async (html: string) => {
+    const plainText = html
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+    try {
+      await navigator.clipboard.writeText(plainText)
+    } catch (error) {
+      console.error('Failed to copy note:', error)
+      alert('Failed to copy note')
+    }
   }
 
   return (
@@ -2209,21 +2312,37 @@ function NotesTab({ provider }: { provider: ProviderDetail }) {
                       >
                         {note.note_type}
                       </span>
+                      {note.is_pinned && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-semibold text-yellow-800">
+                          <Pin className="h-3 w-3" /> Pinned
+                        </span>
+                      )}
                       {note.is_private && (
                         <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
                           <Lock className="h-3 w-3" /> Private
                         </span>
                       )}
                       <span className="text-sm text-muted-foreground">
-                        {note.user?.full_name || note.user?.email || 'System'}
+                        Added by {note.user?.full_name || note.user?.email || 'Unknown user'}
                       </span>
                       <span className="text-sm text-muted-foreground">
                         {new Date(note.created_at).toLocaleString()}
                       </span>
                     </div>
-                    <Button variant="ghost" size="sm" onClick={() => startEditingNote(note)}>
-                      Edit
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => handlePinNote(note)} title={note.is_pinned ? 'Unpin note' : 'Pin note'}>
+                        {note.is_pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => copyNoteContent(note.content)} title="Copy note">
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => startEditingNote(note)} title="Edit note">
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleDeleteNote(note.id)} title="Delete note">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                   <RichTextDisplay content={note.content} className="text-sm" />
                   <FileAttachmentDisplay attachments={note.attachments} />

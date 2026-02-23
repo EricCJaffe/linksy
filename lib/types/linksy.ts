@@ -145,6 +145,7 @@ export interface ProviderNote {
   user_id: string | null
   note_type: NoteType
   is_private: boolean
+  is_pinned?: boolean
   content: string
   attachments?: NoteAttachment[]
   created_at: string

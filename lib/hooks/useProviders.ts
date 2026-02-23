@@ -125,11 +125,25 @@ export function useUpdateNote(providerId: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ noteId, note_type, content, is_private, attachments }: { noteId: string; note_type?: NoteType; content?: string; is_private?: boolean; attachments?: NoteAttachment[] }) => {
+    mutationFn: async ({
+      noteId,
+      note_type,
+      content,
+      is_private,
+      attachments,
+      is_pinned,
+    }: {
+      noteId: string
+      note_type?: NoteType
+      content?: string
+      is_private?: boolean
+      attachments?: NoteAttachment[]
+      is_pinned?: boolean
+    }) => {
       const res = await fetch(`/api/providers/${providerId}/notes/${noteId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ note_type, content, is_private, attachments }),
+        body: JSON.stringify({ note_type, content, is_private, attachments, is_pinned }),
       })
       if (!res.ok) throw new Error('Failed to update note')
       return res.json() as Promise<ProviderNote>

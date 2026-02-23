@@ -115,11 +115,30 @@ export async function GET(
     ? notesWithUsers
     : notesWithUsers.filter((n) => !n.is_private)
 
-  return NextResponse.json({
+  const sortedNotes = [...filteredNotes].sort((a, b) => {
+    const aPinned = a.is_pinned === true ? 1 : 0
+    const bPinned = b.is_pinned === true ? 1 : 0
+    if (aPinned !== bPinned) return bPinned - aPinned
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  })
+
+  const normalizedProvider = {
     ...provider,
+    hours: provider.hours ?? provider.hours_of_operation ?? null,
+    allow_auto_update:
+      provider.allow_auto_update ?? provider.allow_auto_update_description ?? false,
+    parent_account:
+      provider.parent_account ??
+      provider.parent_account_name ??
+      provider.parent_provider_id ??
+      null,
+  }
+
+  return NextResponse.json({
+    ...normalizedProvider,
     locations: locationsRes.data || [],
     provider_needs: needsRes.data || [],
-    notes: filteredNotes,
+    notes: sortedNotes,
     tickets: ticketsRes.data || [],
     contacts: contactsWithUsers,
     events: eventsRes.data || [],
@@ -140,16 +159,21 @@ export async function PATCH(
   // Fields any active provider contact can edit
   const staffFields = [
     'description', 'phone', 'email', 'website', 'hours',
+    // Compatibility with legacy provider schema names.
+    'hours_of_operation',
     'social_facebook', 'social_instagram', 'social_twitter', 'social_linkedin',
     'referral_instructions',
   ]
 
   // Additional fields only admins can edit
   const adminOnlyFields = [
-    'name', 'sector', 'is_active', 'provider_status', 'accepting_referrals',
-    'referral_type', 'project_status', 'allow_auto_update',
+    'name', 'sector', 'is_active', 'referral_type', 'project_status',
+    'allow_auto_update',
+    // Compatibility with legacy provider schema names.
+    'allow_auto_update_description',
+    // Parent account compatibility: only applied if field exists in payload/UI.
+    'parent_account', 'parent_account_name', 'parent_provider_id',
     'is_host', 'host_embed_active', 'host_widget_config', 'host_monthly_token_budget',
-    'excluded_search_terms',
   ]
 
   let allowedFields: string[]
