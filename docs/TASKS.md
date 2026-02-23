@@ -51,6 +51,8 @@
 ### Phase 2 / 3 Still Open
 - [ ] Autoupdates for description every 90 days with explicit override behavior
 - [ ] Enhanced notification workflows beyond current baseline notifications
+- [ ] Host-specific email template customization (tenant/host-level overrides for outbound referral/proposal communications)
+- [ ] Host custom form builder for pre-proposal intake (configurable extra questions before proposal/referral submission)
 - [ ] Custom provider referral redirects (external destination behavior + strategy/pricing decision)
 - [ ] Host filtering by needs/category in admin hosts workflow
 - [ ] Chatbot card view support for non-referral providers
