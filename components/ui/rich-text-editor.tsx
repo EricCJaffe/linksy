@@ -2,7 +2,6 @@
 
 import { useEditor, EditorContent, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
-import Underline from '@tiptap/extension-underline'
 import { TextStyle } from '@tiptap/extension-text-style'
 import Color from '@tiptap/extension-color'
 import TextAlign from '@tiptap/extension-text-align'
@@ -52,7 +51,6 @@ export function RichTextEditor({ value, onChange, disabled, placeholder }: RichT
         blockquote: false,
         horizontalRule: false,
       }),
-      Underline,
       TextStyle,
       Color,
       TextAlign.configure({ types: ['paragraph'] }),

@@ -423,10 +423,12 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
   const [isAddingTimelineNote, setIsAddingTimelineNote] = useState(false)
   const [newTimelineNote, setNewTimelineNote] = useState('')
   const [newTimelineNotePrivate, setNewTimelineNotePrivate] = useState(false)
+  const [newTimelineNoteAttachments, setNewTimelineNoteAttachments] = useState<NoteAttachment[]>([])
   const [editingTimelineNoteId, setEditingTimelineNoteId] = useState<string | null>(null)
   const [editTimelineNoteType, setEditTimelineNoteType] = useState<NoteType>('update')
   const [editTimelineNoteContent, setEditTimelineNoteContent] = useState('')
   const [editTimelineNotePrivate, setEditTimelineNotePrivate] = useState(false)
+  const [editTimelineNoteAttachments, setEditTimelineNoteAttachments] = useState<NoteAttachment[]>([])
   const [selectedNeedId, setSelectedNeedId] = useState('')
   const [isUpdatingNeeds, setIsUpdatingNeeds] = useState(false)
 
@@ -610,10 +612,12 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
         note_type: noteType,
         content: newTimelineNote,
         is_private: newTimelineNotePrivate,
+        attachments: newTimelineNoteAttachments.length > 0 ? newTimelineNoteAttachments : undefined,
       })
       setNewTimelineNote('')
       setNoteType('update')
       setNewTimelineNotePrivate(false)
+      setNewTimelineNoteAttachments([])
       setIsAddingTimelineNote(false)
       router.refresh()
     } catch (error) {
@@ -627,6 +631,7 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
     setEditTimelineNoteType(note.note_type)
     setEditTimelineNoteContent(note.content)
     setEditTimelineNotePrivate(note.is_private)
+    setEditTimelineNoteAttachments(note.attachments || [])
   }
 
   const cancelEditingTimelineNote = () => {
@@ -634,6 +639,7 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
     setEditTimelineNoteType('update')
     setEditTimelineNoteContent('')
     setEditTimelineNotePrivate(false)
+    setEditTimelineNoteAttachments([])
   }
 
   const handleSaveTimelineNote = async (noteId: string) => {
@@ -646,6 +652,7 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
         note_type: editTimelineNoteType,
         content: editTimelineNoteContent,
         is_private: editTimelineNotePrivate,
+        attachments: editTimelineNoteAttachments,
       })
       cancelEditingTimelineNote()
       router.refresh()
@@ -1089,6 +1096,11 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
                         <Lock className="h-3 w-3" /> Private note
                       </Label>
                     </div>
+                    <FileAttachmentEdit
+                      value={newTimelineNoteAttachments}
+                      onChange={setNewTimelineNoteAttachments}
+                      uploadFn={(file) => uploadNoteAttachment(file, provider.id)}
+                    />
                     <div className="flex gap-2">
                       <Button
                         type="button"
@@ -1155,6 +1167,11 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
                               <Lock className="h-3 w-3" /> Private note
                             </Label>
                           </div>
+                          <FileAttachmentEdit
+                            value={editTimelineNoteAttachments}
+                            onChange={setEditTimelineNoteAttachments}
+                            uploadFn={(file) => uploadNoteAttachment(file, provider.id)}
+                          />
                           <div className="flex gap-2">
                             <Button
                               size="sm"

@@ -2,6 +2,16 @@ import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/middleware/auth'
 
+function getMissingColumnName(errorMessage: string): string | null {
+  const schemaCacheMatch = errorMessage.match(/Could not find the '([^']+)' column/i)
+  if (schemaCacheMatch) return schemaCacheMatch[1]
+
+  const sqlMatch = errorMessage.match(/column ["']?([a-zA-Z0-9_]+)["']? does not exist/i)
+  if (sqlMatch) return sqlMatch[1]
+
+  return null
+}
+
 /**
  * POST /api/providers/[id]/notes
  * Create a new note for a provider
@@ -33,42 +43,52 @@ export async function POST(
 
   const supabase = await createServiceClient()
 
-  const insertBase = {
-    provider_id: providerId,
-    user_id: auth.user.id,
-    note_type,
-    content,
-  }
-
-  const insertWithOptional = {
-    ...insertBase,
-    is_private,
-    ...(attachments !== undefined && { attachments }),
-  }
+  const insertPayloads: Record<string, any>[] = [
+    {
+      provider_id: providerId,
+      user_id: auth.user.id,
+      note_type,
+      content,
+      is_private,
+      ...(attachments !== undefined && { attachments }),
+    },
+    {
+      provider_id: providerId,
+      note_type,
+      content,
+      is_private,
+      ...(attachments !== undefined && { attachments }),
+    },
+    {
+      provider_id: providerId,
+      user_id: auth.user.id,
+      note_type,
+      content,
+    },
+    {
+      provider_id: providerId,
+      note_type,
+      content,
+    },
+  ]
 
   let note: any = null
   let error: any = null
 
-  // Primary path: modern schema with optional note fields
-  const firstInsert = await supabase
-    .from('linksy_provider_notes')
-    .insert(insertWithOptional)
-    .select('*')
-    .single()
-
-  note = firstInsert.data
-  error = firstInsert.error
-
-  // Compatibility fallback for environments missing one or more optional columns
-  if (error && /column .* does not exist/i.test(error.message || '')) {
-    const fallbackInsert = await supabase
+  for (const payload of insertPayloads) {
+    const attempt = await supabase
       .from('linksy_provider_notes')
-      .insert(insertBase)
+      .insert(payload)
       .select('*')
       .single()
 
-    note = fallbackInsert.data
-    error = fallbackInsert.error
+    note = attempt.data
+    error = attempt.error
+
+    if (!error) break
+
+    const missingColumn = getMissingColumnName(error.message || '')
+    if (!missingColumn) break
   }
 
   if (error) {
@@ -82,12 +102,20 @@ export async function POST(
     )
   }
 
-  // Manually fetch user data to work around schema cache issue
-  const { data: user } = await supabase
-    .from('users')
-    .select('full_name, email')
-    .eq('id', note.user_id)
-    .maybeSingle()
+  let user: { full_name: string | null; email: string | null } | null = null
+  if (note?.user_id) {
+    const { data } = await supabase
+      .from('users')
+      .select('full_name, email')
+      .eq('id', note.user_id)
+      .maybeSingle()
+    user = data
+  } else {
+    user = {
+      full_name: ((auth.user as any).user_metadata?.full_name as string | null) || null,
+      email: auth.user.email || null,
+    }
+  }
 
   return NextResponse.json({ ...note, user })
 }

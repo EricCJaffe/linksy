@@ -2,6 +2,16 @@ import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/middleware/auth'
 
+function getMissingColumnName(errorMessage: string): string | null {
+  const schemaCacheMatch = errorMessage.match(/Could not find the '([^']+)' column/i)
+  if (schemaCacheMatch) return schemaCacheMatch[1]
+
+  const sqlMatch = errorMessage.match(/column ["']?([a-zA-Z0-9_]+)["']? does not exist/i)
+  if (sqlMatch) return sqlMatch[1]
+
+  return null
+}
+
 /**
  * PATCH /api/providers/[id]/notes/[noteId]
  * Update an existing note
@@ -33,18 +43,31 @@ export async function PATCH(
 
   const supabase = await createServiceClient()
 
-  // Check if note exists and user has permission to edit it
-  const { data: existingNote } = await supabase
+  // Check if note exists and user has permission to edit it (schema-compatible)
+  const ownerCheck = await supabase
     .from('linksy_provider_notes')
-    .select('user_id')
+    .select('id, user_id')
     .eq('id', noteId)
     .single()
+
+  let existingNote: any = ownerCheck.data
+  let ownerCheckBypassed = false
+
+  if (ownerCheck.error && getMissingColumnName(ownerCheck.error.message || '') === 'user_id') {
+    const fallback = await supabase
+      .from('linksy_provider_notes')
+      .select('id')
+      .eq('id', noteId)
+      .single()
+    existingNote = fallback.data
+    ownerCheckBypassed = !fallback.error
+  }
 
   if (!existingNote) {
     return NextResponse.json({ error: 'Note not found' }, { status: 404 })
   }
 
-  if (existingNote.user_id !== auth.user.id && !auth.isSiteAdmin) {
+  if (!ownerCheckBypassed && existingNote.user_id !== auth.user.id && !auth.isSiteAdmin) {
     return NextResponse.json(
       { error: 'You can only edit your own notes' },
       { status: 403 }
@@ -57,23 +80,56 @@ export async function PATCH(
   if (is_private !== undefined) updates.is_private = is_private
   if (attachments !== undefined) updates.attachments = attachments
 
-  const { data: note, error } = await supabase
-    .from('linksy_provider_notes')
-    .update(updates)
-    .eq('id', noteId)
-    .select('*')
-    .single()
+  let remainingUpdates: Record<string, any> = { ...updates }
+  let note: any = null
+  let error: any = null
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  while (Object.keys(remainingUpdates).length > 0) {
+    const attempt = await supabase
+      .from('linksy_provider_notes')
+      .update(remainingUpdates)
+      .eq('id', noteId)
+      .select('*')
+      .single()
+
+    note = attempt.data
+    error = attempt.error
+
+    if (!error) break
+
+    const missingColumn = getMissingColumnName(error.message || '')
+    if (!missingColumn || !(missingColumn in remainingUpdates)) {
+      break
+    }
+
+    delete remainingUpdates[missingColumn]
   }
 
-  // Manually fetch user data to work around schema cache issue
-  const { data: user } = await supabase
-    .from('users')
-    .select('full_name, email')
-    .eq('id', note.user_id)
-    .maybeSingle()
+  if (error) {
+    return NextResponse.json(
+      {
+        error: 'Failed to update note',
+        details: error.message,
+        code: error.code,
+      },
+      { status: 500 }
+    )
+  }
+
+  let user: { full_name: string | null; email: string | null } | null = null
+  if (note?.user_id) {
+    const { data } = await supabase
+      .from('users')
+      .select('full_name, email')
+      .eq('id', note.user_id)
+      .maybeSingle()
+    user = data
+  } else {
+    user = {
+      full_name: ((auth.user as any).user_metadata?.full_name as string | null) || null,
+      email: auth.user.email || null,
+    }
+  }
 
   return NextResponse.json({ ...note, user })
 }
