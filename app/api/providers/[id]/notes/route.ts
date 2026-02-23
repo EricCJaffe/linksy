@@ -44,14 +44,7 @@ export async function POST(
   const supabase = await createServiceClient()
 
   const insertPayloads: Record<string, any>[] = [
-    {
-      provider_id: providerId,
-      user_id: auth.user.id,
-      note_type,
-      content,
-      is_private,
-      ...(attachments !== undefined && { attachments }),
-    },
+    // Prefer payloads without user_id first for compatibility with legacy schemas.
     {
       provider_id: providerId,
       note_type,
@@ -64,9 +57,17 @@ export async function POST(
       user_id: auth.user.id,
       note_type,
       content,
+      is_private,
+      ...(attachments !== undefined && { attachments }),
     },
     {
       provider_id: providerId,
+      note_type,
+      content,
+    },
+    {
+      provider_id: providerId,
+      user_id: auth.user.id,
       note_type,
       content,
     },
@@ -75,7 +76,14 @@ export async function POST(
   let note: any = null
   let error: any = null
 
-  for (const payload of insertPayloads) {
+  const isCompatibleFallbackError = (message: string) =>
+    /could not find the '.*' column/i.test(message) ||
+    /column .* does not exist/i.test(message) ||
+    /null value in column .*user_id/i.test(message) ||
+    /violates not-null constraint.*user_id/i.test(message)
+
+  for (let i = 0; i < insertPayloads.length; i += 1) {
+    const payload = insertPayloads[i]
     const attempt = await supabase
       .from('linksy_provider_notes')
       .insert(payload)
@@ -87,8 +95,11 @@ export async function POST(
 
     if (!error) break
 
-    const missingColumn = getMissingColumnName(error.message || '')
-    if (!missingColumn) break
+    const message = error.message || ''
+    const isLastAttempt = i === insertPayloads.length - 1
+    if (isLastAttempt || !isCompatibleFallbackError(message)) {
+      break
+    }
   }
 
   if (error) {
