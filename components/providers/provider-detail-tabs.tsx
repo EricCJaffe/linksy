@@ -368,6 +368,7 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
   const router = useRouter()
   const updateProvider = useUpdateProvider()
   const createNote = useCreateNote(provider.id)
+  const updateNote = useUpdateNote(provider.id)
   const { data: categories } = useNeedCategories()
   const [isEditing, setIsEditing] = useState(false)
   const primaryContact = provider.contacts.find((c) => c.is_primary_contact)
@@ -419,7 +420,13 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
     longitude: primaryLocation?.longitude || null,
   })
   const [noteType, setNoteType] = useState<NoteType>('update')
+  const [isAddingTimelineNote, setIsAddingTimelineNote] = useState(false)
   const [newTimelineNote, setNewTimelineNote] = useState('')
+  const [newTimelineNotePrivate, setNewTimelineNotePrivate] = useState(false)
+  const [editingTimelineNoteId, setEditingTimelineNoteId] = useState<string | null>(null)
+  const [editTimelineNoteType, setEditTimelineNoteType] = useState<NoteType>('update')
+  const [editTimelineNoteContent, setEditTimelineNoteContent] = useState('')
+  const [editTimelineNotePrivate, setEditTimelineNotePrivate] = useState(false)
   const [selectedNeedId, setSelectedNeedId] = useState('')
   const [isUpdatingNeeds, setIsUpdatingNeeds] = useState(false)
 
@@ -596,19 +603,55 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
   }
 
   const handleAddTimelineNote = async () => {
-    if (!newTimelineNote.trim()) return
+    const plainText = newTimelineNote.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim()
+    if (!plainText) return
     try {
       await createNote.mutateAsync({
         note_type: noteType,
-        content: newTimelineNote.trim(),
-        is_private: false,
+        content: newTimelineNote,
+        is_private: newTimelineNotePrivate,
       })
       setNewTimelineNote('')
       setNoteType('update')
+      setNewTimelineNotePrivate(false)
+      setIsAddingTimelineNote(false)
       router.refresh()
     } catch (error) {
       console.error('Failed to create note:', error)
       alert('Failed to add note')
+    }
+  }
+
+  const startEditingTimelineNote = (note: ProviderDetail['notes'][number]) => {
+    setEditingTimelineNoteId(note.id)
+    setEditTimelineNoteType(note.note_type)
+    setEditTimelineNoteContent(note.content)
+    setEditTimelineNotePrivate(note.is_private)
+  }
+
+  const cancelEditingTimelineNote = () => {
+    setEditingTimelineNoteId(null)
+    setEditTimelineNoteType('update')
+    setEditTimelineNoteContent('')
+    setEditTimelineNotePrivate(false)
+  }
+
+  const handleSaveTimelineNote = async (noteId: string) => {
+    const plainText = editTimelineNoteContent.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim()
+    if (!plainText) return
+
+    try {
+      await updateNote.mutateAsync({
+        noteId,
+        note_type: editTimelineNoteType,
+        content: editTimelineNoteContent,
+        is_private: editTimelineNotePrivate,
+      })
+      cancelEditingTimelineNote()
+      router.refresh()
+    } catch (error) {
+      console.error('Failed to update note:', error)
+      alert('Failed to update note')
     }
   }
 
@@ -1006,55 +1049,151 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Timeline / Recent Notes</CardTitle>
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle className="text-base">Timeline / Recent Notes</CardTitle>
+                {!isAddingTimelineNote && (
+                  <Button size="sm" variant="outline" onClick={() => setIsAddingTimelineNote(true)}>
+                    Add Note
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="timeline_note">Add Timeline Note</Label>
-                <div className="grid gap-2 md:grid-cols-[170px_1fr_auto]">
-                  <Select value={noteType} onValueChange={(val) => setNoteType(val as NoteType)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="general">General</SelectItem>
-                      <SelectItem value="outreach">Outreach</SelectItem>
-                      <SelectItem value="update">Update</SelectItem>
-                      <SelectItem value="internal">Internal</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Textarea
-                    id="timeline_note"
-                    value={newTimelineNote}
-                    onChange={(e) => setNewTimelineNote(e.target.value)}
-                    rows={2}
-                    placeholder="Add a dated note for this provider..."
-                  />
-                  <Button
-                    type="button"
-                    onClick={handleAddTimelineNote}
-                    disabled={!newTimelineNote.trim() || createNote.isPending}
-                  >
-                    {createNote.isPending ? 'Adding…' : 'Add'}
-                  </Button>
+              {isAddingTimelineNote && (
+                <div className="space-y-2 rounded-md border p-3">
+                  <Label htmlFor="timeline_note">Add Timeline Note</Label>
+                  <div className="grid gap-2">
+                    <Select value={noteType} onValueChange={(val) => setNoteType(val as NoteType)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="general">General</SelectItem>
+                        <SelectItem value="outreach">Outreach</SelectItem>
+                        <SelectItem value="update">Update</SelectItem>
+                        <SelectItem value="internal">Internal</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <RichTextEditor
+                      value={newTimelineNote}
+                      onChange={setNewTimelineNote}
+                      placeholder="Add a dated note for this provider..."
+                    />
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id="timeline-note-private"
+                        checked={newTimelineNotePrivate}
+                        onCheckedChange={setNewTimelineNotePrivate}
+                      />
+                      <Label htmlFor="timeline-note-private" className="flex items-center gap-1 cursor-pointer">
+                        <Lock className="h-3 w-3" /> Private note
+                      </Label>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        onClick={handleAddTimelineNote}
+                        disabled={createNote.isPending}
+                      >
+                        {createNote.isPending ? 'Adding…' : 'Add'}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setIsAddingTimelineNote(false)
+                          setNewTimelineNote('')
+                          setNewTimelineNotePrivate(false)
+                          setNoteType('update')
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {timelineNotes.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No recent notes.</p>
+              {timelineNotes.length === 0 && !isAddingTimelineNote ? (
+                <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                  No notes exist yet. Add one from this panel.
+                </div>
               ) : (
                 <div className="space-y-3">
                   {timelineNotes.map((note) => (
                     <div key={note.id} className="rounded-md border p-3">
-                      <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
-                        <Badge variant="outline" className="text-[10px]">
-                          {note.note_type}
-                        </Badge>
-                        <span>{new Date(note.created_at).toLocaleDateString()}</span>
-                        <span>•</span>
-                        <span>{note.user?.full_name || note.user?.email || 'System'}</span>
-                      </div>
-                      <p className="text-sm whitespace-pre-wrap">{note.content}</p>
+                      {editingTimelineNoteId === note.id ? (
+                        <div className="space-y-3">
+                          <Select
+                            value={editTimelineNoteType}
+                            onValueChange={(val) => setEditTimelineNoteType(val as NoteType)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="general">General</SelectItem>
+                              <SelectItem value="outreach">Outreach</SelectItem>
+                              <SelectItem value="update">Update</SelectItem>
+                              <SelectItem value="internal">Internal</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <RichTextEditor
+                            value={editTimelineNoteContent}
+                            onChange={setEditTimelineNoteContent}
+                          />
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              id={`timeline-edit-private-${note.id}`}
+                              checked={editTimelineNotePrivate}
+                              onCheckedChange={setEditTimelineNotePrivate}
+                            />
+                            <Label
+                              htmlFor={`timeline-edit-private-${note.id}`}
+                              className="flex items-center gap-1 cursor-pointer"
+                            >
+                              <Lock className="h-3 w-3" /> Private note
+                            </Label>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => handleSaveTimelineNote(note.id)}
+                              disabled={updateNote.isPending}
+                            >
+                              {updateNote.isPending ? 'Saving…' : 'Save'}
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={cancelEditingTimelineNote}>
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="mb-1 flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <Badge
+                                className={`${noteTypeColors[note.note_type] || noteTypeColors.general} border-transparent`}
+                              >
+                                {note.note_type}
+                              </Badge>
+                              {note.is_private && (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
+                                  <Lock className="h-3 w-3" /> Private
+                                </span>
+                              )}
+                              <span>{new Date(note.created_at).toLocaleString()}</span>
+                              <span>•</span>
+                              <span>{note.user?.full_name || note.user?.email || 'System'}</span>
+                            </div>
+                            <Button variant="ghost" size="sm" onClick={() => startEditingTimelineNote(note)}>
+                              Edit
+                            </Button>
+                          </div>
+                          <RichTextDisplay content={note.content} className="text-sm" />
+                          <FileAttachmentDisplay attachments={note.attachments} />
+                        </>
+                      )}
                     </div>
                   ))}
                 </div>
