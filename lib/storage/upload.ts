@@ -126,9 +126,20 @@ export async function uploadNoteAttachment(file: File, providerId: string): Prom
     throw new Error('File size must be less than 10MB')
   }
 
-  const sanitized = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
-  const path = `note-attachments/${providerId}/${Date.now()}-${sanitized}`
-  return uploadFile(file, 'tenant-uploads', path)
+  const body = new FormData()
+  body.append('file', file)
+
+  const res = await fetch(`/api/providers/${providerId}/notes/upload`, {
+    method: 'POST',
+    body,
+  })
+
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error(data.error || 'Failed to upload file')
+  }
+
+  return data.url as string
 }
 
 /**

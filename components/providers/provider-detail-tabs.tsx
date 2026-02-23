@@ -33,7 +33,6 @@ import { useUpdateTicket } from '@/lib/hooks/useTickets'
 import { useUpdateProviderContact, useDeleteProviderContact, useInviteProviderContact } from '@/lib/hooks/useProviderContacts'
 import { useCreateProviderEvent, useUpdateProviderEvent, useDeleteProviderEvent } from '@/lib/hooks/useProviderEvents'
 import { EventCalendar, formatRecurrence } from '@/components/providers/event-calendar'
-import { SupportTicketsTab } from '@/components/support/support-tickets-tab'
 import { ContactManagementDialog } from '@/components/providers/contact-management-dialog'
 import { ImageUpload } from '@/components/ui/image-upload'
 import { WidgetPreview } from '@/components/widget/widget-preview'
@@ -2897,7 +2896,6 @@ export function ProviderDetailTabs({ provider }: ProviderDetailTabsProps) {
         </TabsTrigger>
         <TabsTrigger value="contacts">Contacts</TabsTrigger>
         <TabsTrigger value="details">Reporting</TabsTrigger>
-        <TabsTrigger value="support">Support Tickets</TabsTrigger>
         <TabsTrigger value="events">Events</TabsTrigger>
         <TabsTrigger value="notes">
           Notes {provider.notes.length > 0 && `(${provider.notes.length})`}
@@ -2919,9 +2917,6 @@ export function ProviderDetailTabs({ provider }: ProviderDetailTabsProps) {
       </TabsContent>
       <TabsContent value="tickets">
         <ReferralsTab provider={provider} />
-      </TabsContent>
-      <TabsContent value="support">
-        <SupportTicketsTab />
       </TabsContent>
       <TabsContent value="events">
         <EventsTab provider={provider} />
