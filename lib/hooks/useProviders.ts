@@ -91,7 +91,10 @@ export function useCreateNote(providerId: string) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ note_type, content, is_private, attachments }),
       })
-      if (!res.ok) throw new Error('Failed to create note')
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data?.details || data?.error || 'Failed to create note')
+      }
       return res.json() as Promise<ProviderNote>
     },
     onSuccess: () => {

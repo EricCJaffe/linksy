@@ -33,21 +33,53 @@ export async function POST(
 
   const supabase = await createServiceClient()
 
-  const { data: note, error } = await supabase
+  const insertBase = {
+    provider_id: providerId,
+    user_id: auth.user.id,
+    note_type,
+    content,
+  }
+
+  const insertWithOptional = {
+    ...insertBase,
+    is_private,
+    ...(attachments !== undefined && { attachments }),
+  }
+
+  let note: any = null
+  let error: any = null
+
+  // Primary path: modern schema with optional note fields
+  const firstInsert = await supabase
     .from('linksy_provider_notes')
-    .insert({
-      provider_id: providerId,
-      user_id: auth.user.id,
-      note_type,
-      content,
-      is_private,
-      ...(attachments !== undefined && { attachments }),
-    })
+    .insert(insertWithOptional)
     .select('*')
     .single()
 
+  note = firstInsert.data
+  error = firstInsert.error
+
+  // Compatibility fallback for environments missing one or more optional columns
+  if (error && /column .* does not exist/i.test(error.message || '')) {
+    const fallbackInsert = await supabase
+      .from('linksy_provider_notes')
+      .insert(insertBase)
+      .select('*')
+      .single()
+
+    note = fallbackInsert.data
+    error = fallbackInsert.error
+  }
+
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: 'Failed to create note',
+        details: error.message,
+        code: error.code,
+      },
+      { status: 500 }
+    )
   }
 
   // Manually fetch user data to work around schema cache issue
