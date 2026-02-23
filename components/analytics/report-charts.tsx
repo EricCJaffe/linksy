@@ -81,7 +81,9 @@ export function StatusPieChart({ data }: { data: { status: string; count: number
             cx="50%"
             cy="50%"
             labelLine={false}
-            label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
+            label={({ name, percent }: { name?: string; percent?: number }) =>
+              `${name ?? ''} ${((percent ?? 0) * 100).toFixed(0)}%`
+            }
             outerRadius={100}
             dataKey="value"
           >
@@ -128,7 +130,9 @@ export function SourceBreakdownChart({ data }: { data: { source: string; count: 
             cy="50%"
             outerRadius={80}
             dataKey="value"
-            label={({ name, value }) => `${name}: ${value}`}
+            label={({ name, value }: { name?: string; value?: number }) =>
+              `${name ?? ''}: ${value ?? 0}`
+            }
           >
             {chartData.map((_, index) => (
               <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />

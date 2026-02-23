@@ -1,6 +1,6 @@
 'use client'
 
-import { useEditor, EditorContent } from '@tiptap/react'
+import { useEditor, EditorContent, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
 import { TextStyle } from '@tiptap/extension-text-style'
@@ -59,7 +59,7 @@ export function RichTextEditor({ value, onChange, disabled, placeholder }: RichT
     ],
     content: value || '',
     editable: !disabled,
-    onUpdate: ({ editor }) => {
+    onUpdate: ({ editor }: { editor: Editor }) => {
       if (!isUpdatingRef.current) {
         const html = editor.getHTML()
         // Tiptap returns <p></p> for empty content
