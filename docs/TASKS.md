@@ -43,6 +43,7 @@
 - [ ] Bulk referral status update with automatic client/provider email notifications
 - [ ] Auto-reroute option when provider cannot help
 - [ ] Referral cap per client: enforce maximum of 4 referrals (replace current broader limit behavior)
+- [ ] Provider service ZIP coverage field: allow providers/admins to define supported ZIP codes and exclude referrals outside that coverage
 - [ ] Provider phone extension field (UI + DB schema + API support)
 
 ### Provider Portal / Notes Enhancements (Open)
