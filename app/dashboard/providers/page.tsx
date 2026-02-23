@@ -32,6 +32,24 @@ const sectorLabels: Record<string, string> = {
   business: 'Business',
 }
 
+const sectorBadgeClass: Record<string, string> = {
+  nonprofit: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  faith_based: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+  government: 'bg-sky-50 text-sky-700 border-sky-200',
+  business: 'bg-amber-50 text-amber-700 border-amber-200',
+}
+
+const statusBadgeClass: Record<string, string> = {
+  active: 'bg-green-50 text-green-700 border-green-200',
+  paused: 'bg-yellow-50 text-yellow-800 border-yellow-200',
+  inactive: 'bg-slate-100 text-slate-700 border-slate-300',
+}
+
+const referralTypeBadgeClass: Record<string, string> = {
+  standard: 'bg-blue-50 text-blue-700 border-blue-200',
+  contact_directly: 'bg-violet-50 text-violet-700 border-violet-200',
+}
+
 export default function ProvidersPage() {
   const router = useRouter()
   const { data: user } = useCurrentUser()
@@ -137,7 +155,7 @@ export default function ProvidersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Providers</h1>
+          <h1 className="text-3xl font-bold text-primary">Providers</h1>
           {data && (
             <p className="text-sm text-muted-foreground">
               {data.pagination.total} provider{data.pagination.total !== 1 ? 's' : ''}
@@ -177,8 +195,8 @@ export default function ProvidersPage() {
 
       {/* Bulk action bar */}
       {someSelected && isSiteAdmin && (
-        <div className="flex items-center gap-3 rounded-md border bg-muted/50 px-4 py-2">
-          <CheckSquare className="h-4 w-4 text-muted-foreground" />
+        <div className="flex items-center gap-3 rounded-md border border-primary/25 bg-primary/5 px-4 py-2">
+          <CheckSquare className="h-4 w-4 text-primary" />
           <span className="text-sm font-medium">{selectedIds.size} selected</span>
           <div className="flex gap-2 ml-auto">
             <Button
@@ -215,7 +233,7 @@ export default function ProvidersPage() {
         </div>
       )}
 
-      <div className="rounded-md border">
+      <div className="rounded-md border border-primary/20">
         <Table>
           <TableHeader>
             <TableRow>
@@ -273,7 +291,7 @@ export default function ProvidersPage() {
                   )}
                   <TableCell className="font-medium">{provider.name}</TableCell>
                   <TableCell>
-                    <Badge variant="secondary">
+                    <Badge variant="outline" className={sectorBadgeClass[provider.sector] || 'bg-muted text-muted-foreground'}>
                       {sectorLabels[provider.sector] || provider.sector}
                     </Badge>
                   </TableCell>
@@ -285,10 +303,10 @@ export default function ProvidersPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1.5">
-                      <Badge variant={
-                        provider.provider_status === 'active' ? 'default' :
-                        provider.provider_status === 'paused' ? 'secondary' : 'outline'
-                      }>
+                      <Badge
+                        variant="outline"
+                        className={statusBadgeClass[provider.provider_status] || 'bg-muted text-muted-foreground'}
+                      >
                         {provider.provider_status === 'active' ? 'Active' :
                          provider.provider_status === 'paused' ? 'Paused' : 'Inactive'}
                       </Badge>
@@ -300,7 +318,10 @@ export default function ProvidersPage() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="secondary">
+                    <Badge
+                      variant="outline"
+                      className={referralTypeBadgeClass[provider.referral_type] || 'bg-muted text-muted-foreground'}
+                    >
                       {provider.referral_type === 'contact_directly'
                         ? 'Contact Directly'
                         : 'Standard'}
