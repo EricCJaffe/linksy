@@ -35,20 +35,36 @@
 
 ---
 
-### 3. Supabase service role key exposed or RLS bypass issues
+### 3. API requests fail with 403 "Invalid request origin" (CSRF)
 
-**Symptom:** Unauthorized data access, or admin-only operations fail with permission errors.
+**Symptom:** Browser/API clients can log in but POST/PATCH/DELETE calls fail with 403 from middleware.
 
 **Checks:**
-- Confirm `SUPABASE_SERVICE_ROLE_KEY` is NOT prefixed with `NEXT_PUBLIC_` (it must be server-only)
-- Verify it is only used in `lib/supabase/server.ts` → `createServiceClient()`
-- Check that API routes using the service client validate user roles before performing admin operations
-- Review Supabase dashboard > Auth > Policies for any overly permissive RLS rules
+- Confirm `NEXT_PUBLIC_SITE_URL` is set to your active app origin
+- Confirm deploy URL/origin matches `Origin`/`Referer` headers being sent
+- Verify `VERCEL_URL` exists in deployed environment (used by `lib/middleware/csrf.ts` allowed origins)
+- Reproduce against a state-changing route like `POST /api/tickets`
 
 **Fix:**
-- If the key was exposed: rotate it immediately in Supabase dashboard > Settings > API
-- Update the env var in Vercel and redeploy
-- Audit recent database changes for unauthorized modifications
+- Set/correct `NEXT_PUBLIC_SITE_URL` and redeploy
+- Ensure frontend calls API from the same origin (or valid allowed origin)
+- For local dev, use consistent host/port (for example `http://localhost:3000`)
+
+---
+
+### 4. `supabase db push` fails due to legacy migration files
+
+**Symptom:** CLI prompts to apply unexpected migrations (for example legacy `003_*.sql`) or fails with missing relation/function errors from old SQL.
+
+**Checks:**
+- Run `supabase migration list` and compare local vs remote versions.
+- Inspect `supabase/migrations/` for non-timestamp or legacy files that should not run.
+- Look for skipped warnings such as `file name must match pattern "<timestamp>_name.sql"`.
+
+**Fix:**
+- Move legacy/backfill SQL out of `supabase/migrations/` into archive location (for example `supabase/_archive/`).
+- Re-run `supabase db push --include-all --yes`.
+- If migration history is already out of sync, run `supabase migration repair --status applied <versions...>` to align history after verifying remote state.
 
 ---
 

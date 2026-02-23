@@ -16,7 +16,7 @@
 ## Database
 
 - **Migrations path:** `supabase/migrations/`
-- **Config path:** `supabase/config.toml` (if present)
+- **Config path:** no `supabase/config.toml` found in this repo
 - **Type generation:** `npm run types:generate` → outputs to `lib/types/database.ts`
 
 ### Key Migrations
@@ -24,13 +24,18 @@
 | File | Purpose |
 |------|---------|
 | `001_initial_schema.sql` | Base multi-tenant schema (users, tenants, roles, RLS) |
-| `002_setup_admin_user.sql.template` | Seed admin user |
+| `002_setup_admin_user.sql` (+ `.template`) | Seed admin user |
 | `003_add_tenant_contact_fields.sql` | Tenant contact fields |
 | `003_fix_files_table_schema.sql` | Files table fixes |
 | `20240216000005_add_default_referral_handler.sql` | Default referral handler on contacts |
 | `20240216000006_enhance_provider_contacts.sql` | Provider contact invitation workflow |
 | `20240216000007_create_provider_events.sql` | Provider events table and RLS |
 | `20240216000008_linksy_schema_security_performance.sql` | Linksy-specific security and indexes |
+| `20240216000009_add_recurrence_rule_to_events.sql` | Recurrence rule support for events |
+| `20260223120000_create_webhooks_system.sql` | Outbound webhooks tables, RLS, signing metadata |
+| `20260223133000_create_email_templates.sql` | Email template override table/policies |
+| `20260223160000_add_is_pinned_to_provider_notes.sql` | Optional note pinning support (safe if notes table absent) |
+| `20260223181500_remap_and_cleanup_legacy_need_categories.sql` | Remap legacy categories to active AIRS taxonomy, remove unused inactive categories |
 
 ### Extensions Used
 
@@ -47,6 +52,7 @@
 | `linksy_increment_session_usage` | `api/linksy/search/route.ts` | Track token usage per search session (fire-and-forget) |
 | `linksy_increment_host_usage` | `api/linksy/search/route.ts` | Track search/token usage per host provider (fire-and-forget) |
 | `linksy_add_service_clicked` | `api/linksy/interactions/route.ts` | Increment click count on provider for a session (fire-and-forget) |
+| `linksy_check_crisis` | `api/crisis-keywords/test/route.ts` | Crisis keyword detection |
 | *(direct query)* | `api/providers/[id]/analytics/route.ts` | Aggregate `linksy_interactions` by type for provider analytics |
 
 ### Key Tables
@@ -63,6 +69,13 @@
 - `linksy_search_sessions` — AI search session tracking and analytics
 - `linksy_interactions` — click/call/website analytics per session+provider
 - `linksy_crisis_keywords` — crisis detection keywords and emergency resources
+- `linksy_webhooks` / `linksy_webhook_deliveries` — tenant outbound webhook configs and delivery logs
+- `linksy_email_templates` — admin-editable email template overrides
+
+### Migration Hygiene
+
+- The Supabase CLI skips non-timestamp files in `supabase/migrations/` and may still show warnings.
+- Keep backup files (for example `.bak`) and legacy SQL outside `supabase/migrations/` to avoid migration confusion and failed `db push` prompts.
 
 **Base template:**
 - `users` — user profiles with role

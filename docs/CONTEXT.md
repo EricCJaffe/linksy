@@ -45,7 +45,7 @@ provider portal).
 - `/` — landing page
 - `/login`, `/signup`, `/reset-password` — auth pages
 - `/find-help/[slug]` — embeddable community resource widget
-- `/api/public/*` — unauthenticated API endpoints
+- `/api/public/directory` — unauthenticated provider directory endpoint
 
 **Auth routes (under `(auth)/` group):**
 - `/login`, `/signup`, `/reset-password`, `/invite/[token]`
@@ -60,6 +60,11 @@ provider portal).
 - `/dashboard/admin/reports` — analytics and reports
 - `/dashboard/admin/hosts` — host provider management
 - `/dashboard/settings/*` — profile, branding, users, modules
+
+Provider Summary tab state (current):
+- Contact + address editing is consolidated on Summary.
+- `Needs Addressed` uses active taxonomy categories and needs.
+- Edit mode supports multi-select category + needs; view mode groups needs under categories.
 
 ## Auth and Membership
 
@@ -76,17 +81,12 @@ provider portal).
 
 ## Module Flags
 
-Feature flags are environment-variable-driven (`NEXT_PUBLIC_ENABLE_*`):
+Module access is data-driven (not env-driven in current code):
+- Module metadata constants: `lib/constants/modules.ts`
+- Runtime module state: `modules` and `tenant_modules` tables (queried by `lib/hooks/useModules.ts`)
+- Management UI: `/dashboard/settings/modules`
 
-| Flag | Default | Controls |
-|------|---------|----------|
-| `NEXT_PUBLIC_ENABLE_ACTIVITY_FEED` | `true` | Activity feed feature |
-| `NEXT_PUBLIC_ENABLE_FILE_UPLOADS` | `true` | File upload UI |
-| `NEXT_PUBLIC_ENABLE_NOTIFICATIONS` | `true` | In-app notifications |
-| `NEXT_PUBLIC_ENABLE_AUDIT_LOGS` | `true` | Audit log recording |
-
-Module state is also stored in the database and managed via `lib/hooks/useModules.ts`
-and the `/dashboard/settings/modules` page.
+Note: `.env.example` includes `NEXT_PUBLIC_ENABLE_*` flags, but there are no direct runtime reads of those flags in `app/`, `lib/`, or `components/`.
 
 ## Testing
 

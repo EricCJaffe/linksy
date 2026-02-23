@@ -12,13 +12,37 @@
 
 - **Type check:** `npm run type-check` (runs `tsc --noEmit`)
 - **Lint:** `npm run lint` (runs `next lint` — ESLint)
-- **No test runner configured** — no Jest/Vitest/Playwright in the project
+
+## Tests
+
+- **Test (watch):** `npm run test` (Vitest)
+- **Test (single run):** `npm run test:run`
+- **Coverage:** `npm run test:coverage`
+- **Config:** `vitest.config.ts`, `vitest.setup.ts`
+- **Current tests:** `__tests__/lib/utils/csv.test.ts`, `__tests__/lib/utils/error-handler.test.ts`
 
 ## Supabase
 
 - **Generate types:** `npm run types:generate` (runs `npx supabase gen types typescript --project-id $SUPABASE_PROJECT_ID > lib/types/database.ts`)
 - **Migrations path:** `supabase/migrations/`
-- **Config:** `supabase/config.toml` (if present)
+- **Config:** no `supabase/config.toml` is present in this repo
+- **Migration filename rule:** only files matching `<timestamp>_name.sql` are treated as migrations by CLI
+- **Useful migration commands:**
+  - `supabase migration list`
+  - `supabase db push --include-all --yes`
+  - `supabase migration repair --status applied <versions...>` (history alignment only; does not execute SQL)
+
+### Migration Hygiene Notes
+
+- Keep ad-hoc/legacy SQL outside `supabase/migrations/` (for example `supabase/_archive/`) to avoid accidental execution attempts.
+- If an old non-timestamp migration conflicts with current schema, move it out of `supabase/migrations/` before running `supabase db push`.
+
+## Data / Ops Scripts
+
+- **Initialize context docs:** `bash scripts/init-context.sh`
+- **Import migration dataset:** `source .env.local && node scripts/import-migration-data.js`
+- **Import contacts only:** `source .env.local && node scripts/import-contacts-only.js`
+- **Generate embeddings:** `source .env.local && node scripts/generate-embeddings.js`
 
 ## Deploy
 
@@ -38,4 +62,7 @@
 
 ## CI/CD
 
-- No GitHub Actions workflows are currently configured.
+- GitHub Actions: `.github/workflows/ci.yml`
+- Trigger: push + pull_request on `main`
+- Steps: `npm ci` → `npm run type-check` → `npm run lint` → `npm run test:run`
+- CI note: lint step sets placeholder values for `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.

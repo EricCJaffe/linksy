@@ -13,6 +13,7 @@ Reference:
 - `docs/SUPABASE.md` — database, RPC functions, storage
 - `docs/INTEGRATIONS.md` — OpenAI, Google Maps, email, OAuth
 - `docs/TASKS.md` — active TODOs and backlog
+- `docs/RELEASES.md` — latest completed work and next release scope
 - `docs/DECISIONS/` — architecture decision records (ADRs)
 - `docs/ARCHITECTURE.md` — data model, security layers, component structure
 - `docs/API.md` — API route reference (base template + Linksy-specific)
