@@ -38,7 +38,7 @@ import { ContactManagementDialog } from '@/components/providers/contact-manageme
 import { ImageUpload } from '@/components/ui/image-upload'
 import { WidgetPreview } from '@/components/widget/widget-preview'
 import { uploadWidgetLogo, uploadNoteAttachment } from '@/lib/storage/upload'
-import type { Provider, ProviderDetail, NoteType, NoteAttachment, TicketStatus, ProviderContact, ProviderEvent } from '@/lib/types/linksy'
+import type { Provider, ProviderDetail, NoteType, NoteAttachment, TicketStatus, ProviderContact, ProviderEvent, ProviderContactMethod } from '@/lib/types/linksy'
 import { Plus, Copy, ExternalLink, Lock, MapPin, Pencil, Trash2, CheckCircle, Circle, BarChart2, FileText, LayoutList, CalendarDays, RefreshCw, Pin, PinOff } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import type { HostWidgetConfig } from '@/lib/types/linksy'
@@ -60,6 +60,9 @@ const noteTypeColors: Record<NoteType, string> = {
   update: 'bg-yellow-100 text-yellow-800',
   internal: 'bg-gray-100 text-gray-800',
 }
+
+const toAllowChoice = (value: boolean | null | undefined): 'allow' | 'do_not_allow' =>
+  value === false ? 'do_not_allow' : 'allow'
 
 const ticketStatusLabels: Record<TicketStatus, string> = {
   pending: 'Pending',
@@ -392,6 +395,13 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
     hours: provider.hours || (providerAny.hours_of_operation ?? ''),
     referral_type: provider.referral_type,
     referral_instructions: provider.referral_instructions || '',
+    contact_method: (providerAny.contact_method || 'all') as ProviderContactMethod,
+    allow_contact_email: providerAny.allow_contact_email ?? true,
+    allow_follow_email: providerAny.allow_follow_email ?? true,
+    allow_bulk_email: providerAny.allow_bulk_email ?? true,
+    allow_contact_phone: providerAny.allow_contact_phone ?? true,
+    allow_contact_fax: providerAny.allow_contact_fax ?? true,
+    allow_contact_mail: providerAny.allow_contact_mail ?? true,
     project_status: provider.project_status,
     allow_auto_update:
       provider.allow_auto_update ??
@@ -546,6 +556,13 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
     if ('allow_auto_update_description' in providerAny) {
       (payload as any).allow_auto_update_description = formData.allow_auto_update
     }
+    if ('contact_method' in providerAny) (payload as any).contact_method = formData.contact_method
+    if ('allow_contact_email' in providerAny) (payload as any).allow_contact_email = formData.allow_contact_email
+    if ('allow_follow_email' in providerAny) (payload as any).allow_follow_email = formData.allow_follow_email
+    if ('allow_bulk_email' in providerAny) (payload as any).allow_bulk_email = formData.allow_bulk_email
+    if ('allow_contact_phone' in providerAny) (payload as any).allow_contact_phone = formData.allow_contact_phone
+    if ('allow_contact_fax' in providerAny) (payload as any).allow_contact_fax = formData.allow_contact_fax
+    if ('allow_contact_mail' in providerAny) (payload as any).allow_contact_mail = formData.allow_contact_mail
 
     updateProvider.mutate(payload, {
       onSuccess: async () => {
@@ -719,6 +736,13 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
       hours: provider.hours || (providerAny.hours_of_operation ?? ''),
       referral_type: provider.referral_type,
       referral_instructions: provider.referral_instructions || '',
+      contact_method: (providerAny.contact_method || 'all') as ProviderContactMethod,
+      allow_contact_email: providerAny.allow_contact_email ?? true,
+      allow_follow_email: providerAny.allow_follow_email ?? true,
+      allow_bulk_email: providerAny.allow_bulk_email ?? true,
+      allow_contact_phone: providerAny.allow_contact_phone ?? true,
+      allow_contact_fax: providerAny.allow_contact_fax ?? true,
+      allow_contact_mail: providerAny.allow_contact_mail ?? true,
       project_status: provider.project_status,
       allow_auto_update:
         provider.allow_auto_update ??
@@ -1347,6 +1371,151 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
               />
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Contact Preferences</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="contact_method">Contact Method</Label>
+            <Select
+              value={formData.contact_method}
+              onValueChange={(value) =>
+                setFormData({ ...formData, contact_method: value as ProviderContactMethod })
+              }
+              disabled={!isEditing}
+            >
+              <SelectTrigger id="contact_method">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="email">Email</SelectItem>
+                <SelectItem value="phone">Phone</SelectItem>
+                <SelectItem value="fax">Fax</SelectItem>
+                <SelectItem value="mail">Mail</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+            <div className="space-y-2">
+              <Label htmlFor="allow_contact_email">Email</Label>
+              <Select
+                value={toAllowChoice(formData.allow_contact_email)}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, allow_contact_email: value === 'allow' })
+                }
+                disabled={!isEditing}
+              >
+                <SelectTrigger id="allow_contact_email">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="allow">Allow</SelectItem>
+                  <SelectItem value="do_not_allow">Do Not Allow</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="allow_follow_email">Follow Email</Label>
+              <Select
+                value={toAllowChoice(formData.allow_follow_email)}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, allow_follow_email: value === 'allow' })
+                }
+                disabled={!isEditing}
+              >
+                <SelectTrigger id="allow_follow_email">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="allow">Allow</SelectItem>
+                  <SelectItem value="do_not_allow">Do Not Allow</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="allow_bulk_email">Bulk Email</Label>
+              <Select
+                value={toAllowChoice(formData.allow_bulk_email)}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, allow_bulk_email: value === 'allow' })
+                }
+                disabled={!isEditing}
+              >
+                <SelectTrigger id="allow_bulk_email">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="allow">Allow</SelectItem>
+                  <SelectItem value="do_not_allow">Do Not Allow</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="allow_contact_phone">Phone</Label>
+              <Select
+                value={toAllowChoice(formData.allow_contact_phone)}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, allow_contact_phone: value === 'allow' })
+                }
+                disabled={!isEditing}
+              >
+                <SelectTrigger id="allow_contact_phone">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="allow">Allow</SelectItem>
+                  <SelectItem value="do_not_allow">Do Not Allow</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="allow_contact_fax">Fax</Label>
+              <Select
+                value={toAllowChoice(formData.allow_contact_fax)}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, allow_contact_fax: value === 'allow' })
+                }
+                disabled={!isEditing}
+              >
+                <SelectTrigger id="allow_contact_fax">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="allow">Allow</SelectItem>
+                  <SelectItem value="do_not_allow">Do Not Allow</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="allow_contact_mail">Mail</Label>
+              <Select
+                value={toAllowChoice(formData.allow_contact_mail)}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, allow_contact_mail: value === 'allow' })
+                }
+                disabled={!isEditing}
+              >
+                <SelectTrigger id="allow_contact_mail">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="allow">Allow</SelectItem>
+                  <SelectItem value="do_not_allow">Do Not Allow</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </CardContent>
       </Card>
 

@@ -168,6 +168,14 @@ export async function PATCH(
     'description', 'phone', 'email', 'website', 'hours',
     // Compatibility with legacy provider schema names.
     'hours_of_operation',
+    // Contact preferences
+    'contact_method',
+    'allow_contact_email',
+    'allow_follow_email',
+    'allow_bulk_email',
+    'allow_contact_phone',
+    'allow_contact_fax',
+    'allow_contact_mail',
     'social_facebook', 'social_instagram', 'social_twitter', 'social_linkedin',
     'referral_instructions',
   ]

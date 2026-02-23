@@ -35,6 +35,7 @@ export interface CrisisCheckResult {
 export type Sector = 'nonprofit' | 'faith_based' | 'government' | 'business'
 export type ProjectStatus = 'active' | 'sustaining' | 'maintenance' | 'na'
 export type ReferralType = 'standard' | 'contact_directly'
+export type ProviderContactMethod = 'all' | 'email' | 'phone' | 'fax' | 'mail'
 export type TicketStatus =
   | 'pending'
   | 'customer_need_addressed'
@@ -80,6 +81,13 @@ export interface Provider {
   accepting_referrals: boolean
   referral_type: ReferralType
   referral_instructions: string | null
+  contact_method?: ProviderContactMethod
+  allow_contact_email?: boolean
+  allow_follow_email?: boolean
+  allow_bulk_email?: boolean
+  allow_contact_phone?: boolean
+  allow_contact_fax?: boolean
+  allow_contact_mail?: boolean
   project_status: ProjectStatus
   allow_auto_update: boolean
   social_facebook: string | null
