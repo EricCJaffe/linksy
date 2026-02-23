@@ -42,26 +42,19 @@ const ticketStatusLabels: Record<TicketStatus, string> = {
   client_unresponsive: 'Unresponsive',
 }
 
-const ticketStatusVariant: Record<TicketStatus, string> = {
-  pending: 'default',
-  customer_need_addressed: 'outline',
-  wrong_organization_referred: 'outline',
-  outside_of_scope: 'secondary',
-  client_not_eligible: 'secondary',
-  unable_to_assist: 'destructive',
-  client_unresponsive: 'secondary',
-}
-
-const ticketStatusClass: Record<string, string> = {
-  customer_need_addressed: 'border-green-500 text-green-700 bg-green-50',
-  wrong_organization_referred: 'border-orange-500 text-orange-700 bg-orange-50',
+const ticketStatusClass: Record<TicketStatus, string> = {
+  pending: 'border-blue-200 bg-blue-50 text-blue-700',
+  customer_need_addressed: 'border-green-200 bg-green-50 text-green-700',
+  wrong_organization_referred: 'border-orange-200 bg-orange-50 text-orange-700',
+  outside_of_scope: 'border-slate-200 bg-slate-100 text-slate-700',
+  client_not_eligible: 'border-amber-200 bg-amber-50 text-amber-800',
+  unable_to_assist: 'border-red-200 bg-red-50 text-red-700',
+  client_unresponsive: 'border-violet-200 bg-violet-50 text-violet-700',
 }
 
 function StatusBadge({ status }: { status: TicketStatus }) {
-  const variant = ticketStatusVariant[status] as any
-  const extraClass = ticketStatusClass[status] || ''
   return (
-    <Badge variant={variant} className={extraClass}>
+    <Badge variant="outline" className={ticketStatusClass[status]}>
       {ticketStatusLabels[status] || status}
     </Badge>
   )
@@ -164,7 +157,7 @@ export default function TicketsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Referral Management</h1>
+          <h1 className="text-3xl font-bold text-primary">Referral Management</h1>
           {data && (
             <p className="text-sm text-muted-foreground">
               {data.pagination.total} referral{data.pagination.total !== 1 ? 's' : ''}
@@ -196,7 +189,7 @@ export default function TicketsPage() {
                   <p className="text-sm font-medium text-muted-foreground">Public Referrals</p>
                   <p className="text-2xl font-bold">{publicReferralStats.total}</p>
                 </div>
-                <Globe className="h-8 w-8 text-blue-500" />
+                <Globe className="h-8 w-8 text-primary" />
               </div>
             </CardContent>
           </Card>
@@ -295,7 +288,7 @@ export default function TicketsPage() {
         </div>
       )}
 
-      <div className="rounded-md border">
+      <div className="rounded-md border border-primary/20">
         <Table>
           <TableHeader>
             <TableRow>
@@ -355,7 +348,7 @@ export default function TicketsPage() {
                   >
                     <div className="flex items-center gap-2">
                       {ticket.source === 'public_search' && (
-                        <Globe className="h-4 w-4 text-blue-500" />
+                        <Globe className="h-4 w-4 text-primary" />
                       )}
                       {ticket.ticket_number}
                     </div>

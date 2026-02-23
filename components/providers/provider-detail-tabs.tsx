@@ -74,6 +74,16 @@ const ticketStatusLabels: Record<TicketStatus, string> = {
   client_unresponsive: 'Unresponsive',
 }
 
+const ticketStatusBadgeClass: Record<TicketStatus, string> = {
+  pending: 'border-blue-200 bg-blue-50 text-blue-700',
+  customer_need_addressed: 'border-green-200 bg-green-50 text-green-700',
+  wrong_organization_referred: 'border-orange-200 bg-orange-50 text-orange-700',
+  outside_of_scope: 'border-slate-200 bg-slate-100 text-slate-700',
+  client_not_eligible: 'border-amber-200 bg-amber-50 text-amber-800',
+  unable_to_assist: 'border-red-200 bg-red-50 text-red-700',
+  client_unresponsive: 'border-violet-200 bg-violet-50 text-violet-700',
+}
+
 const emptyLocationForm = {
   name: '',
   address_line1: '',
@@ -1886,7 +1896,10 @@ function ReferralsTab({ provider: initialProvider }: { provider: ProviderDetail 
                     >
                       #{ticket.ticket_number}
                     </p>
-                    <Badge variant="outline" className="text-xs">
+                    <Badge
+                      variant="outline"
+                      className={`text-xs ${ticketStatusBadgeClass[ticket.status]}`}
+                    >
                       {ticketStatusLabels[ticket.status]}
                     </Badge>
                   </div>
