@@ -38,7 +38,7 @@ import { ContactManagementDialog } from '@/components/providers/contact-manageme
 import { ImageUpload } from '@/components/ui/image-upload'
 import { WidgetPreview } from '@/components/widget/widget-preview'
 import { uploadWidgetLogo, uploadNoteAttachment } from '@/lib/storage/upload'
-import type { ProviderDetail, NoteType, NoteAttachment, TicketStatus, ProviderContact, ProviderEvent } from '@/lib/types/linksy'
+import type { Provider, ProviderDetail, NoteType, NoteAttachment, TicketStatus, ProviderContact, ProviderEvent } from '@/lib/types/linksy'
 import { Plus, Copy, ExternalLink, Lock, MapPin, Pencil, Trash2, CheckCircle, Circle, BarChart2, FileText, LayoutList, CalendarDays, RefreshCw } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import type { HostWidgetConfig } from '@/lib/types/linksy'
@@ -365,50 +365,293 @@ function LocationsCard({ provider }: { provider: ProviderDetail }) {
 }
 
 function SummaryTab({ provider }: { provider: ProviderDetail }) {
+  const router = useRouter()
   const updateProvider = useUpdateProvider()
+  const createNote = useCreateNote(provider.id)
+  const { data: categories } = useNeedCategories()
   const [isEditing, setIsEditing] = useState(false)
+  const primaryContact = provider.contacts.find((c) => c.is_primary_contact)
+  const primaryLocation = provider.locations.find((l) => l.is_primary) || provider.locations[0] || null
+  const providerAny = provider as any
+  const supportsParentAccount =
+    'parent_account' in providerAny ||
+    'parent_account_name' in providerAny ||
+    'parent_provider_id' in providerAny
+
   const [formData, setFormData] = useState({
+    name: provider.name || '',
     description: provider.description || '',
     phone: provider.phone || '',
     email: provider.email || '',
     website: provider.website || '',
-    hours: provider.hours || '',
+    social_facebook: provider.social_facebook || '',
+    social_instagram: provider.social_instagram || '',
+    social_twitter: provider.social_twitter || '',
+    social_linkedin: provider.social_linkedin || '',
+    hours: provider.hours || (providerAny.hours_of_operation ?? ''),
     referral_type: provider.referral_type,
     referral_instructions: provider.referral_instructions || '',
     project_status: provider.project_status,
-    allow_auto_update: provider.allow_auto_update,
+    allow_auto_update:
+      provider.allow_auto_update ??
+      providerAny.allow_auto_update_description ??
+      false,
     sector: provider.sector,
     is_active: provider.is_active,
     provider_status: provider.provider_status || 'active',
     accepting_referrals: provider.accepting_referrals ?? true,
+    parent_account:
+      providerAny.parent_account ??
+      providerAny.parent_account_name ??
+      providerAny.parent_provider_id ??
+      '',
   })
+  const [selectedPrimaryContactId, setSelectedPrimaryContactId] = useState(primaryContact?.id || '')
+  const [locationForm, setLocationForm] = useState({
+    id: primaryLocation?.id || '',
+    address_line1: primaryLocation?.address_line1 || '',
+    address_line2: primaryLocation?.address_line2 || '',
+    city: primaryLocation?.city || '',
+    state: primaryLocation?.state || '',
+    postal_code: primaryLocation?.postal_code || '',
+    phone: primaryLocation?.phone || '',
+    latitude: primaryLocation?.latitude || null,
+    longitude: primaryLocation?.longitude || null,
+  })
+  const [noteType, setNoteType] = useState<NoteType>('update')
+  const [newTimelineNote, setNewTimelineNote] = useState('')
+  const [selectedNeedId, setSelectedNeedId] = useState('')
+  const [isUpdatingNeeds, setIsUpdatingNeeds] = useState(false)
 
-  const handleSave = () => {
-    updateProvider.mutate(
-      { id: provider.id, ...formData },
-      {
-        onSuccess: () => {
-          setIsEditing(false)
-        },
-      }
+  const providerNeedIds = new Set(provider.provider_needs.map((pn) => pn.need_id))
+  const allNeeds = (categories || []).flatMap((cat) => cat.needs || [])
+  const unassignedNeeds = allNeeds.filter((need) => !providerNeedIds.has(need.id))
+  const timelineNotes = [...provider.notes]
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 10)
+  const mapEmbedUrl =
+    locationForm.latitude && locationForm.longitude
+      ? (() => {
+          const lat = locationForm.latitude as number
+          const lng = locationForm.longitude as number
+          const delta = 0.008
+          return `https://www.openstreetmap.org/export/embed.html?bbox=${lng - delta},${lat - delta},${lng + delta},${lat + delta}&layer=mapnik&marker=${lat},${lng}`
+        })()
+      : null
+
+  const applyPrimaryContact = async () => {
+    const currentlyPrimaryId = primaryContact?.id || ''
+    if (selectedPrimaryContactId === currentlyPrimaryId) return
+
+    const changes = provider.contacts.filter((contact) => {
+      const shouldBePrimary = contact.id === selectedPrimaryContactId
+      return contact.is_primary_contact !== shouldBePrimary
+    })
+
+    await Promise.all(
+      changes.map((contact) =>
+        fetch(`/api/providers/${provider.id}/contacts/${contact.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ is_primary_contact: contact.id === selectedPrimaryContactId }),
+        }).then((res) => {
+          if (!res.ok) throw new Error('Failed to update primary contact')
+          return res
+        })
+      )
     )
+  }
+
+  const applyPrimaryLocation = async () => {
+    const payload = {
+      address_line1: locationForm.address_line1 || null,
+      address_line2: locationForm.address_line2 || null,
+      city: locationForm.city || null,
+      state: locationForm.state || null,
+      postal_code: locationForm.postal_code || null,
+      phone: locationForm.phone || null,
+      is_primary: true,
+    }
+
+    if (
+      !payload.address_line1 &&
+      !payload.address_line2 &&
+      !payload.city &&
+      !payload.state &&
+      !payload.postal_code &&
+      !payload.phone
+    ) {
+      return
+    }
+
+    const endpoint = locationForm.id
+      ? `/api/providers/${provider.id}/locations/${locationForm.id}`
+      : `/api/providers/${provider.id}/locations`
+    const method = locationForm.id ? 'PATCH' : 'POST'
+
+    const res = await fetch(endpoint, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    if (!res.ok) throw new Error('Failed to update address')
+
+    const savedLocation = await res.json()
+    setLocationForm((prev) => ({
+      ...prev,
+      id: savedLocation.id || prev.id,
+      latitude: savedLocation.latitude ?? prev.latitude,
+      longitude: savedLocation.longitude ?? prev.longitude,
+    }))
+  }
+
+  const handleSave = async () => {
+    const payload: { id: string } & Partial<Provider> = {
+      id: provider.id,
+      name: formData.name,
+      description: formData.description,
+      phone: formData.phone,
+      email: formData.email,
+      website: formData.website,
+      social_facebook: formData.social_facebook,
+      social_instagram: formData.social_instagram,
+      social_twitter: formData.social_twitter,
+      social_linkedin: formData.social_linkedin,
+      referral_type: formData.referral_type,
+      referral_instructions: formData.referral_instructions,
+      project_status: formData.project_status,
+      sector: formData.sector,
+      is_active: formData.is_active,
+    }
+
+    if ('hours' in providerAny) payload.hours = formData.hours
+    if ('hours_of_operation' in providerAny) (payload as any).hours_of_operation = formData.hours
+
+    if (supportsParentAccount) {
+      if ('parent_account' in providerAny) (payload as any).parent_account = formData.parent_account || null
+      if ('parent_account_name' in providerAny) (payload as any).parent_account_name = formData.parent_account || null
+      if ('parent_provider_id' in providerAny) (payload as any).parent_provider_id = formData.parent_account || null
+    }
+
+    if ('allow_auto_update' in providerAny) payload.allow_auto_update = formData.allow_auto_update
+    if ('allow_auto_update_description' in providerAny) {
+      (payload as any).allow_auto_update_description = formData.allow_auto_update
+    }
+
+    updateProvider.mutate(payload, {
+      onSuccess: async () => {
+        try {
+          await applyPrimaryContact()
+          await applyPrimaryLocation()
+          setIsEditing(false)
+          router.refresh()
+        } catch (error) {
+          console.error('Failed to save summary related changes:', error)
+          alert('Provider saved, but some contact/address updates failed. Please retry.')
+        }
+      },
+    })
+  }
+
+  const handleAddNeed = async () => {
+    if (!selectedNeedId) return
+    setIsUpdatingNeeds(true)
+    try {
+      const res = await fetch(`/api/providers/${provider.id}/needs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ need_id: selectedNeedId }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Failed to add need')
+      }
+      setSelectedNeedId('')
+      router.refresh()
+    } catch (error) {
+      console.error('Failed to add need:', error)
+      alert('Failed to add need')
+    } finally {
+      setIsUpdatingNeeds(false)
+    }
+  }
+
+  const handleRemoveNeed = async (needId: string) => {
+    setIsUpdatingNeeds(true)
+    try {
+      const res = await fetch(`/api/providers/${provider.id}/needs?need_id=${encodeURIComponent(needId)}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Failed to remove need')
+      }
+      router.refresh()
+    } catch (error) {
+      console.error('Failed to remove need:', error)
+      alert('Failed to remove need')
+    } finally {
+      setIsUpdatingNeeds(false)
+    }
+  }
+
+  const handleAddTimelineNote = async () => {
+    if (!newTimelineNote.trim()) return
+    try {
+      await createNote.mutateAsync({
+        note_type: noteType,
+        content: newTimelineNote.trim(),
+        is_private: false,
+      })
+      setNewTimelineNote('')
+      setNoteType('update')
+      router.refresh()
+    } catch (error) {
+      console.error('Failed to create note:', error)
+      alert('Failed to add note')
+    }
   }
 
   const handleCancel = () => {
     setFormData({
+      name: provider.name || '',
       description: provider.description || '',
       phone: provider.phone || '',
       email: provider.email || '',
       website: provider.website || '',
-      hours: provider.hours || '',
+      social_facebook: provider.social_facebook || '',
+      social_instagram: provider.social_instagram || '',
+      social_twitter: provider.social_twitter || '',
+      social_linkedin: provider.social_linkedin || '',
+      hours: provider.hours || (providerAny.hours_of_operation ?? ''),
       referral_type: provider.referral_type,
       referral_instructions: provider.referral_instructions || '',
       project_status: provider.project_status,
-      allow_auto_update: provider.allow_auto_update,
+      allow_auto_update:
+        provider.allow_auto_update ??
+        providerAny.allow_auto_update_description ??
+        false,
       sector: provider.sector,
       is_active: provider.is_active,
       provider_status: provider.provider_status || 'active',
       accepting_referrals: provider.accepting_referrals ?? true,
+      parent_account:
+        providerAny.parent_account ??
+        providerAny.parent_account_name ??
+        providerAny.parent_provider_id ??
+        '',
+    })
+    setSelectedPrimaryContactId(primaryContact?.id || '')
+    setLocationForm({
+      id: primaryLocation?.id || '',
+      address_line1: primaryLocation?.address_line1 || '',
+      address_line2: primaryLocation?.address_line2 || '',
+      city: primaryLocation?.city || '',
+      state: primaryLocation?.state || '',
+      postal_code: primaryLocation?.postal_code || '',
+      phone: primaryLocation?.phone || '',
+      latitude: primaryLocation?.latitude || null,
+      longitude: primaryLocation?.longitude || null,
     })
     setIsEditing(false)
   }
@@ -450,147 +693,410 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Contact Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone</Label>
-              <Input
-                id="phone"
-                type="tel"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                disabled={!isEditing}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                disabled={!isEditing}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="website">Website</Label>
-              <Input
-                id="website"
-                type="url"
-                value={formData.website}
-                onChange={(e) => setFormData({ ...formData, website: e.target.value })}
-                disabled={!isEditing}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="hours">Hours of Operation</Label>
-              <Input
-                id="hours"
-                type="text"
-                value={formData.hours}
-                onChange={(e) => setFormData({ ...formData, hours: e.target.value })}
-                disabled={!isEditing}
-                placeholder="e.g. Mon-Fri 9am-5pm"
-              />
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Contact Information</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="provider_name">Nonprofit Name</Label>
+                <Input
+                  id="provider_name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  disabled={!isEditing}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="sector">Sector</Label>
+                <Select
+                  value={formData.sector}
+                  onValueChange={(value) => setFormData({ ...formData, sector: value as any })}
+                  disabled={!isEditing}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="nonprofit">Nonprofit</SelectItem>
+                    <SelectItem value="faith_based">Faith Based</SelectItem>
+                    <SelectItem value="government">Government</SelectItem>
+                    <SelectItem value="business">Business</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="project_status">Project Status</Label>
+                <Select
+                  value={formData.project_status}
+                  onValueChange={(value) => setFormData({ ...formData, project_status: value as any })}
+                  disabled={!isEditing}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="sustaining">Sustaining</SelectItem>
+                    <SelectItem value="maintenance">Maintenance</SelectItem>
+                    <SelectItem value="na">N/A</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone Number</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  disabled={!isEditing}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  disabled={!isEditing}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="primary_contact">Primary Contact</Label>
+                <Select
+                  value={selectedPrimaryContactId || '__none'}
+                  onValueChange={(value) =>
+                    setSelectedPrimaryContactId(value === '__none' ? '' : value)
+                  }
+                  disabled={!isEditing || provider.contacts.length === 0}
+                >
+                  <SelectTrigger id="primary_contact">
+                    <SelectValue placeholder="Select primary contact" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none">No primary contact</SelectItem>
+                    {provider.contacts.map((contact) => (
+                      <SelectItem key={contact.id} value={contact.id}>
+                        {contact.user?.full_name || contact.user?.email || 'Unknown contact'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="website">Website</Label>
+                <Input
+                  id="website"
+                  type="url"
+                  value={formData.website}
+                  onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                  disabled={!isEditing}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="social_facebook">Facebook</Label>
+                <Input
+                  id="social_facebook"
+                  type="url"
+                  value={formData.social_facebook}
+                  onChange={(e) => setFormData({ ...formData, social_facebook: e.target.value })}
+                  disabled={!isEditing}
+                  placeholder="https://facebook.com/..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="social_instagram">Instagram</Label>
+                <Input
+                  id="social_instagram"
+                  type="url"
+                  value={formData.social_instagram}
+                  onChange={(e) => setFormData({ ...formData, social_instagram: e.target.value })}
+                  disabled={!isEditing}
+                  placeholder="https://instagram.com/..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="social_twitter">Twitter / X</Label>
+                <Input
+                  id="social_twitter"
+                  type="url"
+                  value={formData.social_twitter}
+                  onChange={(e) => setFormData({ ...formData, social_twitter: e.target.value })}
+                  disabled={!isEditing}
+                  placeholder="https://x.com/..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="social_linkedin">LinkedIn</Label>
+                <Input
+                  id="social_linkedin"
+                  type="url"
+                  value={formData.social_linkedin}
+                  onChange={(e) => setFormData({ ...formData, social_linkedin: e.target.value })}
+                  disabled={!isEditing}
+                  placeholder="https://linkedin.com/company/..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="parent_account">Parent Account</Label>
+                <Input
+                  id="parent_account"
+                  value={formData.parent_account}
+                  onChange={(e) => setFormData({ ...formData, parent_account: e.target.value })}
+                  disabled={!isEditing || !supportsParentAccount}
+                  placeholder={supportsParentAccount ? 'Parent account' : 'Not modeled in current schema'}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="hours">Hours of Operation</Label>
+                <Input
+                  id="hours"
+                  type="text"
+                  value={formData.hours}
+                  onChange={(e) => setFormData({ ...formData, hours: e.target.value })}
+                  disabled={!isEditing}
+                  placeholder="e.g. Mon-Fri 9am-5pm"
+                />
+              </div>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Organization Settings</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="sector">Sector</Label>
-              <Select
-                value={formData.sector}
-                onValueChange={(value) => setFormData({ ...formData, sector: value as any })}
-                disabled={!isEditing}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="nonprofit">Nonprofit</SelectItem>
-                  <SelectItem value="faith_based">Faith Based</SelectItem>
-                  <SelectItem value="government">Government</SelectItem>
-                  <SelectItem value="business">Business</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="project_status">Project Status</Label>
-              <Select
-                value={formData.project_status}
-                onValueChange={(value) => setFormData({ ...formData, project_status: value as any })}
-                disabled={!isEditing}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="sustaining">Sustaining</SelectItem>
-                  <SelectItem value="maintenance">Maintenance</SelectItem>
-                  <SelectItem value="na">N/A</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="provider_status">Provider Status</Label>
-              <Select
-                value={formData.provider_status}
-                onValueChange={(value) => setFormData({
-                  ...formData,
-                  provider_status: value as any,
-                  is_active: value !== 'inactive',
-                })}
-                disabled={!isEditing}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="paused">Paused</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="accepting_referrals"
-                checked={formData.accepting_referrals}
-                onCheckedChange={(checked) =>
-                  setFormData({ ...formData, accepting_referrals: checked as boolean })
-                }
-                disabled={!isEditing}
-              />
-              <label htmlFor="accepting_referrals" className="text-sm font-medium">
-                Accepting Referrals
-              </label>
-            </div>
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="allow_auto_update"
-                checked={formData.allow_auto_update}
-                onCheckedChange={(checked) =>
-                  setFormData({ ...formData, allow_auto_update: checked as boolean })
-                }
-                disabled={!isEditing}
-              />
-              <label htmlFor="allow_auto_update" className="text-sm font-medium">
-                Allow Auto Update
-              </label>
-            </div>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Address & Map</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="address_line1">Address Line 1</Label>
+                <Input
+                  id="address_line1"
+                  value={locationForm.address_line1}
+                  onChange={(e) => setLocationForm({ ...locationForm, address_line1: e.target.value })}
+                  disabled={!isEditing}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="address_line2">Address Line 2</Label>
+                <Input
+                  id="address_line2"
+                  value={locationForm.address_line2}
+                  onChange={(e) => setLocationForm({ ...locationForm, address_line2: e.target.value })}
+                  disabled={!isEditing}
+                />
+              </div>
+              <div className="grid gap-3 md:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="city">City</Label>
+                  <Input
+                    id="city"
+                    value={locationForm.city}
+                    onChange={(e) => setLocationForm({ ...locationForm, city: e.target.value })}
+                    disabled={!isEditing}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="state">State/Province</Label>
+                  <Input
+                    id="state"
+                    value={locationForm.state}
+                    onChange={(e) => setLocationForm({ ...locationForm, state: e.target.value })}
+                    disabled={!isEditing}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="postal_code">Postal Code</Label>
+                  <Input
+                    id="postal_code"
+                    value={locationForm.postal_code}
+                    onChange={(e) => setLocationForm({ ...locationForm, postal_code: e.target.value })}
+                    disabled={!isEditing}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="location_phone">Location Phone</Label>
+                <Input
+                  id="location_phone"
+                  value={locationForm.phone}
+                  onChange={(e) => setLocationForm({ ...locationForm, phone: e.target.value })}
+                  disabled={!isEditing}
+                />
+              </div>
+              {mapEmbedUrl ? (
+                <div className="overflow-hidden rounded-md border">
+                  <iframe
+                    src={mapEmbedUrl}
+                    width="100%"
+                    height="220"
+                    style={{ border: 0, display: 'block' }}
+                    title="Provider location map"
+                    loading="lazy"
+                  />
+                </div>
+              ) : (
+                <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                  Map will appear after a location is geocoded.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Needs Addressed</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {provider.provider_needs.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No needs assigned yet.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {provider.provider_needs.map((providerNeed) => (
+                    <div
+                      key={providerNeed.id}
+                      className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs"
+                    >
+                      <span>{providerNeed.need?.name || providerNeed.need_id}</span>
+                      {isEditing && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveNeed(providerNeed.need_id)}
+                          className="ml-1 text-muted-foreground hover:text-foreground"
+                          disabled={isUpdatingNeeds}
+                          aria-label={`Remove ${providerNeed.need?.name || 'need'}`}
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {isEditing && (
+                <div className="grid gap-2 md:grid-cols-[1fr_auto]">
+                  <Select value={selectedNeedId} onValueChange={setSelectedNeedId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Add a need..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {unassignedNeeds.map((need) => (
+                        <SelectItem key={need.id} value={need.id}>
+                          {need.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleAddNeed}
+                    disabled={!selectedNeedId || isUpdatingNeeds}
+                  >
+                    Add Need
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Timeline / Recent Notes</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="timeline_note">Add Timeline Note</Label>
+                <div className="grid gap-2 md:grid-cols-[170px_1fr_auto]">
+                  <Select value={noteType} onValueChange={(val) => setNoteType(val as NoteType)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="general">General</SelectItem>
+                      <SelectItem value="outreach">Outreach</SelectItem>
+                      <SelectItem value="update">Update</SelectItem>
+                      <SelectItem value="internal">Internal</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Textarea
+                    id="timeline_note"
+                    value={newTimelineNote}
+                    onChange={(e) => setNewTimelineNote(e.target.value)}
+                    rows={2}
+                    placeholder="Add a dated note for this provider..."
+                  />
+                  <Button
+                    type="button"
+                    onClick={handleAddTimelineNote}
+                    disabled={!newTimelineNote.trim() || createNote.isPending}
+                  >
+                    {createNote.isPending ? 'Adding…' : 'Add'}
+                  </Button>
+                </div>
+              </div>
+
+              {timelineNotes.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No recent notes.</p>
+              ) : (
+                <div className="space-y-3">
+                  {timelineNotes.map((note) => (
+                    <div key={note.id} className="rounded-md border p-3">
+                      <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
+                        <Badge variant="outline" className="text-[10px]">
+                          {note.note_type}
+                        </Badge>
+                        <span>{new Date(note.created_at).toLocaleDateString()}</span>
+                        <span>•</span>
+                        <span>{note.user?.full_name || note.user?.email || 'System'}</span>
+                      </div>
+                      <p className="text-sm whitespace-pre-wrap">{note.content}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Organization Settings</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="is_active"
+              checked={formData.is_active}
+              onCheckedChange={(checked) =>
+                setFormData({ ...formData, is_active: checked as boolean })
+              }
+              disabled={!isEditing}
+            />
+            <label htmlFor="is_active" className="text-sm font-medium">
+              Active Provider
+            </label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="allow_auto_update"
+              checked={formData.allow_auto_update}
+              onCheckedChange={(checked) =>
+                setFormData({ ...formData, allow_auto_update: checked as boolean })
+              }
+              disabled={!isEditing}
+            />
+            <label htmlFor="allow_auto_update" className="text-sm font-medium">
+              Allow Auto Update
+            </label>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -630,6 +1136,26 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
       </Card>
 
       <LocationsCard provider={provider} />
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <FileText className="h-4 w-4" />
+            LLM Context Card
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {provider.llm_context_card ? (
+            <pre className="whitespace-pre-wrap rounded-md bg-muted p-3 text-xs font-mono leading-relaxed">
+              {provider.llm_context_card}
+            </pre>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No context card generated yet. Go to Admin Console → Statistics to generate one.
+            </p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
@@ -833,47 +1359,9 @@ function DetailsTab({ provider }: { provider: ProviderDetail }) {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Social Links</CardTitle>
+          <CardTitle className="text-base">Reporting Dashboard</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
-          {[
-            ['Facebook', provider.social_facebook],
-            ['Instagram', provider.social_instagram],
-            ['Twitter', provider.social_twitter],
-            ['LinkedIn', provider.social_linkedin],
-          ].map(([label, url]) => (
-            <div key={label} className="flex justify-between">
-              <span className="text-muted-foreground">{label}</span>
-              {url ? (
-                <a
-                  href={url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline truncate max-w-xs"
-                >
-                  {url}
-                </a>
-              ) : (
-                <span className="text-muted-foreground">-</span>
-              )}
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Legacy Data</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Legacy ID</span>
-            <span>{provider.legacy_id || '-'}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Legacy Referral Count</span>
-            <span>{provider.legacy_referral_count ?? '-'}</span>
-          </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Created</span>
             <span>{new Date(provider.created_at).toLocaleDateString()}</span>
@@ -922,27 +1410,6 @@ function DetailsTab({ provider }: { provider: ProviderDetail }) {
             <span className="text-muted-foreground">Directions Clicks</span>
             <span>{analytics?.allTime.directions_click ?? '—'}</span>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* LLM Context Card Preview */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <FileText className="h-4 w-4" />
-            LLM Context Card
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {provider.llm_context_card ? (
-            <pre className="whitespace-pre-wrap rounded-md bg-muted p-3 text-xs font-mono leading-relaxed">
-              {provider.llm_context_card}
-            </pre>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              No context card generated yet. Go to Admin Console → Statistics to generate one.
-            </p>
-          )}
         </CardContent>
       </Card>
     </div>
@@ -1868,6 +2335,44 @@ function HostSettingsTab({ provider }: { provider: ProviderDetail }) {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <Label>Search Rate Limit (per minute)</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={config.search_rate_limit_per_minute ?? ''}
+                      onChange={(e) =>
+                        setConfig((c) => ({
+                          ...c,
+                          search_rate_limit_per_minute: e.target.value ? Number(e.target.value) : undefined,
+                        }))
+                      }
+                      placeholder="60"
+                    />
+                    <p className="text-xs text-muted-foreground">Per host + IP. Default is 60.</p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Referral Rate Limit (per hour)</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={config.ticket_rate_limit_per_hour ?? ''}
+                      onChange={(e) =>
+                        setConfig((c) => ({
+                          ...c,
+                          ticket_rate_limit_per_hour: e.target.value ? Number(e.target.value) : undefined,
+                        }))
+                      }
+                      placeholder="20"
+                    />
+                    <p className="text-xs text-muted-foreground">Per host + IP. Default is 20.</p>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Limits apply independently per host and per client IP address. They are used for abuse protection and
+                  do not require customer API keys.
+                </p>
               </div>
 
               {/* Preview column */}
@@ -1930,11 +2435,11 @@ export function ProviderDetailTabs({ provider }: ProviderDetailTabsProps) {
     <Tabs defaultValue="summary">
       <TabsList className="flex-wrap">
         <TabsTrigger value="summary">Summary</TabsTrigger>
-        <TabsTrigger value="contacts">Contacts</TabsTrigger>
-        <TabsTrigger value="details">Details</TabsTrigger>
         <TabsTrigger value="tickets">
           Referrals {provider.tickets.length > 0 && `(${provider.tickets.length})`}
         </TabsTrigger>
+        <TabsTrigger value="contacts">Contacts</TabsTrigger>
+        <TabsTrigger value="details">Reporting</TabsTrigger>
         <TabsTrigger value="support">Support Tickets</TabsTrigger>
         <TabsTrigger value="events">Events</TabsTrigger>
         <TabsTrigger value="notes">
