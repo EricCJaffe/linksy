@@ -12,6 +12,8 @@ import { NeedFormDialog } from '@/components/needs/need-form-dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 import {
   ChevronDown,
   ChevronRight,
@@ -33,6 +35,7 @@ export default function NeedsPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogMode, setDialogMode] = useState<'category' | 'need'>('category')
   const [editItem, setEditItem] = useState<any>(null)
+  const [showInactive, setShowInactive] = useState(false)
 
   function toggleCategory(id: string) {
     setExpandedCategories((prev) => {
@@ -117,7 +120,13 @@ export default function NeedsPage() {
     )
   }
 
-  const sorted = [...(categories || [])].sort((a, b) => a.sort_order - b.sort_order)
+  const allCategories = categories || []
+  const activeCategoryCount = allCategories.filter((c) => c.is_active).length
+  const inactiveCategoryCount = allCategories.length - activeCategoryCount
+  const visibleCategories = showInactive
+    ? allCategories
+    : allCategories.filter((c) => c.is_active)
+  const sorted = [...visibleCategories].sort((a, b) => a.sort_order - b.sort_order)
 
   return (
     <div className="space-y-6 p-6">
@@ -129,6 +138,12 @@ export default function NeedsPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <div className="flex items-center gap-2 rounded-md border px-3 py-1.5">
+            <Switch id="show-inactive-categories" checked={showInactive} onCheckedChange={setShowInactive} />
+            <Label htmlFor="show-inactive-categories" className="text-sm">
+              Show inactive
+            </Label>
+          </div>
           <Button variant="outline" onClick={openAddCategory}>
             <Plus className="mr-2 h-4 w-4" />
             Add Category
@@ -139,6 +154,12 @@ export default function NeedsPage() {
           </Button>
         </div>
       </div>
+
+      {!showInactive && inactiveCategoryCount > 0 && (
+        <p className="text-sm text-muted-foreground">
+          Showing {activeCategoryCount} active categories. {inactiveCategoryCount} inactive categories are hidden.
+        </p>
+      )}
 
       <div className="space-y-3">
         {sorted.map((cat, idx) => {
