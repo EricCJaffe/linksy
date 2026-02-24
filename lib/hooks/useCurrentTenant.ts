@@ -56,8 +56,9 @@ export function useCurrentTenant() {
       }) as { data: any, error: any }
 
       if (membershipError) {
-        logger.warn('Error fetching tenant memberships (non-critical for provider users)', membershipError as Error, {
-          user_id: user.id
+        logger.warn('Error fetching tenant memberships (non-critical for provider users)', {
+          user_id: user.id,
+          error: membershipError.message
         })
         // Return null instead of throwing - provider users don't need tenants
         return null
