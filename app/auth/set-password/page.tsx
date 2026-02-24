@@ -24,42 +24,48 @@ function SetPasswordForm() {
     console.log('[SET-PASSWORD] Page loaded')
     console.log('[SET-PASSWORD] Current URL:', window.location.href)
     console.log('[SET-PASSWORD] Hash:', window.location.hash)
-    console.log('[SET-PASSWORD] Search params:', window.location.search)
 
-    // Supabase automatically processes hash fragments and establishes session
-    // We need to wait a moment for this to complete
-    const timer = setTimeout(async () => {
-      console.log('[SET-PASSWORD] Checking user session after 1s delay...')
-      try {
-        const { data: { user }, error } = await supabase.auth.getUser()
+    // Manually extract tokens from hash and set session
+    const hash = window.location.hash
+    const params = new URLSearchParams(hash.substring(1)) // Remove # and parse
 
-        console.log('[SET-PASSWORD] User:', user)
-        console.log('[SET-PASSWORD] Error:', error)
+    const accessToken = params.get('access_token')
+    const refreshToken = params.get('refresh_token')
+
+    console.log('[SET-PASSWORD] Access token found:', !!accessToken)
+    console.log('[SET-PASSWORD] Refresh token found:', !!refreshToken)
+
+    if (accessToken && refreshToken) {
+      console.log('[SET-PASSWORD] Setting session manually...')
+
+      supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      }).then(({ data, error }) => {
+        console.log('[SET-PASSWORD] setSession result:', { data, error })
 
         if (error) {
-          console.error('[SET-PASSWORD] Auth error:', error)
+          console.error('[SET-PASSWORD] Failed to set session:', error)
           setError('Session expired. Please request a new invitation.')
           setVerifying(false)
           return
         }
 
-        if (!user) {
-          console.error('[SET-PASSWORD] No user found')
+        if (data.user) {
+          console.log('[SET-PASSWORD] Session established! User:', data.user.email)
+          console.log('[SET-PASSWORD] User metadata:', data.user.user_metadata)
+          setVerifying(false)
+        } else {
+          console.error('[SET-PASSWORD] No user in session')
           setError('Session expired. Please request a new invitation.')
           setVerifying(false)
-          return
         }
-
-        console.log('[SET-PASSWORD] User verified:', user.email, 'Metadata:', user.user_metadata)
-        setVerifying(false)
-      } catch (err) {
-        console.error('[SET-PASSWORD] Exception:', err)
-        setError('Failed to verify session')
-        setVerifying(false)
-      }
-    }, 2000) // Increased to 2 seconds
-
-    return () => clearTimeout(timer)
+      })
+    } else {
+      console.error('[SET-PASSWORD] No tokens in hash!')
+      setError('Session expired. Please request a new invitation.')
+      setVerifying(false)
+    }
   }, [supabase])
 
   const handleSubmit = async (e: React.FormEvent) => {
