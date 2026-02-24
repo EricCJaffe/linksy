@@ -141,40 +141,40 @@ export async function GET(
 
   // Calculate aggregated totals
   const totalReferrals = tickets.length
-  const openReferrals = tickets.filter((t) => t.status === 'pending').length
-  const closedReferrals = tickets.filter((t) => t.status !== 'pending').length
+  const openReferrals = tickets.filter((t: any) => t.status === 'pending').length
+  const closedReferrals = tickets.filter((t: any) => t.status !== 'pending').length
 
   const profileViews = interactions.filter(
-    (i) => i.interaction_type === 'profile_view'
+    (i: any) => i.interaction_type === 'profile_view'
   ).length
   const phoneClicks = interactions.filter(
-    (i) => i.interaction_type === 'phone_click'
+    (i: any) => i.interaction_type === 'phone_click'
   ).length
   const websiteClicks = interactions.filter(
-    (i) => i.interaction_type === 'website_click'
+    (i: any) => i.interaction_type === 'website_click'
   ).length
   const directionsClicks = interactions.filter(
-    (i) => i.interaction_type === 'directions_click'
+    (i: any) => i.interaction_type === 'directions_click'
   ).length
   const totalInteractions = interactions.length
 
   const totalEvents = events.length
   const upcomingEvents = events.filter(
-    (e) => e.status === 'approved' && new Date(e.event_date) > new Date()
+    (e: any) => e.status === 'approved' && new Date(e.event_date) > new Date()
   ).length
 
   const totalNotes = notes.length
   const totalLocations = locations.length
 
   // Calculate per-child stats
-  const childrenStats = childrenList.map((child) => {
-    const childTickets = tickets.filter((t) => t.provider_id === child.id)
+  const childrenStats = childrenList.map((child: any) => {
+    const childTickets = tickets.filter((t: any) => t.provider_id === child.id)
     const childInteractions = interactions.filter(
-      (i) => i.provider_id === child.id
+      (i: any) => i.provider_id === child.id
     )
-    const childEvents = events.filter((e) => e.provider_id === child.id)
-    const childNotes = notes.filter((n) => n.provider_id === child.id)
-    const childLocations = locations.filter((l) => l.provider_id === child.id)
+    const childEvents = events.filter((e: any) => e.provider_id === child.id)
+    const childNotes = notes.filter((n: any) => n.provider_id === child.id)
+    const childLocations = locations.filter((l: any) => l.provider_id === child.id)
 
     return {
       provider_id: child.id,
@@ -182,21 +182,21 @@ export async function GET(
       provider_status: child.provider_status,
       is_active: child.is_active,
       referral_count: childTickets.length,
-      open_referrals: childTickets.filter((t) => t.status === 'pending').length,
-      closed_referrals: childTickets.filter((t) => t.status !== 'pending')
+      open_referrals: childTickets.filter((t: any) => t.status === 'pending').length,
+      closed_referrals: childTickets.filter((t: any) => t.status !== 'pending')
         .length,
       interaction_count: childInteractions.length,
       profile_views: childInteractions.filter(
-        (i) => i.interaction_type === 'profile_view'
+        (i: any) => i.interaction_type === 'profile_view'
       ).length,
       phone_clicks: childInteractions.filter(
-        (i) => i.interaction_type === 'phone_click'
+        (i: any) => i.interaction_type === 'phone_click'
       ).length,
       website_clicks: childInteractions.filter(
-        (i) => i.interaction_type === 'website_click'
+        (i: any) => i.interaction_type === 'website_click'
       ).length,
       directions_clicks: childInteractions.filter(
-        (i) => i.interaction_type === 'directions_click'
+        (i: any) => i.interaction_type === 'directions_click'
       ).length,
       event_count: childEvents.length,
       note_count: childNotes.length,
@@ -205,13 +205,13 @@ export async function GET(
   })
 
   // Parent stats (for the parent itself, not including children)
-  const parentTickets = tickets.filter((t) => t.provider_id === providerId)
+  const parentTickets = tickets.filter((t: any) => t.provider_id === providerId)
   const parentInteractions = interactions.filter(
-    (i) => i.provider_id === providerId
+    (i: any) => i.provider_id === providerId
   )
-  const parentEvents = events.filter((e) => e.provider_id === providerId)
-  const parentNotes = notes.filter((n) => n.provider_id === providerId)
-  const parentLocations = locations.filter((l) => l.provider_id === providerId)
+  const parentEvents = events.filter((e: any) => e.provider_id === providerId)
+  const parentNotes = notes.filter((n: any) => n.provider_id === providerId)
+  const parentLocations = locations.filter((l: any) => l.provider_id === providerId)
 
   const parentStats = {
     provider_id: providerId,
@@ -219,21 +219,21 @@ export async function GET(
     provider_status: (provider as any).provider_status,
     is_active: (provider as any).is_active,
     referral_count: parentTickets.length,
-    open_referrals: parentTickets.filter((t) => t.status === 'pending').length,
-    closed_referrals: parentTickets.filter((t) => t.status !== 'pending')
+    open_referrals: parentTickets.filter((t: any) => t.status === 'pending').length,
+    closed_referrals: parentTickets.filter((t: any) => t.status !== 'pending')
       .length,
     interaction_count: parentInteractions.length,
     profile_views: parentInteractions.filter(
-      (i) => i.interaction_type === 'profile_view'
+      (i: any) => i.interaction_type === 'profile_view'
     ).length,
     phone_clicks: parentInteractions.filter(
-      (i) => i.interaction_type === 'phone_click'
+      (i: any) => i.interaction_type === 'phone_click'
     ).length,
     website_clicks: parentInteractions.filter(
-      (i) => i.interaction_type === 'website_click'
+      (i: any) => i.interaction_type === 'website_click'
     ).length,
     directions_clicks: parentInteractions.filter(
-      (i) => i.interaction_type === 'directions_click'
+      (i: any) => i.interaction_type === 'directions_click'
     ).length,
     event_count: parentEvents.length,
     note_count: parentNotes.length,

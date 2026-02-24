@@ -13,12 +13,12 @@ export async function POST(
 ) {
   try {
     const ticketId = params.id
-    const authResult = await requireAuth(req)
-    if (authResult instanceof NextResponse) return authResult
-    const { user } = authResult
+    const { data: authData, error: authError } = await requireAuth()
+    if (authError) return authError
+    const { user, isSiteAdmin } = authData
 
-    const supabase = createClient()
-    const serviceClient = createServiceClient()
+    const supabase = await createClient()
+    const serviceClient = await createServiceClient()
 
     // Parse request body
     const body: AssignRequest = await req.json()
@@ -57,7 +57,7 @@ export async function POST(
     }
 
     // Authorization: Check if user is provider admin or site admin
-    let isAuthorized = user.is_site_admin
+    let isAuthorized = isSiteAdmin
 
     if (!isAuthorized) {
       const { data: contact } = await supabase
@@ -125,7 +125,7 @@ export async function POST(
       p_ticket_id: ticketId,
       p_event_type: 'assigned',
       p_actor_id: user.id,
-      p_actor_type: user.is_site_admin ? 'site_admin' : 'provider_admin',
+      p_actor_type: isSiteAdmin ? 'site_admin' : 'provider_admin',
       p_previous_state: previousState,
       p_new_state: {
         assigned_to: assigned_to_user_id,
@@ -137,11 +137,21 @@ export async function POST(
 
     // Send notification to new assignee
     void (async () => {
+      // Fetch user's full_name for notification
+      const { data: userProfile } = await supabase
+        .from('users')
+        .select('full_name')
+        .eq('id', user.id)
+        .single()
+
       const { sendTicketAssignedInternallyNotification } = await import('@/lib/utils/email')
       await sendTicketAssignedInternallyNotification({
         ticket: updatedTicket,
         assignee_user_id: assigned_to_user_id,
-        assignedBy: user,
+        assignedBy: {
+          email: user.email,
+          full_name: userProfile?.full_name || null,
+        },
         notes,
       })
     })()

@@ -1,7 +1,22 @@
 'use client'
 
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { ProviderContact } from '@/lib/types/linksy'
+
+export function useProviderContacts(providerId: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: ['provider-contacts', providerId],
+    queryFn: async () => {
+      const res = await fetch(`/api/providers/${providerId}/contacts`)
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || 'Failed to fetch contacts')
+      }
+      return res.json() as Promise<ProviderContact[]>
+    },
+    enabled: options?.enabled ?? !!providerId,
+  })
+}
 
 export function useCreateProviderContact() {
   const queryClient = useQueryClient()

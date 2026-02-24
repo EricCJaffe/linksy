@@ -64,7 +64,7 @@ export function CustomFormBuilder({ hostId }: CustomFormBuilderProps) {
   const [editingField, setEditingField] = useState<HostCustomField | null>(null)
   const [formData, setFormData] = useState({
     field_label: '',
-    field_type: 'text' as const,
+    field_type: 'text' as 'text' | 'textarea' | 'email' | 'phone' | 'date' | 'select' | 'checkbox',
     placeholder: '',
     help_text: '',
     is_required: false,

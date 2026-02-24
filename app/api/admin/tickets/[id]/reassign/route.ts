@@ -16,12 +16,12 @@ export async function POST(
 ) {
   try {
     const ticketId = params.id
-    const authResult = await requireSiteAdmin(req)
-    if (authResult instanceof NextResponse) return authResult
-    const { user } = authResult
+    const { data, error } = await requireSiteAdmin()
+    if (error) return error
+    const { user } = data
 
-    const supabase = createClient()
-    const serviceClient = createServiceClient()
+    const supabase = await createClient()
+    const serviceClient = await createServiceClient()
 
     // Parse request body
     const body: ReassignRequest = await req.json()
@@ -163,11 +163,21 @@ export async function POST(
     // Send notification to new assignee
     if (assigneeUserId) {
       void (async () => {
+        // Fetch user's full_name for notification
+        const { data: userProfile } = await supabase
+          .from('users')
+          .select('full_name')
+          .eq('id', user.id)
+          .single()
+
         const { sendTicketReassignedNotification } = await import('@/lib/utils/email')
         await sendTicketReassignedNotification({
           ticket: updatedTicket,
           assignee_user_id: assigneeUserId,
-          reassignedBy: user,
+          reassignedBy: {
+            email: user.email,
+            full_name: userProfile?.full_name || null,
+          },
           reason: reason || 'admin_reassignment',
           notes,
         })

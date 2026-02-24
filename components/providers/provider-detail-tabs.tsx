@@ -70,6 +70,7 @@ const noteTypeColors: Record<NoteType, string> = {
   outreach: 'bg-green-100 text-green-800',
   update: 'bg-yellow-100 text-yellow-800',
   internal: 'bg-gray-100 text-gray-800',
+  call_log: 'bg-purple-100 text-purple-800',
 }
 
 const taxonomyCategoryColorClasses = [

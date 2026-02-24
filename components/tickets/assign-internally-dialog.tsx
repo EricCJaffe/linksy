@@ -52,7 +52,7 @@ export function AssignInternallyDialog({
     enabled: open && !!providerId,
   })
 
-  const contacts = contactsData?.contacts || []
+  const contacts = contactsData || []
 
   const handleSubmit = async () => {
     if (!selectedContactUserId) {

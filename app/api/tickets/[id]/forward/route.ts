@@ -16,12 +16,12 @@ export async function POST(
 ) {
   try {
     const ticketId = params.id
-    const authResult = await requireAuth(req)
-    if (authResult instanceof NextResponse) return authResult
-    const { user } = authResult
+    const { data: authData, error: authError } = await requireAuth()
+    if (authError) return authError
+    const { user, isSiteAdmin } = authData
 
-    const supabase = createClient()
-    const serviceClient = createServiceClient()
+    const supabase = await createClient()
+    const serviceClient = await createServiceClient()
 
     // Parse request body
     const body: ForwardRequest = await req.json()
@@ -60,7 +60,7 @@ export async function POST(
     }
 
     // Authorization: Check if user is a contact for this ticket's provider
-    if (!user.is_site_admin) {
+    if (!isSiteAdmin) {
       const { data: contact } = await supabase
         .from('linksy_provider_contacts')
         .select('id')
@@ -118,7 +118,7 @@ export async function POST(
         p_ticket_id: ticketId,
         p_event_type: 'forwarded',
         p_actor_id: user.id,
-        p_actor_type: user.is_site_admin ? 'site_admin' : 'provider_contact',
+        p_actor_type: isSiteAdmin ? 'site_admin' : 'provider_contact',
         p_previous_state: previousState,
         p_new_state: {
           provider_id: null,
@@ -132,10 +132,20 @@ export async function POST(
 
       // Send notification to site admins
       void (async () => {
+        // Fetch user's full_name for notification
+        const { data: userProfile } = await supabase
+          .from('users')
+          .select('full_name')
+          .eq('id', user.id)
+          .single()
+
         const { sendTicketForwardedToAdminNotification } = await import('@/lib/utils/email')
         await sendTicketForwardedToAdminNotification({
           ticket: updatedTicket,
-          forwardedBy: user,
+          forwardedBy: {
+            email: user.email,
+            full_name: userProfile?.full_name || null,
+          },
           reason,
           notes,
         })
@@ -202,7 +212,7 @@ export async function POST(
         p_ticket_id: ticketId,
         p_event_type: 'forwarded',
         p_actor_id: user.id,
-        p_actor_type: user.is_site_admin ? 'site_admin' : 'provider_contact',
+        p_actor_type: isSiteAdmin ? 'site_admin' : 'provider_contact',
         p_previous_state: previousState,
         p_new_state: {
           provider_id: target_provider_id,
@@ -219,11 +229,21 @@ export async function POST(
       // Send notification to new assignee
       if (defaultHandler?.user_id) {
         void (async () => {
+          // Fetch user's full_name for notification
+          const { data: userProfile } = await supabase
+            .from('users')
+            .select('full_name')
+            .eq('id', user.id)
+            .single()
+
           const { sendTicketReassignedNotification } = await import('@/lib/utils/email')
           await sendTicketReassignedNotification({
             ticket: updatedTicket,
             assignee_user_id: defaultHandler.user_id,
-            reassignedBy: user,
+            reassignedBy: {
+              email: user.email,
+              full_name: userProfile?.full_name || null,
+            },
             reason,
             notes,
           })

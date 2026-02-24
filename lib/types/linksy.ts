@@ -401,9 +401,13 @@ export interface ParentOrgStats {
   total_children: number
   aggregated_metrics: {
     total_referrals: number
+    open_referrals: number
+    closed_referrals: number
     total_interactions: number
     total_events: number
+    upcoming_events: number
     total_notes: number
+    total_locations: number
     combined_analytics: {
       profile_views: number
       phone_clicks: number
@@ -411,12 +415,23 @@ export interface ParentOrgStats {
       directions_clicks: number
     }
   }
+  parent_stats: any
   children_stats: Array<{
     provider_id: string
     provider_name: string
-    referral_count: number
-    interaction_count: number
     provider_status: ProviderStatusEnum
+    is_active: boolean
+    referral_count: number
+    open_referrals: number
+    closed_referrals: number
+    interaction_count: number
+    profile_views: number
+    phone_clicks: number
+    website_clicks: number
+    directions_clicks: number
+    event_count: number
+    note_count: number
+    location_count: number
   }>
 }
 

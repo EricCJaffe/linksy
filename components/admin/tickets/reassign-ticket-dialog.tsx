@@ -63,7 +63,7 @@ export function ReassignTicketDialog({
     enabled: !!targetProviderId,
   })
 
-  const contacts = contactsData?.contacts || []
+  const contacts = contactsData || []
   const selectedProvider = providersData?.providers.find((p) => p.id === targetProviderId)
 
   const handleSubmit = async () => {

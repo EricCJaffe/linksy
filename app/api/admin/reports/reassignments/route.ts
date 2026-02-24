@@ -5,10 +5,10 @@ import type { ReassignmentStats, ReassignmentReason } from '@/lib/types/linksy'
 
 export async function GET(req: NextRequest) {
   try {
-    const authResult = await requireSiteAdmin(req)
-    if (authResult instanceof NextResponse) return authResult
+    const { error } = await requireSiteAdmin()
+    if (error) return error
 
-    const supabase = createClient()
+    const supabase = await createClient()
 
     // Get query parameters for date filtering
     const searchParams = req.nextUrl.searchParams

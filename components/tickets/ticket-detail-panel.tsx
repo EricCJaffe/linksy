@@ -140,7 +140,7 @@ export function TicketDetailPanel({ ticket }: TicketDetailPanelProps) {
             )}
 
             {/* Assign internally - available to provider admins */}
-            {ticket.provider_id && currentUser?.is_site_admin && (
+            {ticket.provider_id && (currentUser?.profile as any)?.is_site_admin && (
               <Button
                 variant="outline"
                 size="sm"

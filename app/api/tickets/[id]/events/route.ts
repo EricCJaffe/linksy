@@ -8,11 +8,11 @@ export async function GET(
 ) {
   try {
     const ticketId = params.id
-    const authResult = await requireAuth(req)
-    if (authResult instanceof NextResponse) return authResult
-    const { user } = authResult
+    const { data: authData, error: authError } = await requireAuth()
+    if (authError) return authError
+    const { user, isSiteAdmin } = authData
 
-    const supabase = createClient()
+    const supabase = await createClient()
 
     // Fetch ticket to verify access
     const { data: ticket, error: ticketError } = await supabase
@@ -31,7 +31,7 @@ export async function GET(
     // Authorization: Check if user has access to this ticket
     // Site admins see all events
     // Provider contacts see events for their tickets
-    let hasAccess = user.is_site_admin
+    let hasAccess = isSiteAdmin
 
     if (!hasAccess && ticket.provider_id) {
       const { data: contact } = await supabase

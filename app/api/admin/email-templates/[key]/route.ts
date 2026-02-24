@@ -5,12 +5,12 @@ import { isEmailTemplateKey } from '@/lib/email/template-registry'
 
 export async function DELETE(
   _request: Request,
-  { params }: { params: { templateKey: string } }
+  { params }: { params: { key: string } }
 ) {
   const { error } = await requireSiteAdmin()
   if (error) return error
 
-  if (!isEmailTemplateKey(params.templateKey)) {
+  if (!isEmailTemplateKey(params.key)) {
     return NextResponse.json({ error: 'Invalid template key' }, { status: 400 })
   }
 
@@ -18,7 +18,7 @@ export async function DELETE(
   const { error: deleteError } = await supabase
     .from('linksy_email_templates')
     .delete()
-    .eq('template_key', params.templateKey)
+    .eq('template_key', params.key)
 
   if (deleteError) {
     return NextResponse.json({ error: deleteError.message }, { status: 500 })
