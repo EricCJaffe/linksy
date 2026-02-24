@@ -83,7 +83,7 @@ export async function GET(
       .from('linksy_provider_contacts')
       .select('*')
       .eq('provider_id', id)
-      .in('status', ['active', 'invited'])
+      .in('status', ['active', 'invited', 'pending'])
       .order('is_primary_contact', { ascending: false }),
     supabase
       .from('linksy_provider_events')
