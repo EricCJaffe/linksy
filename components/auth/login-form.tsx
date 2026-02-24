@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -51,6 +51,23 @@ export function LoginForm() {
   } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
   })
+
+  // Check if user landed here from invite link (tokens in hash fragment)
+  useEffect(() => {
+    const supabase = createClient()
+
+    async function checkInvitedUser() {
+      // Supabase client automatically processes hash fragments and establishes session
+      const { data: { user } } = await supabase.auth.getUser()
+
+      if (user && user.user_metadata?.contact_id) {
+        // User is logged in from invite - redirect to password setup
+        router.push('/auth/set-password?from=invite')
+      }
+    }
+
+    checkInvitedUser()
+  }, [router])
 
   const onSubmit = async (data: LoginInput) => {
     setIsLoading(true)
