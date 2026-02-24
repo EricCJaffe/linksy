@@ -6,8 +6,8 @@ import { Providers } from './providers'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: process.env.NEXT_PUBLIC_APP_NAME || 'SaaS Template',
-  description: 'A multi-tenant SaaS application',
+  title: process.env.NEXT_PUBLIC_APP_NAME || 'Linksy',
+  description: 'Community resource referral and management platform',
 }
 
 export default function RootLayout({
