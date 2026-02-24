@@ -21,26 +21,43 @@ function SetPasswordForm() {
   const supabase = createClient()
 
   useEffect(() => {
+    console.log('[SET-PASSWORD] Page loaded')
+    console.log('[SET-PASSWORD] Current URL:', window.location.href)
+    console.log('[SET-PASSWORD] Hash:', window.location.hash)
+    console.log('[SET-PASSWORD] Search params:', window.location.search)
+
     // Supabase automatically processes hash fragments and establishes session
     // We need to wait a moment for this to complete
     const timer = setTimeout(async () => {
+      console.log('[SET-PASSWORD] Checking user session after 1s delay...')
       try {
         const { data: { user }, error } = await supabase.auth.getUser()
 
-        if (error || !user) {
+        console.log('[SET-PASSWORD] User:', user)
+        console.log('[SET-PASSWORD] Error:', error)
+
+        if (error) {
+          console.error('[SET-PASSWORD] Auth error:', error)
           setError('Session expired. Please request a new invitation.')
           setVerifying(false)
           return
         }
 
-        console.log('User verified:', user.email)
+        if (!user) {
+          console.error('[SET-PASSWORD] No user found')
+          setError('Session expired. Please request a new invitation.')
+          setVerifying(false)
+          return
+        }
+
+        console.log('[SET-PASSWORD] User verified:', user.email, 'Metadata:', user.user_metadata)
         setVerifying(false)
       } catch (err) {
-        console.error('Session check error:', err)
+        console.error('[SET-PASSWORD] Exception:', err)
         setError('Failed to verify session')
         setVerifying(false)
       }
-    }, 1000) // Wait 1 second for Supabase to process hash
+    }, 2000) // Increased to 2 seconds
 
     return () => clearTimeout(timer)
   }, [supabase])

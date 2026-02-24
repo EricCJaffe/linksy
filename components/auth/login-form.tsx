@@ -55,14 +55,19 @@ export function LoginForm() {
   // IMMEDIATELY check hash for invite/recovery links and redirect
   useEffect(() => {
     const hash = window.location.hash
+    console.log('[LOGIN] Current hash:', hash)
+    console.log('[LOGIN] Full URL:', window.location.href)
 
     // If hash contains type=invite or type=recovery, redirect to set-password immediately
     if (hash.includes('type=invite') || hash.includes('type=recovery')) {
-      console.log('Detected invite/recovery in hash, redirecting...')
+      const targetUrl = '/auth/set-password' + hash
+      console.log('[LOGIN] Detected invite/recovery, redirecting to:', targetUrl)
       // Preserve the entire hash for Supabase to process
-      window.location.href = '/auth/set-password' + hash
+      window.location.href = targetUrl
       return
     }
+
+    console.log('[LOGIN] No invite/recovery in hash, normal login flow')
 
     // Otherwise, check for authenticated session
     const supabase = createClient()
