@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { Sidebar } from '@/components/layout/sidebar'
 import { Header } from '@/components/layout/header'
 import { MobileNav } from '@/components/layout/mobile-nav'
@@ -15,6 +16,19 @@ export default function DashboardLayout({
 }) {
   const { data: user, isLoading: isUserLoading, error: userError } = useCurrentUser()
   const { data: tenantData, isLoading: isTenantLoading, error: tenantError } = useCurrentTenant()
+  const [forceShow, setForceShow] = useState(false)
+
+  // Emergency timeout: show dashboard after 5 seconds even if still loading
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (isUserLoading || isTenantLoading) {
+        console.warn('[Dashboard] Loading timeout - forcing dashboard to show')
+        setForceShow(true)
+      }
+    }, 5000)
+
+    return () => clearTimeout(timeout)
+  }, [isUserLoading, isTenantLoading])
 
   // Show error state if user hook failed (critical)
   if (userError) {
@@ -47,13 +61,14 @@ export default function DashboardLayout({
 
   // Only show loading state while fetching user data
   // Tenant data is optional (provider-only users don't have tenants)
-  if (isUserLoading) {
+  // Force show dashboard after timeout to prevent infinite loading
+  if (isUserLoading && !forceShow) {
     return <DashboardLoading />
   }
 
   // If no user, the middleware should redirect to login
-  // but show loading just in case
-  if (!user) {
+  // but show loading just in case (unless we hit the timeout)
+  if (!user && !forceShow) {
     return <DashboardLoading />
   }
 
