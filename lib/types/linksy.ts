@@ -182,7 +182,7 @@ export interface ProviderNote {
 }
 
 export type ProviderContactRole = 'admin' | 'user'
-export type ProviderContactStatus = 'active' | 'archived' | 'invited'
+export type ProviderContactStatus = 'active' | 'archived' | 'invited' | 'pending'
 
 export interface ProviderContact {
   id: string
