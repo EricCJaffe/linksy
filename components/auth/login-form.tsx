@@ -52,22 +52,29 @@ export function LoginForm() {
     resolver: zodResolver(loginSchema),
   })
 
-  // Check if user landed here from invite link (tokens in hash fragment)
+  // IMMEDIATELY check hash for invite/recovery links and redirect
   useEffect(() => {
+    const hash = window.location.hash
+
+    // If hash contains type=invite or type=recovery, redirect to set-password immediately
+    if (hash.includes('type=invite') || hash.includes('type=recovery')) {
+      console.log('Detected invite/recovery in hash, redirecting...')
+      // Preserve the entire hash for Supabase to process
+      window.location.href = '/auth/set-password' + hash
+      return
+    }
+
+    // Otherwise, check for authenticated session
     const supabase = createClient()
 
-    // Listen for auth state changes (when Supabase processes hash tokens)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user && session.user.user_metadata?.contact_id) {
-        // User logged in from invite - redirect to password setup
         router.push('/auth/set-password?from=invite')
       } else if (session?.user) {
-        // Regular user logged in - go to dashboard
         router.push(redirectTo)
       }
     })
 
-    // Also check immediately in case session already exists
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user && user.user_metadata?.contact_id) {
         router.push('/auth/set-password?from=invite')

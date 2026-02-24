@@ -21,8 +21,9 @@ function SetPasswordForm() {
   const supabase = createClient()
 
   useEffect(() => {
-    // Check if user is logged in (they clicked the magic link)
-    async function checkUser() {
+    // Supabase automatically processes hash fragments and establishes session
+    // We need to wait a moment for this to complete
+    const timer = setTimeout(async () => {
       try {
         const { data: { user }, error } = await supabase.auth.getUser()
 
@@ -32,16 +33,16 @@ function SetPasswordForm() {
           return
         }
 
-        // User is logged in, they can set password
+        console.log('User verified:', user.email)
         setVerifying(false)
       } catch (err) {
         console.error('Session check error:', err)
         setError('Failed to verify session')
         setVerifying(false)
       }
-    }
+    }, 1000) // Wait 1 second for Supabase to process hash
 
-    checkUser()
+    return () => clearTimeout(timer)
   }, [supabase])
 
   const handleSubmit = async (e: React.FormEvent) => {

@@ -12,22 +12,28 @@ export function AuthRedirectHandler() {
   const router = useRouter()
 
   useEffect(() => {
+    const hash = window.location.hash
+
+    // IMMEDIATELY redirect if hash contains invite/recovery type
+    if (hash.includes('type=invite') || hash.includes('type=recovery')) {
+      console.log('Detected invite/recovery in hash, redirecting...')
+      window.location.href = '/auth/set-password' + hash
+      return
+    }
+
+    // Otherwise, normal auth flow
     const supabase = createClient()
 
-    // Listen for auth state changes (when Supabase processes hash tokens)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!session?.user) return
 
-      // Check if user was invited (has contact_id metadata) and needs to set password
       if (session.user.user_metadata?.contact_id) {
         router.push('/auth/set-password?from=invite')
       } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        // Regular user logged in - go to dashboard
         router.push('/dashboard')
       }
     })
 
-    // Also check immediately in case session already exists
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user?.user_metadata?.contact_id) {
         router.push('/auth/set-password?from=invite')
