@@ -173,12 +173,16 @@ export function Sidebar() {
   const isTenantAdmin = tenantData?.role === 'admin'
   const isProviderContact = providerAccess?.hasAccess === true
 
-  // Filter out Providers tab for non-site-admins
-  // Only site admins should see the full provider directory
+  // Filter out Providers and Needs tabs for non-site-admins
+  // Only site admins should see the full provider directory and needs management
   // Provider contacts use the "Provider Portal" section instead
   const filteredMainNav = mainNavItems.filter((item) => {
     // Hide Providers tab if NOT a site admin
     if (item.href === '/dashboard/providers' && !isSiteAdmin) {
+      return false
+    }
+    // Hide Needs tab if NOT a site admin
+    if (item.href === '/dashboard/needs' && !isSiteAdmin) {
       return false
     }
     return true
@@ -257,7 +261,7 @@ export function Sidebar() {
           </div>
         )}
 
-        {isProviderContact && !isSiteAdmin && (
+        {!isSiteAdmin && (isProviderContact || !tenantData) && (
           <div className="space-y-1">
             <p className="px-3 text-xs font-semibold uppercase text-muted-foreground">
               Provider Portal
