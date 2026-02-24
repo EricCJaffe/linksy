@@ -1823,9 +1823,17 @@ function ContactsTab({ provider }: { provider: ProviderDetail }) {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    {contact.status === 'invited' ? (
+                    {contact.status === 'pending' ? (
+                      <Badge variant="outline" className="bg-gray-50 text-gray-700">
+                        Pending
+                      </Badge>
+                    ) : contact.status === 'invited' ? (
                       <Badge variant="outline" className="bg-yellow-50 text-yellow-700">
                         Invited
+                      </Badge>
+                    ) : contact.status === 'archived' ? (
+                      <Badge variant="outline" className="bg-gray-50 text-gray-600">
+                        Archived
                       </Badge>
                     ) : (
                       <Badge variant="outline" className="bg-green-50 text-green-700">

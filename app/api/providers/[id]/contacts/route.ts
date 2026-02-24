@@ -50,8 +50,8 @@ export async function POST(
       provider_role: body.provider_role || 'user',
       is_primary_contact: body.is_primary_contact || false,
       is_default_referral_handler: body.is_default_referral_handler || false,
-      status: userId ? 'active' : 'invited',
-      invitation_sent_at: userId ? null : new Date().toISOString(),
+      status: userId ? 'active' : 'pending',
+      invitation_sent_at: null,  // Don't set until invite is actually sent
     })
     .select()
     .single()
