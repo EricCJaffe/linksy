@@ -59,7 +59,7 @@ export function OrgSwitcher() {
       <DropdownMenuContent align="start" className="w-56">
         <DropdownMenuLabel>Switch Organization</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {memberships.map((membership) => (
+        {memberships.map((membership: { tenant: { id: string; name: string }; role: string }) => (
           <DropdownMenuItem
             key={membership.tenant.id}
             onClick={() => switchTenant(membership.tenant.id)}
