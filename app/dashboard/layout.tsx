@@ -16,14 +16,14 @@ export default function DashboardLayout({
   const { data: user, isLoading: isUserLoading, error: userError } = useCurrentUser()
   const { data: tenantData, isLoading: isTenantLoading, error: tenantError } = useCurrentTenant()
 
-  // Show error state if hooks failed
-  if (userError || tenantError) {
+  // Show error state if user hook failed (critical)
+  if (userError) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4 max-w-md p-6">
           <h2 className="text-xl font-semibold text-destructive">Error Loading Dashboard</h2>
           <p className="text-sm text-muted-foreground text-center">
-            {userError ? `User Error: ${userError.message}` : `Tenant Error: ${tenantError?.message}`}
+            User Error: {userError.message}
           </p>
           <p className="text-xs text-muted-foreground text-center">
             Check the browser console for more details. Make sure Supabase is configured correctly.
@@ -39,8 +39,15 @@ export default function DashboardLayout({
     )
   }
 
-  // Show loading state while fetching user and tenant data
-  if (isUserLoading || isTenantLoading) {
+  // Note: tenantError is NOT critical - provider-only users won't have tenant memberships
+  // Just log it for debugging but don't block the dashboard
+  if (tenantError) {
+    console.warn('[Dashboard] Tenant query error (non-critical for provider users):', tenantError)
+  }
+
+  // Only show loading state while fetching user data
+  // Tenant data is optional (provider-only users don't have tenants)
+  if (isUserLoading) {
     return <DashboardLoading />
   }
 
