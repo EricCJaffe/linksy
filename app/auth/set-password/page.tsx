@@ -17,41 +17,32 @@ function SetPasswordForm() {
   const [error, setError] = useState('')
   const [verifying, setVerifying] = useState(true)
 
-  const token = searchParams.get('token')
-  const type = searchParams.get('type')
+  const from = searchParams.get('from')
   const supabase = createClient()
 
   useEffect(() => {
-    // Verify the token when page loads
-    async function verifyToken() {
-      if (!token) {
-        setError('Invalid or missing token')
-        setVerifying(false)
-        return
-      }
-
+    // Check if user is logged in (they clicked the magic link)
+    async function checkUser() {
       try {
-        // Verify the token with Supabase
-        const { data, error } = await supabase.auth.verifyOtp({
-          token_hash: token,
-          type: type === 'recovery' ? 'recovery' : 'invite',
-        })
+        const { data: { user }, error } = await supabase.auth.getUser()
 
-        if (error) {
-          console.error('Token verification error:', error)
-          setError('Invalid or expired link. Please request a new invitation.')
+        if (error || !user) {
+          setError('Session expired. Please request a new invitation.')
+          setVerifying(false)
+          return
         }
 
+        // User is logged in, they can set password
         setVerifying(false)
       } catch (err) {
-        console.error('Verification error:', err)
-        setError('Failed to verify link')
+        console.error('Session check error:', err)
+        setError('Failed to verify session')
         setVerifying(false)
       }
     }
 
-    verifyToken()
-  }, [token, type, supabase])
+    checkUser()
+  }, [supabase])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -125,7 +116,7 @@ function SetPasswordForm() {
         <CardHeader>
           <CardTitle>Set Your Password</CardTitle>
           <CardDescription>
-            {type === 'recovery'
+            {from === 'recovery'
               ? 'Enter a new password for your account.'
               : 'Welcome! Please set a password to complete your account setup.'}
           </CardDescription>

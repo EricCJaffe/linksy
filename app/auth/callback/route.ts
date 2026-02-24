@@ -5,13 +5,13 @@ import { createClient } from '@/lib/supabase/server'
  * GET /auth/callback
  * Handles:
  * - OAuth redirects from Google and Microsoft (code parameter)
- * - Invite links (token + type=invite parameters)
- * - Password recovery links (token + type=recovery parameters)
+ * - Invite links (token_hash parameter from Supabase verify endpoint)
+ * - Password recovery links
  */
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  const token = searchParams.get('token')
+  const token_hash = searchParams.get('token_hash')
   const type = searchParams.get('type')
   const next = searchParams.get('next') ?? '/dashboard'
 
@@ -21,19 +21,35 @@ export async function GET(request: Request) {
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
+      // Check if user needs to set password (invited user)
+      const { data: { user } } = await supabase.auth.getUser()
+
+      // If user was invited (has raw_user_meta_data.contact_id), redirect to set password
+      if (user?.user_metadata?.contact_id) {
+        return NextResponse.redirect(`${origin}/auth/set-password?from=invite`)
+      }
+
       return NextResponse.redirect(`${origin}${next}`)
     }
     return NextResponse.redirect(`${origin}/login?error=oauth_error`)
   }
 
-  // Handle invite link - redirect to password setup
-  if (token && type === 'invite') {
-    return NextResponse.redirect(`${origin}/auth/set-password?token=${token}&type=invite`)
-  }
+  // Handle magic link from invite (token_hash from Supabase verify endpoint)
+  if (token_hash) {
+    const { error } = await supabase.auth.verifyOtp({
+      token_hash,
+      type: type === 'recovery' ? 'recovery' : type === 'email' ? 'email' : 'invite',
+    })
 
-  // Handle password recovery
-  if (token && type === 'recovery') {
-    return NextResponse.redirect(`${origin}/auth/set-password?token=${token}&type=recovery`)
+    if (!error) {
+      // After successful verification, redirect to password setup for invites
+      if (type === 'invite' || type === 'recovery') {
+        return NextResponse.redirect(`${origin}/auth/set-password?from=${type}`)
+      }
+      return NextResponse.redirect(`${origin}${next}`)
+    }
+
+    return NextResponse.redirect(`${origin}/login?error=verification_failed`)
   }
 
   // No valid parameters - redirect to login
