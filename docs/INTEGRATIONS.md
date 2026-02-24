@@ -2,6 +2,11 @@
 
 ## External APIs
 
+### Sentry
+- **Purpose:** Error and message capture for server, client, and edge runtimes
+- **Auth:** `SENTRY_DSN` and/or `NEXT_PUBLIC_SENTRY_DSN`; optional `SENTRY_AUTH_TOKEN` for source map upload during build
+- **Entry points:** `sentry.client.config.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`, `lib/utils/logger.ts`
+
 ### OpenAI
 - **Purpose:** AI-powered community resource search (embedding + conversational response)
 - **Auth:** `OPENAI_API_KEY` env var (server-only, lazy-initialized)
@@ -22,6 +27,12 @@
 - **Purpose:** Transactional email — provider contact invitations, ticket assignment notifications, ticket status updates
 - **Auth:** `RESEND_API_KEY` env var (primary), or `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASSWORD` (nodemailer fallback)
 - **Entry point:** `lib/utils/email.ts`
+- **Template system:**
+  - Admin-editable email templates stored in `linksy_email_templates` table
+  - Template registry: `lib/email/template-registry.ts` defines keys, names, descriptions, and placeholders
+  - Templates: `invitation`, `ticket_new_assignment`, `ticket_status_update`
+  - Admin UI: `/dashboard/admin/email-templates` for customization
+  - Runtime rendering: `lib/utils/email.ts` replaces placeholders (e.g., `{{client_name}}`, `{{ticket_number}}`)
 - **Triggers:**
   - **New ticket created** (`POST /api/tickets`): notifies the default referral handler for the assigned provider
   - **Ticket status updated** (`PATCH /api/tickets/[id]`): notifies the client at `client_email` if present
@@ -36,7 +47,19 @@
 
 ## Webhooks
 
-- No inbound or outbound webhooks are currently configured.
+### Outbound Tenant Webhooks
+- **Purpose:** Notify tenant-managed external systems when referral tickets are created or status changes
+- **Management endpoints:** `app/api/webhooks/route.ts`, `app/api/webhooks/[id]/route.ts`
+- **Delivery utility:** `lib/utils/webhooks.ts`
+- **DB tables:** `linksy_webhooks`, `linksy_webhook_deliveries` (created by `supabase/migrations/20260223120000_create_webhooks_system.sql`)
+- **Events currently emitted:**
+  - `ticket.created` from `POST /api/tickets`
+  - `ticket.status_changed` from `PATCH /api/tickets/[id]`
+- **Security model:** Each webhook has a per-endpoint secret used to sign requests with `HMAC-SHA256`; headers include:
+  - `X-Linksy-Event`
+  - `X-Linksy-Timestamp`
+  - `X-Linksy-Signature` (`t=<unix_ts>,v1=<hex_hmac>`)
+- **Operational behavior:** 10s timeout per delivery, async fire-and-forget dispatch, delivery history and error state persisted.
 
 ## Internal Services
 

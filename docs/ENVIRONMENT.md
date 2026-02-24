@@ -9,17 +9,19 @@ These must be set for the app to function:
 | `NEXT_PUBLIC_SUPABASE_URL` | `lib/supabase/client.ts`, `lib/supabase/server.ts` | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `lib/supabase/client.ts`, `lib/supabase/server.ts` | Public/anon key (safe for browser) |
 | `SUPABASE_SERVICE_ROLE_KEY` | `lib/supabase/server.ts` | **Secret.** Bypasses RLS. Server-only. |
-| `OPENAI_API_KEY` | `app/api/linksy/search/route.ts` | Required for AI search. Lazy-initialized. |
+| `OPENAI_API_KEY` | `app/api/linksy/search/route.ts`, `scripts/generate-embeddings.js` | Required for AI search and embedding generation. |
 
 ## Recommended Env Vars
 
 | Variable | Where Used | Notes |
 |----------|-----------|-------|
-| `NEXT_PUBLIC_APP_URL` | CSRF validation, email links | Base URL (e.g. `http://localhost:3000`) |
-| `NEXT_PUBLIC_SITE_URL` | `middleware.ts` CSRF checks | Should match APP_URL |
+| `NEXT_PUBLIC_APP_URL` | Invitation redirects + email links (`app/api/invitations/route.ts`, `app/api/tickets/route.ts`, `app/api/providers/[id]/contacts/[contactId]/invite/route.ts`) | Base URL (e.g. `http://localhost:3000`) |
+| `NEXT_PUBLIC_SITE_URL` | `lib/middleware/csrf.ts` | Used in CSRF allowed-origin list |
 | `NEXT_PUBLIC_APP_NAME` | UI display | Application name |
 | `GOOGLE_MAPS_API_KEY` | `lib/utils/geocode.ts` | Server-side geocoding. Optional — search works without it (no distance sorting). |
 | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | `lib/utils/geocode.ts` | Client-side static map images |
+| `ADMIN_EMAIL` | `app/api/onboarding/provider/route.ts`, `app/api/onboarding/host/route.ts` | Receives onboarding submissions (falls back to `SMTP_FROM_EMAIL`) |
+| `VERCEL_URL` | `lib/middleware/csrf.ts` | Added as an allowed origin in deployed environments |
 
 ## Email (pick one)
 
@@ -35,30 +37,22 @@ These must be set for the app to function:
 
 If neither is configured, emails are logged to console in development.
 
-## Feature Flags
+## Error Tracking (Optional)
 
-| Variable | Default | Controls |
-|----------|---------|----------|
-| `NEXT_PUBLIC_ENABLE_ACTIVITY_FEED` | `true` | Activity feed module |
-| `NEXT_PUBLIC_ENABLE_FILE_UPLOADS` | `true` | File upload UI |
-| `NEXT_PUBLIC_ENABLE_NOTIFICATIONS` | `true` | Notification system |
-| `NEXT_PUBLIC_ENABLE_AUDIT_LOGS` | `true` | Audit log recording |
+| Variable | Where Used | Notes |
+|----------|------------|-------|
+| `NEXT_PUBLIC_SENTRY_DSN` | `sentry.client.config.ts`, `sentry.edge.config.ts`, fallback in `sentry.server.config.ts` | Enables Sentry in client/edge |
+| `SENTRY_DSN` | `sentry.server.config.ts` | Server-side DSN (preferred for server runtime) |
+| `SENTRY_AUTH_TOKEN` | `next.config.js` | Enables Sentry source map upload during build |
 
-## Optional / Monitoring
+## Template Vars in `.env.example`
 
-| Variable | Notes |
-|----------|-------|
-| `NEXT_PUBLIC_SENTRY_DSN` | Sentry error tracking (not yet integrated — see TODO in `lib/utils/logger.ts`) |
-| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | Google Analytics |
-| `NEXT_PUBLIC_POSTHOG_KEY` | PostHog analytics |
-| `NEXT_PUBLIC_POSTHOG_HOST` | PostHog host (default `https://app.posthog.com`) |
-
-## Rate Limiting
-
-| Variable | Default | Notes |
-|----------|---------|-------|
-| `API_RATE_LIMIT_PER_MINUTE` | `100` | Per-IP API rate limit |
-| `FILE_UPLOAD_RATE_LIMIT_PER_HOUR` | `20` | Per-user upload limit |
+The following keys are present in `.env.example` but are not currently read in app code:
+- `NEXT_PUBLIC_ENABLE_ACTIVITY_FEED`, `NEXT_PUBLIC_ENABLE_FILE_UPLOADS`, `NEXT_PUBLIC_ENABLE_NOTIFICATIONS`, `NEXT_PUBLIC_ENABLE_AUDIT_LOGS`
+- `API_RATE_LIMIT_PER_MINUTE`, `FILE_UPLOAD_RATE_LIMIT_PER_HOUR`
+- `NEXT_PUBLIC_STORAGE_BUCKET`, `MAX_FILE_SIZE_MB`
+- `NEXT_PUBLIC_GA_MEASUREMENT_ID`, `NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_POSTHOG_HOST`
+- `JWT_SECRET`, `SESSION_COOKIE_NAME`, `SESSION_MAX_AGE`, `DEBUG`, `SKIP_EMAIL_VERIFICATION`, `LOG_LEVEL`
 
 ## Multi-Tenant Config
 
@@ -72,7 +66,7 @@ If neither is configured, emails are logged to console in development.
 - **Never commit** `.env.local` — it is gitignored.
 - Copy `.env.example` to `.env.local` for local dev.
 - In Vercel, set env vars in the project dashboard under Settings > Environment Variables.
-- `SUPABASE_SERVICE_ROLE_KEY` and `OPENAI_API_KEY` are the most sensitive — server-only, never prefix with `NEXT_PUBLIC_`.
+- `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, `RESEND_API_KEY`, `SMTP_PASSWORD`, and `SENTRY_AUTH_TOKEN` are server secrets.
 
 ## Local Setup Notes
 

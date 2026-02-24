@@ -15,6 +15,15 @@ Reference:
 - `docs/TASKS.md` — active TODOs and backlog
 - `docs/RELEASES.md` — latest completed work and next release scope
 - `docs/DECISIONS/` — architecture decision records (ADRs)
+  - 0001: AI Search Pipeline Architecture
+  - 0002: Host Widget Embedding Model
+  - 0003: Private Notes Visibility
+  - 0004: Email Notifications Design
+  - 0005: Global Middleware Security Chain
+  - 0006: Supabase Dual-Client Pattern
+  - 0007: Provider Summary Needs Taxonomy
+  - 0008: Email Template Customization (new)
+  - 0009: E2E Testing Strategy (new)
 - `docs/ARCHITECTURE.md` — data model, security layers, component structure
 - `docs/API.md` — API route reference (base template + Linksy-specific)
 - `docs/DEPLOYMENT.md` — Vercel deploy guide

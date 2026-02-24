@@ -21,7 +21,10 @@
 
 ### Pending (Prioritized)
 - [ ] Finalize `Needs` vs `Needs Addressed` final placement/labels after stakeholder review (taxonomy UI shipped, naming/placement decision still pending)
-- [ ] Parent/child account linking model — define linking rules, UI, and data model updates
+- [x] Parent/child account linking model — Sprint 1 (Database + Security) COMPLETE (2026-02-24)
+- [x] Parent/child account linking model — Sprint 2 (Basic UI) COMPLETE (2026-02-24)
+- [x] Parent/child account linking model — Sprint 3 (Dashboard + Reporting) COMPLETE (2026-02-24)
+- [x] Parent/child account linking model — Sprint 4 (Polish + UX) COMPLETE (2026-02-24)
 - [ ] Webhooks admin smoke validation in live/staging target (create/test endpoint, signature validation, retry/history checks)
 - [ ] Referral workflow e2e mailbox assertion leg (outbound email content/delivery verification)
 - [ ] Voice input (Whisper) in widget (`/api/linksy/transcribe` + widget mic UX)
@@ -37,17 +40,17 @@
 - [x] ZIP code + provider services matching logic in search pipeline
 
 ### Confirmed Requirements (Still Open)
-- [ ] Merge contacts (dedup + merge workflow for provider contacts)
-- [ ] Bulk import approval flagging: imported records should be reviewable/approvable before full activation
-- [ ] Referral pending aging notifications: alert/escalation when pending referrals exceed configured age
-- [ ] Bulk referral status update with automatic client/provider email notifications
+- [x] Merge contacts (dedup + merge workflow for provider contacts) — COMPLETED 2026-02-24
+- [x] Bulk import approval flagging: imported records should be reviewable/approvable before full activation — COMPLETED 2026-02-24
+- [x] Referral pending aging notifications: alert/escalation when pending referrals exceed configured age — COMPLETED 2026-02-24
+- [x] Bulk referral status update with automatic client/provider email notifications — COMPLETED 2026-02-24
 - [ ] Auto-reroute option when provider cannot help
-- [ ] Referral cap per client: enforce maximum of 4 referrals (replace current broader limit behavior)
-- [ ] Provider service ZIP coverage field: allow providers/admins to define supported ZIP codes and exclude referrals outside that coverage
-- [ ] Provider phone extension field (UI + DB schema + API support)
+- [x] Referral cap per client: enforce maximum of 4 referrals (replace current broader limit behavior) — COMPLETED 2026-02-24
+- [x] Provider service ZIP coverage field: allow providers/admins to define supported ZIP codes and exclude referrals outside that coverage — COMPLETED 2026-02-24
+- [x] Provider phone extension field (UI + DB schema + API support) — COMPLETED 2026-02-24
 
 ### Provider Portal / Notes Enhancements (Open)
-- [ ] Add call log as a provider note-type option (structured call details attached to notes flow)
+- [x] Add call log as a provider note-type option (structured call details attached to notes flow) — COMPLETED 2026-02-24
 
 ### Phase 2 / 3 Still Open
 - [ ] Autoupdates for description every 90 days with explicit override behavior
@@ -65,10 +68,51 @@
 ## Active
 
 ### Data Management
-- [ ] Merge contact function — ability to merge duplicate contacts into a single record (dedup provider contacts)
-- [ ] Purge provider function — ability to permanently delete a provider and all associated records (locations, contacts, needs, tickets, notes, events)
+- [x] Merge contact function — ability to merge duplicate contacts into a single record (dedup provider contacts) — COMPLETED 2026-02-24
+- [x] Merge provider function — ability to merge duplicate providers with comprehensive data transfer — COMPLETED 2026-02-24
+- [x] Purge provider function — ability to permanently delete a provider and all associated records (locations, contacts, needs, tickets, notes, events) — COMPLETED 2026-02-24
 - [ ] Finalize `Needs` vs `Needs Addressed` placement — review the Summary page + Notes/Referrals context and lock final field locations/labels so data entry flow is unambiguous
-- [ ] Parent/child account linking model — define how parent and child provider accounts should be linked, displayed, and edited in the portal
+
+### Parent/Child Linking Model
+- [x] Sprint 1: Database + Security (COMPLETED 2026-02-24)
+  - ✅ Migration with parent_provider_id, audit columns, indexes, constraints
+  - ✅ Database helper functions: linksy_get_child_provider_ids(), linksy_user_can_access_provider()
+  - ✅ TypeScript types: ProviderHierarchy, ParentOrgStats, ProviderAccessInfo, ProviderAccessLevel
+  - ✅ Updated /api/provider-access to include children in accessibleProviderIds
+  - ✅ Access control in provider detail/locations/notes endpoints via RPC function
+  - ✅ API endpoints: POST /api/admin/providers/[id]/set-parent, GET /api/providers/[id]/children, GET /api/providers/[id]/hierarchy
+  - ✅ React Query hooks: useProviderHierarchy, useProviderChildren, useSetParentProvider
+- [x] Sprint 2: Basic UI (COMPLETED 2026-02-24)
+  - ✅ ParentChildManager component with link/unlink dialogs (search parent, confirm unlink)
+  - ✅ Integrated into provider Summary tab (visible to all, admin controls for site_admin only)
+  - ✅ Displays parent organization with link to parent detail page
+  - ✅ Displays child locations list with status badges and location counts
+  - ✅ Organization type filter in providers list (all/parent/child/standalone)
+  - ✅ Child location badge indicator in providers table
+  - ✅ API support for organization_type filtering with post-query parent/standalone detection
+- [x] Sprint 3: Dashboard + Reporting (COMPLETED 2026-02-24)
+  - ✅ API endpoint GET /api/providers/[id]/parent-stats with date range filtering
+  - ✅ Aggregated metrics across parent + all children (referrals, interactions, events, notes, locations)
+  - ✅ ParentOrgDashboard component with summary cards, engagement breakdown, and performance table
+  - ✅ Per-child breakdown table with drill-down links to each location
+  - ✅ Date range filters (from/to) with apply/clear controls and auto-refresh
+  - ✅ Dedicated "Organization Dashboard" tab in provider detail (only visible for parent orgs)
+  - ✅ useParentOrgStats hook with query invalidation support
+  - ✅ Parent stats row + totals row in breakdown table for complete visibility
+- [x] Sprint 4: Polish + UX (COMPLETED 2026-02-24)
+  - ✅ Bulk operations for child sites from Organization Dashboard table
+    - ✅ Checkbox selection with "Select All" toggle
+    - ✅ Bulk activate/deactivate/pause actions
+    - ✅ Parallel API calls with Promise.all()
+    - ✅ Auto-refresh and query invalidation after bulk operations
+  - ✅ Navigation improvements
+    - ✅ ProviderBreadcrumbs component showing parent > child hierarchy
+    - ✅ ProviderQuickSwitcher dropdown to jump between parent and all children
+    - ✅ Integrated into provider detail page header
+  - ✅ Documentation
+    - ✅ Comprehensive user guide (docs/GUIDES/parent-child-organizations.md)
+    - ✅ FEATURES_CHECKLIST.md updated with all parent/child features marked complete
+    - ✅ Sections: Overview, For Site Admins, For Parent Admins, For Provider Staff, Best Practices, Troubleshooting
 
 ## Backlog
 
@@ -94,6 +138,13 @@
 
 ## Done
 
+- [x] Parent/child provider linking - Sprint 4 (Polish + UX) (2026-02-24) — Production-ready polish for multi-location organizations: bulk operations in Organization Dashboard table with checkbox selection (select all toggle), bulk activate/deactivate/pause actions using parallel API calls, auto-refresh after operations; ProviderBreadcrumbs component showing "Parent Org > Child Name" hierarchy with links; ProviderQuickSwitcher dropdown menu in provider detail header for instant navigation between all locations (parent + children) with current location highlighting; comprehensive user guide (docs/GUIDES/parent-child-organizations.md) covering admin workflows, parent admin features, staff access, best practices, troubleshooting, and technical notes; FEATURES_CHECKLIST.md fully updated with all parent/child features marked complete in Provider Management section
+- [x] Parent/child provider linking - Sprint 3 (Dashboard + Reporting) (2026-02-24) — Aggregated reporting for parent organizations: API endpoint GET /api/providers/[id]/parent-stats with date range filtering (date_from, date_to); aggregates referrals, interactions (profile views, phone/website/directions clicks), events, notes, locations across parent + all children; ParentOrgDashboard component with summary cards (locations, referrals, interactions, events), engagement breakdown (4 interaction types with icons), additional metrics (notes, physical locations), and performance breakdown table showing parent + each child + totals row; date range filter UI with apply/clear/refresh controls; dedicated "Organization Dashboard" tab in provider detail (only visible for parent orgs with children); useParentOrgStats React Query hook; drill-down links from each row to provider detail pages
+- [x] Parent/child provider linking - Sprint 2 (Basic UI) (2026-02-24) — Complete UI for managing parent/child relationships: ParentChildManager component with search parent dialog, unlink confirmation, parent info display with link, children list with status badges + location counts; integrated into provider Summary tab (visible to all users, admin controls for site_admin); organization_type filter in providers list (all/parent/child/standalone) with API support for post-query parent detection based on children count; child location badge indicator in providers table; organization_type field added to ProviderFilters TypeScript type
+- [x] Parent/child provider linking - Sprint 1 (Database + Security) (2026-02-24) — Complete foundation for multi-location organizations: migration with parent_provider_id + audit columns + indexes + constraints; database helper functions for child IDs and access checking; TypeScript types (ProviderHierarchy, ParentOrgStats, ProviderAccessInfo); updated provider-access endpoint to include children in accessibleProviderIds; access control integrated into provider detail/locations/notes APIs via linksy_user_can_access_provider() RPC; admin API endpoints for set-parent, get-children, get-hierarchy; React Query hooks (useProviderHierarchy, useProviderChildren, useSetParentProvider); parent admins automatically inherit access to all child sites
+- [x] Provider phone extension field (2026-02-24) — Added `phone_extension VARCHAR(20)` to `linksy_providers`; editable from Summary tab; included in LLM context cards (format: "Phone: (555) 123-4567 ext. 123"); updated API, UI, and TypeScript types
+- [x] Provider service ZIP coverage (2026-02-24) — Added `service_zip_codes TEXT[]` to `linksy_providers`; default null/empty = serves all areas; editable from Summary tab with comma-separated input; search API filters providers by client ZIP; excluded providers returned in `excludedByZip` field; LLM context cards show "Service Area: ZIP codes X, Y, Z" or "Service Area: All areas"; GIN index for performance
+- [x] Referral cap per client (4 max) (2026-02-24) — Enforced maximum 4 active/pending referrals per client (identified by email or phone); validation in both `/api/tickets` and `/api/linksy/tickets`; returns 429 error with helpful message and existing ticket info when cap exceeded; only counts pending tickets (not resolved)
 - [x] Automated test framework — Vitest + @testing-library/react; `vitest.config.ts`, `vitest.setup.ts`; 31 unit tests across `csv.ts` and `error-handler.ts`; `npm run test:run` added to CI; `npm run test` (watch), `npm run test:coverage` available
 - [x] Host usage controls and no-key rate limiting — `POST /api/linksy/search` enforces host budget + per-host/IP search limits; `POST /api/linksy/tickets` supports host-context ticket limits and `search_session_id`; host access remains slug/domain based (no customer API keys)
 - [x] Host usage reporting uplift — `/dashboard/admin/hosts` now includes avg tokens/search, budget health summary, and per-host utilization %

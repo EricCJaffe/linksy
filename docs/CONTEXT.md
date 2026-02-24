@@ -95,6 +95,14 @@ Note: `.env.example` includes `NEXT_PUBLIC_ENABLE_*` flags, but there are no dir
   - `npm run test:run` — single run (used in CI)
   - `npm run test:coverage` — v8 coverage report
   - Test files live under `__tests__/` mirroring `lib/` structure
+  - Current coverage: `csv.test.ts`, `error-handler.test.ts`
+- **E2E tests:** Playwright. Config at `playwright.config.ts`.
+  - `npm run test:e2e` — headless mode
+  - `npm run test:e2e:ui` — interactive UI mode
+  - `npm run test:e2e:headed` — headed browser mode
+  - Test files: `e2e/smoke.spec.ts`, `e2e/referral-workflow.spec.ts` (public + authenticated legs)
+  - Auth helper: `e2e/helpers/auth.ts` (env-gated admin login)
+  - GitHub Actions workflow: `.github/workflows/e2e.yml`
 - **Type checking:** `npm run type-check` (runs `tsc --noEmit`)
 - **Linting:** `npm run lint` (ESLint with `eslint-config-next`)
-- **CI:** GitHub Actions runs type-check, lint, and tests on every push/PR to main.
+- **CI:** GitHub Actions runs type-check, lint, and unit tests on every push/PR to main. E2E tests run separately via e2e.yml workflow.

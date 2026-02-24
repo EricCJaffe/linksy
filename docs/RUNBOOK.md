@@ -68,6 +68,24 @@
 
 ---
 
+### 5. E2E tests fail with authentication errors
+
+**Symptom:** `npm run test:e2e` shows test skips or auth failures in `referral-workflow.spec.ts`.
+
+**Checks:**
+- Verify `E2E_ADMIN_EMAIL` and `E2E_ADMIN_PASSWORD` are set in `.env.local` (for local) or GitHub Secrets (for CI)
+- Confirm the admin user exists in Supabase `users` table with `role = 'site_admin'`
+- Check that the credentials match an actual user account
+- Run `npm run dev` first — E2E tests require a running dev server at `http://localhost:3000`
+
+**Fix:**
+- Set env vars: `E2E_ADMIN_EMAIL=admin@example.com` and `E2E_ADMIN_PASSWORD=<password>`
+- Create admin user if missing (signup + promote to site_admin in Supabase dashboard)
+- Ensure dev server is running before executing `npm run test:e2e`
+- For CI: add `E2E_ADMIN_EMAIL` and `E2E_ADMIN_PASSWORD` to GitHub Secrets
+
+---
+
 ## Health Check Endpoints
 
 - No dedicated health check endpoint exists. The simplest smoke test is:
