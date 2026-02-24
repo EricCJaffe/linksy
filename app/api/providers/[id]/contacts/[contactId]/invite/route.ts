@@ -43,19 +43,45 @@ export async function POST(
   }
 
   try {
-    // Create auth user and send invitation via Supabase Auth
-    // Note: This requires email templates to be configured in Supabase dashboard
-    const { data: authData, error: authError } = await supabase.auth.admin.inviteUserByEmail(
-      email,
-      {
-        data: {
-          full_name: fullName,
-          provider_id: providerId,
-          contact_id: contactId,
+    // Check if user already exists in auth
+    const { data: existingAuthUser } = await supabase.auth.admin.listUsers()
+    const userExists = existingAuthUser?.users?.some(u => u.email === email)
+
+    let authData: any = null
+    let authError: any = null
+
+    if (userExists) {
+      // User already exists - generate a new magic link (resend invite)
+      const { data, error } = await supabase.auth.admin.generateLink({
+        type: 'invite',
+        email: email,
+        options: {
+          data: {
+            full_name: fullName,
+            provider_id: providerId,
+            contact_id: contactId,
+          },
+          redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
         },
-        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
-      }
-    )
+      })
+      authData = data
+      authError = error
+    } else {
+      // User doesn't exist - create new user and send invite
+      const { data, error } = await supabase.auth.admin.inviteUserByEmail(
+        email,
+        {
+          data: {
+            full_name: fullName,
+            provider_id: providerId,
+            contact_id: contactId,
+          },
+          redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
+        }
+      )
+      authData = data
+      authError = error
+    }
 
     if (authError) {
       console.error('Error sending invitation:', authError)
@@ -73,7 +99,7 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      message: 'Invitation sent successfully',
+      message: userExists ? 'Invitation resent successfully' : 'Invitation sent successfully',
       user: authData.user,
     })
   } catch (error) {

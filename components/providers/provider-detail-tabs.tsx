@@ -1842,14 +1842,14 @@ function ContactsTab({ provider }: { provider: ProviderDetail }) {
                       >
                         Edit
                       </Button>
-                      {contact.status === 'invited' && (
+                      {!contact.user_id && (
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => handleInvite(contact, contact.user?.email || '', contact.user?.full_name || '')}
                           disabled={inviteContact.isPending}
                         >
-                          Resend Invite
+                          {contact.invitation_sent_at ? 'Resend Invite' : 'Send Invite'}
                         </Button>
                       )}
                       <Button
