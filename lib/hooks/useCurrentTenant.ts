@@ -70,7 +70,7 @@ export function useCurrentTenant() {
       }
 
       // Find the current tenant or use the first one
-      let currentMembership = memberships.find(m => m.tenant_id === currentTenantId)
+      let currentMembership = memberships.find((m: any) => m.tenant_id === currentTenantId)
 
       if (!currentMembership) {
         currentMembership = memberships[0]
@@ -80,7 +80,7 @@ export function useCurrentTenant() {
       return {
         tenant: currentMembership.tenant as Tenant,
         role: currentMembership.role as 'admin' | 'member',
-        memberships: memberships.map(m => ({
+        memberships: memberships.map((m: any) => ({
           tenant: m.tenant as Tenant,
           role: m.role as 'admin' | 'member',
         })),
