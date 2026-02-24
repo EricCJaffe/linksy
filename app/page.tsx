@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { AuthRedirectHandler } from '@/components/auth/auth-redirect-handler'
 import {
   Search,
   Code2,
@@ -28,6 +29,7 @@ export default async function LandingPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-white text-gray-900">
+      <AuthRedirectHandler />
       {/* ── Navbar ─────────────────────────────────────────────── */}
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">

@@ -56,18 +56,28 @@ export function LoginForm() {
   useEffect(() => {
     const supabase = createClient()
 
-    async function checkInvitedUser() {
-      // Supabase client automatically processes hash fragments and establishes session
-      const { data: { user } } = await supabase.auth.getUser()
+    // Listen for auth state changes (when Supabase processes hash tokens)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user && session.user.user_metadata?.contact_id) {
+        // User logged in from invite - redirect to password setup
+        router.push('/auth/set-password?from=invite')
+      } else if (session?.user) {
+        // Regular user logged in - go to dashboard
+        router.push(redirectTo)
+      }
+    })
 
+    // Also check immediately in case session already exists
+    supabase.auth.getUser().then(({ data: { user } }) => {
       if (user && user.user_metadata?.contact_id) {
-        // User is logged in from invite - redirect to password setup
         router.push('/auth/set-password?from=invite')
       }
-    }
+    })
 
-    checkInvitedUser()
-  }, [router])
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [router, redirectTo])
 
   const onSubmit = async (data: LoginInput) => {
     setIsLoading(true)
