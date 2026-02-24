@@ -52,6 +52,19 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/login?error=verification_failed`)
   }
 
-  // No valid parameters - redirect to login
+  // No parameters - check if user has active session (from invite magic link)
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (user) {
+    // User is logged in - check if they were invited and need to set password
+    if (user.user_metadata?.contact_id) {
+      // User was invited as a contact - redirect to set password
+      return NextResponse.redirect(`${origin}/auth/set-password?from=invite`)
+    }
+    // User is logged in and set up - go to dashboard
+    return NextResponse.redirect(`${origin}${next}`)
+  }
+
+  // No session - redirect to login
   return NextResponse.redirect(`${origin}/login`)
 }
