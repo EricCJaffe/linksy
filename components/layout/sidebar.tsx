@@ -173,6 +173,15 @@ export function Sidebar() {
   const isTenantAdmin = tenantData?.role === 'admin'
   const isProviderContact = providerAccess?.hasAccess === true
 
+  // Filter out Providers tab for non-admin provider users
+  const filteredMainNav = mainNavItems.filter((item) => {
+    // Hide Providers tab if user is a provider contact but NOT a site admin
+    if (item.href === '/dashboard/providers' && isProviderContact && !isSiteAdmin) {
+      return false
+    }
+    return true
+  })
+
   return (
     <aside className="flex h-full w-64 flex-col border-r bg-card">
       <div className="p-4">
@@ -181,7 +190,7 @@ export function Sidebar() {
 
       <nav className="flex-1 space-y-6 p-4">
         <div className="space-y-1">
-          {mainNavItems.map((item) => (
+          {filteredMainNav.map((item) => (
             <Link
               key={item.href}
               href={item.href}

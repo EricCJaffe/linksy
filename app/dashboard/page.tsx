@@ -4,10 +4,12 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
+import { useMyProviderStats } from '@/lib/hooks/useMyProviderStats'
 import { AgingReferralsWidget } from '@/components/admin/aging-referrals-widget'
 import { PendingImportsWidget } from '@/components/admin/pending-imports-widget'
-import { Building2, FileText, LifeBuoy, CheckCircle, AlertCircle, History, TrendingUp } from 'lucide-react'
+import { Building2, FileText, LifeBuoy, CheckCircle, AlertCircle, History, TrendingUp, MapPin, Phone, Mail, Globe } from 'lucide-react'
 
 interface OverviewStats {
   providers: { total: number }
@@ -18,6 +20,7 @@ interface OverviewStats {
 
 export default function DashboardPage() {
   const { data: user } = useCurrentUser()
+  const { data: providerStats, isLoading: isProviderStatsLoading } = useMyProviderStats()
   const [stats, setStats] = useState<OverviewStats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [includeLegacy, setIncludeLegacy] = useState(true)
@@ -45,6 +48,7 @@ export default function DashboardPage() {
   }
 
   const isSiteAdmin = user?.profile?.role === 'site_admin'
+  const isProviderUser = providerStats?.hasAccess && !isSiteAdmin
 
   return (
     <div className="space-y-6">
@@ -154,40 +158,182 @@ export default function DashboardPage() {
       )}
 
       {!isSiteAdmin && (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Card className="border-primary/20 bg-gradient-to-b from-primary/5 to-white">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Your Referrals</CardTitle>
-              <FileText className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">-</div>
-              <p className="text-xs text-muted-foreground">Assigned to you</p>
-            </CardContent>
-          </Card>
+        <>
+          {/* Provider Organization Info */}
+          {isProviderUser && providerStats?.provider && (
+            <Card className="border-primary/20">
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <CardTitle className="text-xl">{providerStats.provider.name}</CardTitle>
+                    <CardDescription className="mt-1">Your Organization</CardDescription>
+                  </div>
+                  <div className="flex gap-2">
+                    <Badge variant={providerStats.provider.is_active ? 'default' : 'secondary'}>
+                      {providerStats.provider.is_active ? 'Active' : 'Inactive'}
+                    </Badge>
+                    <Badge variant={providerStats.provider.accepting_referrals ? 'default' : 'outline'}>
+                      {providerStats.provider.accepting_referrals ? 'Accepting Referrals' : 'Not Accepting'}
+                    </Badge>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {providerStats.provider.description && (
+                  <p className="text-sm text-muted-foreground">{providerStats.provider.description}</p>
+                )}
+                <div className="grid gap-3 text-sm">
+                  {providerStats.provider.address && (
+                    <div className="flex items-start gap-2">
+                      <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
+                      <div>
+                        <div>{providerStats.provider.address}</div>
+                        {providerStats.provider.city && (
+                          <div>
+                            {providerStats.provider.city}, {providerStats.provider.state} {providerStats.provider.zip}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {providerStats.provider.phone && (
+                    <div className="flex items-center gap-2">
+                      <Phone className="h-4 w-4 text-muted-foreground" />
+                      <a href={`tel:${providerStats.provider.phone}`} className="hover:underline">
+                        {providerStats.provider.phone}
+                      </a>
+                    </div>
+                  )}
+                  {providerStats.provider.email && (
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      <a href={`mailto:${providerStats.provider.email}`} className="hover:underline">
+                        {providerStats.provider.email}
+                      </a>
+                    </div>
+                  )}
+                  {providerStats.provider.website && (
+                    <div className="flex items-center gap-2">
+                      <Globe className="h-4 w-4 text-muted-foreground" />
+                      <a
+                        href={providerStats.provider.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:underline"
+                      >
+                        {providerStats.provider.website}
+                      </a>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-          <Card className="border-accent/60 bg-gradient-to-b from-accent/30 to-white">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending</CardTitle>
-              <AlertCircle className="h-4 w-4 text-accent-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">-</div>
-              <p className="text-xs text-muted-foreground">Needs attention</p>
-            </CardContent>
-          </Card>
+          {/* Referral Stats */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <Card className="border-primary/20 bg-gradient-to-b from-primary/5 to-white">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Your Referrals</CardTitle>
+                <FileText className="h-4 w-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                {isProviderStatsLoading ? (
+                  <Skeleton className="h-8 w-16" />
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold">{providerStats?.personalStats?.total || 0}</div>
+                    <p className="text-xs text-muted-foreground">
+                      {providerStats?.personalStats?.thisMonth || 0} this month
+                    </p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
 
-          <Card className="border-secondary/70 bg-gradient-to-b from-secondary to-white">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Completed</CardTitle>
-              <CheckCircle className="h-4 w-4 text-secondary-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">-</div>
-              <p className="text-xs text-muted-foreground">This month</p>
-            </CardContent>
-          </Card>
-        </div>
+            <Card className="border-accent/60 bg-gradient-to-b from-accent/30 to-white">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Pending</CardTitle>
+                <AlertCircle className="h-4 w-4 text-accent-foreground" />
+              </CardHeader>
+              <CardContent>
+                {isProviderStatsLoading ? (
+                  <Skeleton className="h-8 w-16" />
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold">
+                      {(providerStats?.personalStats?.pending || 0) + (providerStats?.personalStats?.in_progress || 0)}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Needs attention</p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="border-secondary/70 bg-gradient-to-b from-secondary to-white">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Completed</CardTitle>
+                <CheckCircle className="h-4 w-4 text-secondary-foreground" />
+              </CardHeader>
+              <CardContent>
+                {isProviderStatsLoading ? (
+                  <Skeleton className="h-8 w-16" />
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold">
+                      {(providerStats?.personalStats?.resolved || 0) + (providerStats?.personalStats?.closed || 0)}
+                    </div>
+                    <p className="text-xs text-muted-foreground">All time</p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Organization Stats */}
+          {isProviderUser && providerStats?.orgStats && (
+            <Card className="border-primary/20">
+              <CardHeader>
+                <CardTitle>Organization Referrals</CardTitle>
+                <CardDescription>All referrals for {providerStats.provider?.name}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isProviderStatsLoading ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-full" />
+                  </div>
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    <div>
+                      <div className="text-2xl font-bold">{providerStats.orgStats.total}</div>
+                      <p className="text-xs text-muted-foreground">Total Referrals</p>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-yellow-600">
+                        {providerStats.orgStats.pending}
+                      </div>
+                      <p className="text-xs text-muted-foreground">Pending</p>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-blue-600">
+                        {providerStats.orgStats.in_progress}
+                      </div>
+                      <p className="text-xs text-muted-foreground">In Progress</p>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-green-600">
+                        {providerStats.orgStats.resolved + providerStats.orgStats.closed}
+                      </div>
+                      <p className="text-xs text-muted-foreground">Completed</p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </>
       )}
 
       {isSiteAdmin ? (
