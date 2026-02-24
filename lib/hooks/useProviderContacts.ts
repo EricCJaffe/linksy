@@ -36,6 +36,7 @@ export function useCreateProviderContact() {
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['provider', variables.providerId] })
+      queryClient.invalidateQueries({ queryKey: ['provider-contacts', variables.providerId] })
       queryClient.invalidateQueries({ queryKey: ['providers'] })
     },
   })
@@ -66,6 +67,7 @@ export function useUpdateProviderContact() {
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['provider', variables.providerId] })
+      queryClient.invalidateQueries({ queryKey: ['provider-contacts', variables.providerId] })
       queryClient.invalidateQueries({ queryKey: ['providers'] })
     },
   })
@@ -87,6 +89,7 @@ export function useDeleteProviderContact() {
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['provider', variables.providerId] })
+      queryClient.invalidateQueries({ queryKey: ['provider-contacts', variables.providerId] })
       queryClient.invalidateQueries({ queryKey: ['providers'] })
     },
   })
