@@ -14,6 +14,21 @@ export async function GET(
   const statusFilter = searchParams.get('status') // 'all', 'open', 'closed', or null
   const supabase = await createServiceClient()
 
+  // Check if user has access to this provider (including via parent relationship)
+  if (!auth.isSiteAdmin && !auth.isTenantAdmin) {
+    const { data: hasAccess } = await supabase.rpc(
+      'linksy_user_can_access_provider',
+      {
+        p_user_id: auth.user.id,
+        p_provider_id: id,
+      }
+    )
+
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+    }
+  }
+
   // Fetch provider
   const { data: provider, error: providerError } = await supabase
     .from('linksy_providers')
@@ -163,9 +178,24 @@ export async function PATCH(
   const body = await request.json()
   const supabase = await createServiceClient()
 
+  // Check if user has access to this provider (including via parent relationship)
+  if (!auth.isSiteAdmin && !auth.isTenantAdmin) {
+    const { data: hasAccess } = await supabase.rpc(
+      'linksy_user_can_access_provider',
+      {
+        p_user_id: auth.user.id,
+        p_provider_id: id,
+      }
+    )
+
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+    }
+  }
+
   // Fields any active provider contact can edit
   const staffFields = [
-    'description', 'phone', 'email', 'website', 'hours',
+    'description', 'phone', 'phone_extension', 'email', 'website', 'hours',
     // Compatibility with legacy provider schema names.
     'hours_of_operation',
     // Contact preferences
@@ -189,6 +219,7 @@ export async function PATCH(
     // Parent account compatibility: only applied if field exists in payload/UI.
     'parent_account', 'parent_account_name', 'parent_provider_id',
     'is_host', 'host_embed_active', 'host_widget_config', 'host_monthly_token_budget',
+    'service_zip_codes',
   ]
 
   let allowedFields: string[]
@@ -196,20 +227,48 @@ export async function PATCH(
   if (auth.isSiteAdmin || auth.isTenantAdmin) {
     allowedFields = [...staffFields, ...adminOnlyFields]
   } else {
-    // Check if user is an active contact for this provider
+    // Check if user is an admin contact for this provider (directly or via parent)
     const { data: contact } = await supabase
       .from('linksy_provider_contacts')
-      .select('id')
+      .select('id, contact_type')
       .eq('provider_id', id)
       .eq('user_id', auth.user.id)
       .eq('status', 'active')
       .maybeSingle()
 
-    if (!contact) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
+    if (contact) {
+      // User is direct contact - they can edit staff fields
+      allowedFields = staffFields
+    } else {
+      // Check if user is an admin of the parent organization
+      const { data: provider } = await supabase
+        .from('linksy_providers')
+        .select('parent_provider_id')
+        .eq('id', id)
+        .single()
 
-    allowedFields = staffFields
+      if (provider?.parent_provider_id) {
+        const { data: parentContact } = await supabase
+          .from('linksy_provider_contacts')
+          .select('id, contact_type')
+          .eq('provider_id', provider.parent_provider_id)
+          .eq('user_id', auth.user.id)
+          .eq('status', 'active')
+          .maybeSingle()
+
+        if (
+          parentContact &&
+          ['provider_admin', 'org_admin'].includes(parentContact.contact_type || '')
+        ) {
+          // Parent admin can edit staff fields
+          allowedFields = staffFields
+        } else {
+          return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+        }
+      } else {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
+    }
   }
 
   const updates: Record<string, any> = {}

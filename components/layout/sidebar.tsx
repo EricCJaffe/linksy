@@ -20,6 +20,10 @@ import {
   Globe,
   BookOpen,
   FileText,
+  Webhook,
+  Mail,
+  Merge,
+  ClipboardCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
@@ -103,6 +107,31 @@ const adminNavItems = [
     title: 'Docs Manager',
     href: '/dashboard/admin/docs',
     icon: FileText,
+  },
+  {
+    title: 'Webhooks',
+    href: '/dashboard/admin/webhooks',
+    icon: Webhook,
+  },
+  {
+    title: 'Email Templates',
+    href: '/dashboard/admin/email-templates',
+    icon: Mail,
+  },
+  {
+    title: 'Merge Providers',
+    href: '/dashboard/admin/merge-providers',
+    icon: Merge,
+  },
+  {
+    title: 'Merge Contacts',
+    href: '/dashboard/admin/merge-contacts',
+    icon: Merge,
+  },
+  {
+    title: 'Review Imports',
+    href: '/dashboard/admin/review-imports',
+    icon: ClipboardCheck,
   },
   {
     title: 'Provider Portal Preview',

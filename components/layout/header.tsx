@@ -40,7 +40,7 @@ export function Header() {
     <header className="flex h-16 items-center justify-between gap-4 border-b bg-card px-6">
       <div className="flex items-center gap-4">
         <Link href="/dashboard" className="text-xl font-bold">
-          {process.env.NEXT_PUBLIC_APP_NAME || 'SaaS App'}
+          {process.env.NEXT_PUBLIC_APP_NAME || 'Linksy'}
         </Link>
       </div>
 

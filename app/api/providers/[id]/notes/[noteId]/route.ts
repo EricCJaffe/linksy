@@ -65,16 +65,16 @@ export async function PATCH(
 
   const { noteId } = params
   const body = await request.json()
-  const { note_type, content, is_private, attachments, is_pinned } = body
+  const { note_type, content, is_private, attachments, is_pinned, call_log_data } = body
 
-  if (!note_type && !content && is_private === undefined && attachments === undefined && is_pinned === undefined) {
+  if (!note_type && !content && is_private === undefined && attachments === undefined && is_pinned === undefined && call_log_data === undefined) {
     return NextResponse.json(
-      { error: 'note_type, content, is_private, attachments, or is_pinned is required' },
+      { error: 'note_type, content, is_private, attachments, call_log_data, or is_pinned is required' },
       { status: 400 }
     )
   }
 
-  if (note_type && !['general', 'outreach', 'update', 'internal'].includes(note_type)) {
+  if (note_type && !['general', 'outreach', 'update', 'internal', 'call_log'].includes(note_type)) {
     return NextResponse.json(
       { error: 'Invalid note_type' },
       { status: 400 }
@@ -103,6 +103,7 @@ export async function PATCH(
   if (is_private !== undefined) updates.is_private = is_private
   if (attachments !== undefined) updates.attachments = attachments
   if (is_pinned !== undefined) updates.is_pinned = is_pinned
+  if (call_log_data !== undefined) updates.call_log_data = call_log_data
 
   let remainingUpdates: Record<string, any> = { ...updates }
   let note: any = null

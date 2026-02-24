@@ -135,6 +135,12 @@ export default function TicketsPage() {
 
   const handleBulkStatusChange = async (newStatus: TicketStatus) => {
     if (selectedIds.size === 0) return
+
+    const count = selectedIds.size
+    if (!confirm(`Update ${count} ticket${count !== 1 ? 's' : ''} to "${ticketStatusLabels[newStatus]}"?\n\nEmail notifications will be sent to clients with email addresses.`)) {
+      return
+    }
+
     setIsBulkUpdating(true)
     try {
       const res = await fetch('/api/tickets/bulk', {
@@ -143,7 +149,13 @@ export default function TicketsPage() {
         body: JSON.stringify({ ids: Array.from(selectedIds), status: newStatus }),
       })
       if (!res.ok) throw new Error('Bulk update failed')
+
+      const result = await res.json()
       setSelectedIds(new Set())
+
+      // Show success message with email count
+      alert(`Successfully updated ${result.updated} ticket${result.updated !== 1 ? 's' : ''}.\n${result.emailsSent > 0 ? `Email notifications sent to ${result.emailsSent} client${result.emailsSent !== 1 ? 's' : ''}.` : 'No email notifications sent (no client emails on file).'}`)
+
       // Force refetch
       handleFilterChange({})
     } catch (err) {

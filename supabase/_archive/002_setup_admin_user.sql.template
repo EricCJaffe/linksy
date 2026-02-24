@@ -1,0 +1,43 @@
+-- Setup admin user and tenant
+-- This is a TEMPLATE file. Copy this to 002_setup_admin_user.sql and replace placeholders.
+-- OR run these commands manually in Supabase SQL Editor after signing up
+
+-- Step 1: Update user to be site_admin (replace YOUR_EMAIL_HERE with your actual email)
+UPDATE users
+SET role = 'site_admin'
+WHERE email = 'YOUR_EMAIL_HERE';
+
+-- Step 2: Create a default tenant if it doesn't exist
+INSERT INTO tenants (name, slug, settings, branding)
+VALUES (
+    'YOUR_COMPANY_NAME', -- Replace with your company name
+    'your-company-slug', -- Replace with your company slug (lowercase, no spaces)
+    '{}',
+    '{}'
+)
+ON CONFLICT (slug) DO NOTHING
+RETURNING id;
+
+-- Step 3: Link user to tenant as admin
+INSERT INTO tenant_users (tenant_id, user_id, role)
+SELECT
+    t.id,
+    u.id,
+    'admin'
+FROM users u
+CROSS JOIN tenants t
+WHERE u.email = 'YOUR_EMAIL_HERE' -- Replace with your email
+AND t.slug = 'your-company-slug' -- Replace with your company slug
+ON CONFLICT (tenant_id, user_id) DO UPDATE
+SET role = 'admin';
+
+-- Step 4: Verify the setup
+SELECT
+    u.email,
+    u.role as user_role,
+    t.name as tenant_name,
+    tu.role as tenant_role
+FROM users u
+LEFT JOIN tenant_users tu ON tu.user_id = u.id
+LEFT JOIN tenants t ON t.id = tu.tenant_id
+WHERE u.email = 'YOUR_EMAIL_HERE'; -- Replace with your email

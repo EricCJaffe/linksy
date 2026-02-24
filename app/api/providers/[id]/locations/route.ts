@@ -19,6 +19,21 @@ export async function POST(
 
   const supabase = await createServiceClient()
 
+  // Check if user has access to this provider (including via parent relationship)
+  if (!auth.isSiteAdmin && !auth.isTenantAdmin) {
+    const { data: hasAccess } = await supabase.rpc(
+      'linksy_user_can_access_provider',
+      {
+        p_user_id: auth.user.id,
+        p_provider_id: providerId,
+      }
+    )
+
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+    }
+  }
+
   // Build the address string and geocode it
   const addressString = buildAddressString({
     address_line1: body.address_line1,

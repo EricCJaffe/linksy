@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { geocodeAddress } from '@/lib/utils/geocode'
+import { checkRateLimit } from '@/lib/utils/rate-limit'
 import OpenAI from 'openai'
 
 function getOpenAI() {
@@ -60,6 +61,58 @@ export async function POST(request: Request) {
       }
     }
 
+    const supabase = await createServiceClient()
+
+    // Host-level controls for embedded widget usage (no API keys required)
+    if (hostProviderId) {
+      const { data: host, error: hostError } = await supabase
+        .from('linksy_providers')
+        .select(
+          'id, is_host, is_active, host_embed_active, host_monthly_token_budget, host_tokens_used_this_month, host_widget_config'
+        )
+        .eq('id', hostProviderId)
+        .single()
+
+      if (hostError || !host || !host.is_host || !host.is_active || !host.host_embed_active) {
+        return NextResponse.json({ error: 'Invalid or inactive host context' }, { status: 403 })
+      }
+
+      const overBudget =
+        host.host_monthly_token_budget != null &&
+        host.host_tokens_used_this_month >= host.host_monthly_token_budget
+      if (overBudget) {
+        return NextResponse.json(
+          { error: 'Monthly search budget reached for this host' },
+          { status: 429 }
+        )
+      }
+
+      const hostConfig = (host.host_widget_config || {}) as Record<string, any>
+      const perMinuteLimit =
+        typeof hostConfig.search_rate_limit_per_minute === 'number' &&
+        hostConfig.search_rate_limit_per_minute > 0
+          ? hostConfig.search_rate_limit_per_minute
+          : 60
+
+      const forwardedFor = request.headers.get('x-forwarded-for')
+      const requestIp = forwardedFor?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || 'unknown'
+      const rateLimit = checkRateLimit(`host-search:${hostProviderId}:${requestIp}`, perMinuteLimit, 60 * 1000)
+
+      if (!rateLimit.success) {
+        return NextResponse.json(
+          { error: 'Search rate limit exceeded for this host. Please try again shortly.' },
+          {
+            status: 429,
+            headers: {
+              'X-RateLimit-Limit': rateLimit.limit.toString(),
+              'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+              'X-RateLimit-Reset': rateLimit.reset.toISOString(),
+            },
+          }
+        )
+      }
+    }
+
     // Step 1: Generate embedding for the user's query
     const openai = getOpenAI()
     const embeddingResponse = await openai.embeddings.create({
@@ -68,8 +121,6 @@ export async function POST(request: Request) {
     })
 
     const queryEmbedding = embeddingResponse.data[0].embedding
-
-    const supabase = await createServiceClient()
 
     // Step 2: Search for matching needs using vector similarity
     const { data: matchingNeeds, error: needsError } = await supabase.rpc(
@@ -142,6 +193,7 @@ export async function POST(request: Request) {
       referral_instructions,
       llm_context_card,
       is_active,
+      service_zip_codes,
       provider_needs:linksy_provider_needs!inner(
         need_id,
         need:linksy_needs(id, name)
@@ -182,8 +234,34 @@ export async function POST(request: Request) {
       )
     }
 
+    // Step 3b: Filter by service ZIP codes if client provided a ZIP
+    // Providers with null/empty service_zip_codes serve all areas
+    let filteredProviders = providers || []
+    const excludedProviders: any[] = []
+
+    if (zipCode) {
+      const clientZip = zipCode.trim()
+      const inServiceArea: any[] = []
+      const outOfServiceArea: any[] = []
+
+      filteredProviders.forEach((provider: any) => {
+        const serviceZips = provider.service_zip_codes
+        // null or empty array means serves all areas
+        if (!serviceZips || serviceZips.length === 0) {
+          inServiceArea.push(provider)
+        } else if (serviceZips.includes(clientZip)) {
+          inServiceArea.push(provider)
+        } else {
+          outOfServiceArea.push(provider)
+        }
+      })
+
+      filteredProviders = inServiceArea
+      excludedProviders.push(...outOfServiceArea)
+    }
+
     // Step 4: Attach distance to every result and sort closest-first
-    let resultsWithDistance = (providers || []).map((provider: any) => {
+    let resultsWithDistance = filteredProviders.map((provider: any) => {
       const primaryLocation = provider.locations?.find((l: any) => l.is_primary) || provider.locations?.[0]
       const distance =
         resolvedLocation && primaryLocation?.latitude && primaryLocation?.longitude
@@ -264,6 +342,13 @@ export async function POST(request: Request) {
       })
     }
 
+    // Include info about providers excluded due to ZIP code restrictions
+    const excludedByZip = excludedProviders.map((p: any) => ({
+      id: p.id,
+      name: p.name,
+      service_zip_codes: p.service_zip_codes,
+    }))
+
     return NextResponse.json({
       query,
       needs: matchingNeeds,
@@ -271,6 +356,8 @@ export async function POST(request: Request) {
       message: conversationalResponse,
       searchRadiusMiles,
       sessionId: activeSessionId,
+      excludedByZip: excludedByZip.length > 0 ? excludedByZip : undefined,
+      clientZipCode: zipCode || undefined,
     })
   } catch (error) {
     console.error('Search error:', error)

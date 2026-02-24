@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,16 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Loader2, CheckCircle2 } from 'lucide-react'
+import type { HostCustomField } from '@/lib/types/linksy'
 
 interface CreateTicketDialogProps {
   open: boolean
@@ -21,6 +30,8 @@ interface CreateTicketDialogProps {
   providerName: string
   needId?: string
   needName?: string
+  searchSessionId?: string
+  hostProviderId?: string
 }
 
 export function CreateTicketDialog({
@@ -30,11 +41,15 @@ export function CreateTicketDialog({
   providerName,
   needId,
   needName,
+  searchSessionId,
+  hostProviderId,
 }: CreateTicketDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const [ticketNumber, setTicketNumber] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [customFields, setCustomFields] = useState<HostCustomField[]>([])
+  const [isLoadingFields, setIsLoadingFields] = useState(false)
 
   const [formData, setFormData] = useState({
     client_name: '',
@@ -43,10 +58,39 @@ export function CreateTicketDialog({
     description_of_need: '',
   })
 
+  const [customData, setCustomData] = useState<Record<string, any>>({})
+
+  // Fetch custom fields when hostProviderId is available
+  useEffect(() => {
+    if (hostProviderId && open) {
+      setIsLoadingFields(true)
+      fetch(`/api/hosts/${hostProviderId}/custom-fields`)
+        .then((res) => res.json())
+        .then((data) => {
+          setCustomFields(data.fields || [])
+        })
+        .catch((err) => {
+          console.error('Failed to load custom fields:', err)
+        })
+        .finally(() => {
+          setIsLoadingFields(false)
+        })
+    }
+  }, [hostProviderId, open])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
     setIsSubmitting(true)
+
+    // Validate required custom fields
+    for (const field of customFields) {
+      if (field.is_required && !customData[field.field_label]) {
+        setError(`${field.field_label} is required`)
+        setIsSubmitting(false)
+        return
+      }
+    }
 
     try {
       const response = await fetch('/api/linksy/tickets', {
@@ -55,6 +99,9 @@ export function CreateTicketDialog({
         body: JSON.stringify({
           provider_id: providerId,
           need_id: needId,
+          search_session_id: searchSessionId,
+          host_provider_id: hostProviderId,
+          custom_data: customData,
           ...formData,
         }),
       })
@@ -87,7 +134,142 @@ export function CreateTicketDialog({
         client_email: '',
         description_of_need: '',
       })
+      setCustomData({})
     }, 300)
+  }
+
+  const renderCustomField = (field: HostCustomField) => {
+    const fieldId = `custom_${field.id}`
+    const value = customData[field.field_label]
+
+    switch (field.field_type) {
+      case 'text':
+      case 'email':
+      case 'phone':
+        return (
+          <div key={field.id} className="space-y-2">
+            <Label htmlFor={fieldId}>
+              {field.field_label}
+              {field.is_required && <span className="text-red-500"> *</span>}
+            </Label>
+            <Input
+              id={fieldId}
+              type={field.field_type === 'email' ? 'email' : field.field_type === 'phone' ? 'tel' : 'text'}
+              value={value || ''}
+              onChange={(e) =>
+                setCustomData({ ...customData, [field.field_label]: e.target.value })
+              }
+              placeholder={field.placeholder || ''}
+              required={field.is_required}
+            />
+            {field.help_text && (
+              <p className="text-xs text-muted-foreground">{field.help_text}</p>
+            )}
+          </div>
+        )
+
+      case 'textarea':
+        return (
+          <div key={field.id} className="space-y-2">
+            <Label htmlFor={fieldId}>
+              {field.field_label}
+              {field.is_required && <span className="text-red-500"> *</span>}
+            </Label>
+            <Textarea
+              id={fieldId}
+              value={value || ''}
+              onChange={(e) =>
+                setCustomData({ ...customData, [field.field_label]: e.target.value })
+              }
+              placeholder={field.placeholder || ''}
+              required={field.is_required}
+              rows={3}
+            />
+            {field.help_text && (
+              <p className="text-xs text-muted-foreground">{field.help_text}</p>
+            )}
+          </div>
+        )
+
+      case 'date':
+        return (
+          <div key={field.id} className="space-y-2">
+            <Label htmlFor={fieldId}>
+              {field.field_label}
+              {field.is_required && <span className="text-red-500"> *</span>}
+            </Label>
+            <Input
+              id={fieldId}
+              type="date"
+              value={value || ''}
+              onChange={(e) =>
+                setCustomData({ ...customData, [field.field_label]: e.target.value })
+              }
+              required={field.is_required}
+            />
+            {field.help_text && (
+              <p className="text-xs text-muted-foreground">{field.help_text}</p>
+            )}
+          </div>
+        )
+
+      case 'select':
+        return (
+          <div key={field.id} className="space-y-2">
+            <Label htmlFor={fieldId}>
+              {field.field_label}
+              {field.is_required && <span className="text-red-500"> *</span>}
+            </Label>
+            <Select
+              value={value || ''}
+              onValueChange={(val) =>
+                setCustomData({ ...customData, [field.field_label]: val })
+              }
+              required={field.is_required}
+            >
+              <SelectTrigger id={fieldId}>
+                <SelectValue placeholder={field.placeholder || 'Select an option'} />
+              </SelectTrigger>
+              <SelectContent>
+                {(field.field_options || []).map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {option}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {field.help_text && (
+              <p className="text-xs text-muted-foreground">{field.help_text}</p>
+            )}
+          </div>
+        )
+
+      case 'checkbox':
+        return (
+          <div key={field.id} className="flex items-center space-x-2">
+            <Checkbox
+              id={fieldId}
+              checked={value || false}
+              onCheckedChange={(checked) =>
+                setCustomData({ ...customData, [field.field_label]: checked })
+              }
+              required={field.is_required}
+            />
+            <Label htmlFor={fieldId} className="cursor-pointer">
+              {field.field_label}
+              {field.is_required && <span className="text-red-500"> *</span>}
+              {field.help_text && (
+                <span className="block text-xs text-muted-foreground font-normal mt-1">
+                  {field.help_text}
+                </span>
+              )}
+            </Label>
+          </div>
+        )
+
+      default:
+        return null
+    }
   }
 
   return (
@@ -179,6 +361,20 @@ export function CreateTicketDialog({
                   rows={4}
                 />
               </div>
+
+              {/* Custom Fields */}
+              {isLoadingFields && (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              )}
+
+              {!isLoadingFields && customFields.length > 0 && (
+                <div className="space-y-4 pt-4 border-t">
+                  <h3 className="text-sm font-medium">Additional Information</h3>
+                  {customFields.map((field) => renderCustomField(field))}
+                </div>
+              )}
 
               {error && (
                 <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded">

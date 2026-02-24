@@ -11,6 +11,7 @@ export async function GET(request: Request) {
   const sector = searchParams.get('sector') || 'all'
   const status = searchParams.get('status') || 'active'
   const referralType = searchParams.get('referral_type') || 'all'
+  const organizationType = searchParams.get('organization_type') || 'all'
   const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10), 100)
   const offset = parseInt(searchParams.get('offset') || '0', 10)
 
@@ -65,6 +66,19 @@ export async function GET(request: Request) {
     query = query.eq('referral_type', referralType)
   }
 
+  // Organization type filter (parent/child/standalone)
+  if (organizationType === 'parent') {
+    // Parent orgs: has at least one child (we'll filter this after the query)
+    // For now, exclude providers that have a parent
+    query = query.is('parent_provider_id', null)
+  } else if (organizationType === 'child') {
+    // Child orgs: has a parent
+    query = query.not('parent_provider_id', 'is', null)
+  } else if (organizationType === 'standalone') {
+    // Standalone: no parent and no children (we'll filter this after the query)
+    query = query.is('parent_provider_id', null)
+  }
+
   if (proximityIds !== null) {
     if (proximityIds.length === 0) {
       // No providers within radius — short-circuit
@@ -82,8 +96,21 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: queryError.message }, { status: 500 })
   }
 
-  // Map to include counts
-  const mapped = (providers || []).map((p: any) => ({
+  // For parent/standalone filtering, get all provider IDs that have children
+  let parentProviderIds: Set<string> | null = null
+  if (organizationType === 'parent' || organizationType === 'standalone') {
+    const { data: childData } = await supabase
+      .from('linksy_providers')
+      .select('parent_provider_id')
+      .not('parent_provider_id', 'is', null)
+
+    if (childData) {
+      parentProviderIds = new Set(childData.map((c) => c.parent_provider_id).filter(Boolean))
+    }
+  }
+
+  // Map to include counts and parent_provider_id
+  let mapped = (providers || []).map((p: any) => ({
     id: p.id,
     name: p.name,
     description: p.description,
@@ -91,19 +118,27 @@ export async function GET(request: Request) {
     phone: p.phone,
     email: p.email,
     website: p.website,
-    hours: p.hours,
+    hours: p.hours ?? p.hours_of_operation ?? null,
     is_active: p.is_active,
     provider_status: p.provider_status,
     accepting_referrals: p.accepting_referrals,
     referral_type: p.referral_type,
     referral_instructions: p.referral_instructions,
     project_status: p.project_status,
-    allow_auto_update: p.allow_auto_update,
+    allow_auto_update: p.allow_auto_update ?? p.allow_auto_update_description ?? false,
+    parent_provider_id: p.parent_provider_id,
     created_at: p.created_at,
     updated_at: p.updated_at,
     location_count: p.linksy_locations?.length || 0,
     need_count: p.linksy_provider_needs?.length || 0,
   }))
+
+  // Apply post-query organization type filtering
+  if (organizationType === 'parent' && parentProviderIds) {
+    mapped = mapped.filter((p) => parentProviderIds!.has(p.id))
+  } else if (organizationType === 'standalone' && parentProviderIds) {
+    mapped = mapped.filter((p) => !p.parent_provider_id && !parentProviderIds!.has(p.id))
+  }
 
   const total = count || 0
 

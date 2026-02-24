@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { requireAuth, requireTenantAdmin } from '@/lib/middleware/auth'
+import { getTenantId, requireAuth, requireTenantAdmin } from '@/lib/middleware/auth'
 import { sendNewTicketNotification } from '@/lib/utils/email'
+import { sendWebhookEvent } from '@/lib/utils/webhooks'
 
 export async function GET(request: Request) {
   const { data: auth, error } = await requireAuth()
@@ -141,6 +142,42 @@ export async function POST(request: Request) {
     }
   }
 
+  // Referral cap: max 4 active referrals per client (identified by email or phone)
+  // Only count tickets that are still active (not closed/resolved)
+  const MAX_REFERRALS_PER_CLIENT = 4
+  if (body.client_email || body.client_phone) {
+    let capQuery = supabase
+      .from('linksy_tickets')
+      .select('id, ticket_number, provider_id, created_at', { count: 'exact', head: false })
+      .in('status', ['pending'])  // Only count pending/active tickets
+
+    // Match by email OR phone (whichever is provided)
+    const orConditions: string[] = []
+    if (body.client_email) {
+      orConditions.push(`client_email.eq.${body.client_email}`)
+    }
+    if (body.client_phone) {
+      orConditions.push(`client_phone.eq.${body.client_phone}`)
+    }
+    if (orConditions.length > 0) {
+      capQuery = capQuery.or(orConditions.join(','))
+    }
+
+    const { data: existingTickets, count: totalCount } = await capQuery
+
+    if ((totalCount ?? 0) >= MAX_REFERRALS_PER_CLIENT) {
+      return NextResponse.json({
+        error: 'Referral cap exceeded',
+        message: `This client has reached the maximum of ${MAX_REFERRALS_PER_CLIENT} active referrals. Please wait for existing referrals to be resolved before creating more.`,
+        existingTickets: existingTickets?.map(t => ({
+          ticket_number: t.ticket_number,
+          provider_id: t.provider_id,
+          created_at: t.created_at,
+        })),
+      }, { status: 429 })
+    }
+  }
+
   // Auto-assign to default referral handler if provider is specified
   let defaultHandlerUserId = body.client_user_id || null
   if (body.provider_id && !defaultHandlerUserId) {
@@ -170,6 +207,7 @@ export async function POST(request: Request) {
       status: body.status || 'pending',
       source: body.source || null,
       client_user_id: defaultHandlerUserId,
+      custom_data: body.custom_data || {},
     })
     .select()
     .single()
@@ -182,12 +220,18 @@ export async function POST(request: Request) {
   if (defaultHandlerUserId && body.provider_id) {
     void (async () => {
       try {
-        const [{ data: handlerUser }, { data: providerData }, { data: needData }] = await Promise.all([
+        const [{ data: handlerUser }, { data: providerData }, { data: needData }, { data: customFields }] = await Promise.all([
           supabase.auth.admin.getUserById(defaultHandlerUserId),
           supabase.from('linksy_providers').select('name').eq('id', body.provider_id).single(),
           body.need_id
             ? supabase.from('linksy_needs').select('name').eq('id', body.need_id).single()
             : Promise.resolve({ data: null }),
+          supabase
+            .from('linksy_host_custom_fields')
+            .select('field_label, field_type')
+            .eq('host_id', body.provider_id)
+            .eq('is_active', true)
+            .order('sort_order', { ascending: true }),
         ])
 
         const handlerEmail = handlerUser?.user?.email
@@ -202,12 +246,35 @@ export async function POST(request: Request) {
             description: body.description_of_need || '',
             providerName: (providerData as any)?.name || 'your organization',
             ticketUrl: `${appUrl}/dashboard/tickets/${ticket.id}`,
+            customData: body.custom_data || ticket.custom_data,
+            customFields: customFields || [],
+            hostId: body.provider_id,
           })
         }
       } catch (err) {
         console.error('[ticket email] Failed to send new ticket notification:', err)
       }
     })()
+  }
+
+  const tenantId = getTenantId(auth)
+  if (tenantId) {
+    void sendWebhookEvent({
+      tenantId,
+      eventType: 'ticket.created',
+      payload: {
+        ticket_id: ticket.id,
+        ticket_number: ticket.ticket_number,
+        status: ticket.status,
+        source: ticket.source,
+        provider_id: ticket.provider_id,
+        need_id: ticket.need_id,
+        client_name: ticket.client_name,
+        created_at: ticket.created_at,
+      },
+    }).catch((err) => {
+      console.error('[webhook] failed to send ticket.created event:', err)
+    })
   }
 
   return NextResponse.json(ticket, { status: 201 })

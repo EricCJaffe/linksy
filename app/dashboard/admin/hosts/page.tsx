@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Copy, ExternalLink, Zap } from 'lucide-react'
+import { Copy, ExternalLink, Zap, Settings } from 'lucide-react'
 import Link from 'next/link'
 import type { Provider } from '@/lib/types/linksy'
 
@@ -44,6 +44,25 @@ export default function HostsPage() {
 
   const activeHosts = (hosts ?? []).filter((h) => h.is_active && h.host_embed_active)
   const inactiveHosts = (hosts ?? []).filter((h) => !h.is_active || !h.host_embed_active)
+  const totalSearches = (hosts ?? []).reduce((sum, h) => sum + (h.host_searches_this_month ?? 0), 0)
+  const totalTokens = (hosts ?? []).reduce((sum, h) => sum + (h.host_tokens_used_this_month ?? 0), 0)
+  const hostsWithBudget = (hosts ?? []).filter((h) => h.host_monthly_token_budget != null)
+  const overBudgetCount = (hosts ?? []).filter(
+    (h) => h.host_monthly_token_budget != null && h.host_tokens_used_this_month >= h.host_monthly_token_budget
+  ).length
+  const avgTokensPerSearch = totalSearches > 0 ? Math.round(totalTokens / totalSearches) : 0
+  const weightedBudgetUtilization = hostsWithBudget.length
+    ? Math.round(
+        (hostsWithBudget.reduce(
+          (sum, h) =>
+            sum +
+            Math.min(100, ((h.host_tokens_used_this_month ?? 0) / (h.host_monthly_token_budget || 1)) * 100),
+          0
+        ) /
+          hostsWithBudget.length) *
+          10
+      ) / 10
+    : null
 
   return (
     <div className="space-y-6 p-6">
@@ -57,7 +76,7 @@ export default function HostsPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         <Card>
           <CardContent className="p-4">
             <p className="text-xs text-muted-foreground">Active Hosts</p>
@@ -67,16 +86,29 @@ export default function HostsPage() {
         <Card>
           <CardContent className="p-4">
             <p className="text-xs text-muted-foreground">Searches This Month</p>
-            <p className="text-2xl font-bold">
-              {(hosts ?? []).reduce((sum, h) => sum + (h.host_searches_this_month ?? 0), 0).toLocaleString()}
-            </p>
+            <p className="text-2xl font-bold">{totalSearches.toLocaleString()}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
             <p className="text-xs text-muted-foreground">Tokens This Month</p>
-            <p className="text-2xl font-bold">
-              {(hosts ?? []).reduce((sum, h) => sum + (h.host_tokens_used_this_month ?? 0), 0).toLocaleString()}
+            <p className="text-2xl font-bold">{totalTokens.toLocaleString()}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground">Avg Tokens / Search</p>
+            <p className="text-2xl font-bold">{avgTokensPerSearch.toLocaleString()}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground">Budget Health</p>
+            <p className="text-2xl font-bold">{overBudgetCount} over</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {weightedBudgetUtilization != null
+                ? `${weightedBudgetUtilization}% avg utilization`
+                : 'No budgets set'}
             </p>
           </CardContent>
         </Card>
@@ -104,7 +136,8 @@ export default function HostsPage() {
                 <TableHead className="text-right">Searches</TableHead>
                 <TableHead className="text-right">Tokens Used</TableHead>
                 <TableHead className="text-right">Budget</TableHead>
-                <TableHead className="w-32"></TableHead>
+                <TableHead className="text-right">Utilization</TableHead>
+                <TableHead className="w-40"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -113,6 +146,9 @@ export default function HostsPage() {
                 const overBudget =
                   host.host_monthly_token_budget != null &&
                   host.host_tokens_used_this_month >= host.host_monthly_token_budget
+                const utilizationPct = host.host_monthly_token_budget
+                  ? Math.round(((host.host_tokens_used_this_month ?? 0) / host.host_monthly_token_budget) * 1000) / 10
+                  : null
 
                 return (
                   <TableRow key={host.id} className={!host.is_active || !host.host_embed_active ? 'opacity-50' : ''}>
@@ -152,8 +188,16 @@ export default function HostsPage() {
                         ? host.host_monthly_token_budget.toLocaleString()
                         : '∞'}
                     </TableCell>
+                    <TableCell className="text-right text-sm">
+                      {utilizationPct != null ? `${utilizationPct}%` : '-'}
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-end gap-1">
+                        <Link href={`/dashboard/admin/hosts/${host.id}`}>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Host settings">
+                            <Settings className="h-3 w-3" />
+                          </Button>
+                        </Link>
                         <Button
                           variant="ghost"
                           size="icon"

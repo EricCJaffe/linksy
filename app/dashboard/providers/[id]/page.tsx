@@ -3,7 +3,11 @@
 import Link from 'next/link'
 import { ArrowLeft, Phone, Mail, Globe, Clock } from 'lucide-react'
 import { useProvider } from '@/lib/hooks/useProviders'
+import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
 import { ProviderDetailTabs } from '@/components/providers/provider-detail-tabs'
+import { PurgeProviderDialog } from '@/components/providers/purge-provider-dialog'
+import { ProviderBreadcrumbs } from '@/components/providers/provider-breadcrumbs'
+import { ProviderQuickSwitcher } from '@/components/providers/provider-quick-switcher'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -40,6 +44,9 @@ export default function ProviderDetailPage({
 }) {
   const { id } = params
   const { data: provider, isLoading, error } = useProvider(id)
+  const { data: user } = useCurrentUser()
+
+  const isSiteAdmin = user?.profile?.role === 'site_admin'
 
   if (isLoading) {
     return (
@@ -79,9 +86,15 @@ export default function ProviderDetailPage({
         Back to Providers
       </Link>
 
+      <ProviderBreadcrumbs providerId={id} providerName={provider.name} />
+
       <div className="flex items-start justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-3xl font-bold">{provider.name}</h1>
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold">{provider.name}</h1>
+            <ProviderQuickSwitcher providerId={id} providerName={provider.name} />
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
           <Badge variant="outline" className={sectorBadgeClass[provider.sector] || 'bg-muted text-muted-foreground'}>
             {sectorLabels[provider.sector] || provider.sector}
           </Badge>
@@ -98,10 +111,16 @@ export default function ProviderDetailPage({
           >
             {provider.referral_type === 'contact_directly' ? 'Contact Directly' : 'Standard'}
           </Badge>
+          </div>
         </div>
-        <Button size="sm" asChild>
-          <Link href="/dashboard/support">Linksy Support</Link>
-        </Button>
+        <div className="flex gap-2">
+          {isSiteAdmin && (
+            <PurgeProviderDialog providerId={provider.id} providerName={provider.name} />
+          )}
+          <Button size="sm" asChild>
+            <Link href="/dashboard/support">Linksy Support</Link>
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-6 text-sm text-muted-foreground">

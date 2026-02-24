@@ -116,27 +116,47 @@
 
 ### 3.2 Provider Management
 - [ ] **List View**
-  - [ ] Searchable table with columns: name, sector, phone, referral_type, status, referral count
-  - [ ] Filter by: sector (nonprofit/faith_based/government/business), project_status, referral_type, is_active
-  - [ ] Sort by: name, referral count, created date
-  - [ ] Bulk actions: activate, deactivate, export CSV
-  - [ ] "Add Provider" button
-  - [ ] Pagination
-- [ ] **Detail View** (tabbed interface — mirrors Dynamics 365 layout)
-  - [ ] **Summary Tab**
-    - [ ] Provider name (editable)
-    - [ ] Sector badge
-    - [ ] Website link (clickable)
-    - [ ] Phone, email
-    - [ ] Hours of operation
-    - [ ] Parent account display (if applicable)
-    - [ ] Description (rich text editor)
-    - [ ] "Allow Auto Update of Description" toggle
-    - [ ] Needs Addressed panel (sidebar or section showing linked needs with add/remove)
-  - [ ] **Contacts Tab**
-    - [ ] List of linked staff users with name, email, job title, is_primary badge
-    - [ ] Add/remove contact links
-  - [ ] **Details Tab**
+  - [x] Searchable table with columns: name, sector, phone, referral_type, status, referral count
+  - [x] Filter by: sector (nonprofit/faith_based/government/business), project_status, referral_type, is_active, **organization_type (all/parent/child/standalone)**
+  - [x] Sort by: name, referral count, created date
+  - [x] Bulk actions: activate, deactivate, export CSV
+  - [x] "Add Provider" button
+  - [x] Pagination
+  - [x] **Child location badge** indicator for providers linked to a parent
+- [x] **Detail View** (tabbed interface — mirrors Dynamics 365 layout)
+  - [x] **Breadcrumbs** — Shows parent > child hierarchy for child locations
+  - [x] **Quick Switcher** — Dropdown to navigate between parent and all children
+  - [x] **Summary Tab**
+    - [x] Provider name (editable)
+    - [x] Sector badge
+    - [x] Website link (clickable)
+    - [x] Phone, email, phone extension
+    - [x] Hours of operation
+    - [x] **Organization Structure card** — Parent/child linking controls (site admin only)
+      - [x] Display current parent with link (if child)
+      - [x] Display list of children with status badges (if parent)
+      - [x] Link to parent button with search dialog
+      - [x] Unlink from parent button
+      - [x] Validation: prevent circular references and multi-level nesting
+    - [x] Description (rich text editor)
+    - [x] "Allow Auto Update of Description" toggle
+    - [x] Needs Addressed panel (sidebar or section showing linked needs with add/remove)
+  - [x] **Organization Dashboard Tab** (for parent orgs only)
+    - [x] Date range filter with from/to date inputs and apply/clear buttons
+    - [x] Summary cards: Total Locations, Total Referrals, Total Interactions, Events
+    - [x] Engagement breakdown: Profile Views, Phone Clicks, Website Clicks, Directions Clicks
+    - [x] Additional metrics: Notes & Activity, Physical Locations
+    - [x] **Location Performance Breakdown table** with bulk operations
+      - [x] Checkboxes for selecting child locations
+      - [x] Bulk actions: Activate, Deactivate, Pause
+      - [x] Columns: Location, Status, Referrals, Interactions, Events, Notes, Addresses
+      - [x] Parent row (highlighted)
+      - [x] Children rows with drill-down links
+      - [x] Totals row (bold, aggregated)
+  - [x] **Contacts Tab**
+    - [x] List of linked staff users with name, email, job title, is_primary badge
+    - [x] Add/remove contact links
+  - [x] **Details Tab**
     - [ ] Social media links (Facebook, Instagram, LinkedIn, YouTube)
     - [ ] Project status dropdown
     - [ ] Referral type toggle (standard / contact_directly)

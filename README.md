@@ -245,13 +245,14 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🗺 Roadmap
 
 - [ ] Multi-language support (i18n)
-- [ ] Advanced analytics dashboard
-- [ ] Webhooks system
-- [ ] API key management
+- [x] Advanced analytics dashboard
+- [x] Webhooks system
+- [x] Host usage controls & rate limiting (no customer API keys)
 - [ ] Billing and subscription management
-- [ ] Email templates customization
+- [x] Email templates customization
 - [ ] Two-factor authentication (2FA)
-- [ ] SSO integration (SAML, OAuth)
+- [x] OAuth login (Google, Microsoft)
+- [ ] SSO integration (SAML)
 
 ---
 

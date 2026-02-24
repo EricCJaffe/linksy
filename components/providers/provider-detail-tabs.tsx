@@ -21,6 +21,12 @@ import {
   SelectItem,
 } from '@/components/ui/select'
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
   Table,
   TableHeader,
   TableBody,
@@ -32,13 +38,19 @@ import { useProvider, useUpdateProvider, useNeedCategories, useCreateNote, useUp
 import { useUpdateTicket } from '@/lib/hooks/useTickets'
 import { useUpdateProviderContact, useDeleteProviderContact, useInviteProviderContact } from '@/lib/hooks/useProviderContacts'
 import { useCreateProviderEvent, useUpdateProviderEvent, useDeleteProviderEvent } from '@/lib/hooks/useProviderEvents'
+import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
 import { EventCalendar, formatRecurrence } from '@/components/providers/event-calendar'
 import { ContactManagementDialog } from '@/components/providers/contact-management-dialog'
+import { CallLogForm } from '@/components/providers/call-log-form'
+import { CallLogDisplay } from '@/components/providers/call-log-display'
+import { ParentChildManager } from '@/components/providers/parent-child-manager'
+import { ParentOrgDashboard } from '@/components/providers/parent-org-dashboard'
+import { useProviderChildren } from '@/lib/hooks/useProviderHierarchy'
 import { ImageUpload } from '@/components/ui/image-upload'
 import { WidgetPreview } from '@/components/widget/widget-preview'
 import { uploadWidgetLogo, uploadNoteAttachment } from '@/lib/storage/upload'
 import type { Provider, ProviderDetail, NoteType, NoteAttachment, TicketStatus, ProviderContact, ProviderEvent, ProviderContactMethod } from '@/lib/types/linksy'
-import { Plus, Copy, ExternalLink, Lock, MapPin, Pencil, Trash2, CheckCircle, Circle, BarChart2, FileText, LayoutList, CalendarDays, RefreshCw, Pin, PinOff } from 'lucide-react'
+import { Plus, Copy, ExternalLink, Lock, MapPin, Pencil, Trash2, CheckCircle, Circle, BarChart2, FileText, LayoutList, CalendarDays, RefreshCw, Pin, PinOff, Phone, StickyNote, ChevronDown } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import type { HostWidgetConfig } from '@/lib/types/linksy'
 
@@ -391,6 +403,7 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
   const createNote = useCreateNote(provider.id)
   const updateNote = useUpdateNote(provider.id)
   const { data: categories } = useNeedCategories()
+  const { data: currentUser } = useCurrentUser()
   const [isEditing, setIsEditing] = useState(false)
   const primaryContact = provider.contacts.find((c) => c.is_primary_contact)
   const primaryLocation = provider.locations.find((l) => l.is_primary) || provider.locations[0] || null
@@ -404,6 +417,7 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
     name: provider.name || '',
     description: provider.description || '',
     phone: provider.phone || '',
+    phone_extension: provider.phone_extension || '',
     email: provider.email || '',
     website: provider.website || '',
     social_facebook: provider.social_facebook || '',
@@ -434,6 +448,7 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
       providerAny.parent_account_name ??
       providerAny.parent_provider_id ??
       '',
+    service_zip_codes: provider.service_zip_codes || [],
   })
   const [selectedPrimaryContactId, setSelectedPrimaryContactId] = useState(primaryContact?.id || '')
   const [locationForm, setLocationForm] = useState({
@@ -554,6 +569,7 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
       name: formData.name,
       description: formData.description,
       phone: formData.phone,
+      phone_extension: formData.phone_extension,
       email: formData.email,
       website: formData.website,
       social_facebook: formData.social_facebook,
@@ -565,6 +581,7 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
       project_status: formData.project_status,
       sector: formData.sector,
       is_active: formData.is_active,
+      service_zip_codes: formData.service_zip_codes.length > 0 ? formData.service_zip_codes : null,
     }
 
     if ('hours' in providerAny) payload.hours = formData.hours
@@ -776,6 +793,7 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
       name: provider.name || '',
       description: provider.description || '',
       phone: provider.phone || '',
+      phone_extension: provider.phone_extension || '',
       email: provider.email || '',
       website: provider.website || '',
       social_facebook: provider.social_facebook || '',
@@ -806,6 +824,7 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
         providerAny.parent_account_name ??
         providerAny.parent_provider_id ??
         '',
+      service_zip_codes: provider.service_zip_codes || [],
     })
     setSelectedPrimaryContactId(primaryContact?.id || '')
     setLocationForm({
@@ -912,15 +931,30 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  disabled={!isEditing}
-                />
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="md:col-span-2 space-y-2">
+                  <Label htmlFor="phone">Phone Number</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    disabled={!isEditing}
+                    placeholder="(555) 123-4567"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone_extension">Extension</Label>
+                  <Input
+                    id="phone_extension"
+                    type="text"
+                    value={formData.phone_extension}
+                    onChange={(e) => setFormData({ ...formData, phone_extension: e.target.value })}
+                    disabled={!isEditing}
+                    placeholder="x123"
+                    maxLength={20}
+                  />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
@@ -1092,6 +1126,31 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
                   onChange={(e) => setLocationForm({ ...locationForm, phone: e.target.value })}
                   disabled={!isEditing}
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="service_zip_codes">Service ZIP Codes</Label>
+                <Input
+                  id="service_zip_codes"
+                  value={formData.service_zip_codes.join(', ')}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    const zips = value
+                      .split(',')
+                      .map(z => z.trim())
+                      .filter(z => z.length > 0)
+                    setFormData({ ...formData, service_zip_codes: zips })
+                  }}
+                  disabled={!isEditing}
+                  placeholder="Leave empty to serve all areas, or enter ZIP codes: 32003, 32065, 32073"
+                />
+                {!isEditing && formData.service_zip_codes.length === 0 && (
+                  <p className="text-xs text-muted-foreground">Serves all areas</p>
+                )}
+                {!isEditing && formData.service_zip_codes.length > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Serves {formData.service_zip_codes.length} ZIP code{formData.service_zip_codes.length !== 1 ? 's' : ''}
+                  </p>
+                )}
               </div>
               {mapEmbedUrl ? (
                 <div className="overflow-hidden rounded-md border">
@@ -1606,6 +1665,11 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
           </div>
         </CardContent>
       </Card>
+
+      <ParentChildManager
+        providerId={provider.id}
+        isSiteAdmin={currentUser?.profile?.role === 'site_admin'}
+      />
 
       <LocationsCard provider={provider} />
 
@@ -2330,6 +2394,7 @@ function EventsTab({ provider }: { provider: ProviderDetail }) {
 function NotesTab({ provider }: { provider: ProviderDetail }) {
   const router = useRouter()
   const [isAddingNote, setIsAddingNote] = useState(false)
+  const [isAddingCallLog, setIsAddingCallLog] = useState(false)
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
   const [newNoteType, setNewNoteType] = useState<NoteType>('general')
   const [newNoteContent, setNewNoteContent] = useState('')
@@ -2446,12 +2511,39 @@ function NotesTab({ provider }: { provider: ProviderDetail }) {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold">Notes</h3>
-        {!isAddingNote && (
-          <Button onClick={() => setIsAddingNote(true)} size="sm">
-            Add Note
-          </Button>
+        {!isAddingNote && !isAddingCallLog && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm">
+                <Plus className="h-4 w-4 mr-1" />
+                Add
+                <ChevronDown className="h-4 w-4 ml-1" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setIsAddingNote(true)}>
+                <StickyNote className="h-4 w-4 mr-2" />
+                Add Note
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setIsAddingCallLog(true)}>
+                <Phone className="h-4 w-4 mr-2" />
+                Log Call
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
       </div>
+
+      {isAddingCallLog && (
+        <CallLogForm
+          providerId={provider.id}
+          onSuccess={() => {
+            setIsAddingCallLog(false)
+            router.refresh()
+          }}
+          onCancel={() => setIsAddingCallLog(false)}
+        />
+      )}
 
       {isAddingNote && (
         <Card>
@@ -2604,8 +2696,18 @@ function NotesTab({ provider }: { provider: ProviderDetail }) {
                       </Button>
                     </div>
                   </div>
-                  <RichTextDisplay content={note.content} className="text-sm" />
-                  <FileAttachmentDisplay attachments={note.attachments} />
+                  {note.note_type === 'call_log' && note.call_log_data ? (
+                    <CallLogDisplay
+                      callLogData={note.call_log_data}
+                      content={note.content}
+                      createdAt={note.created_at}
+                    />
+                  ) : (
+                    <>
+                      <RichTextDisplay content={note.content} className="text-sm" />
+                      <FileAttachmentDisplay attachments={note.attachments} />
+                    </>
+                  )}
                 </>
               )}
             </CardContent>
@@ -2966,10 +3068,20 @@ function HostSettingsTab({ provider }: { provider: ProviderDetail }) {
 }
 
 export function ProviderDetailTabs({ provider }: ProviderDetailTabsProps) {
+  // Check if this provider is a parent (has no parent and has children)
+  const isNotChild = !(provider as any).parent_provider_id
+  const { data: childrenData } = useProviderChildren(isNotChild ? provider.id : null)
+  const isParent = isNotChild && (childrenData?.children.length ?? 0) > 0
+
   return (
     <Tabs defaultValue="summary">
       <TabsList className="flex-wrap">
         <TabsTrigger value="summary">Summary</TabsTrigger>
+        {isParent && (
+          <TabsTrigger value="org-dashboard">
+            Organization Dashboard
+          </TabsTrigger>
+        )}
         <TabsTrigger value="tickets">
           Referrals {provider.tickets.length > 0 && `(${provider.tickets.length})`}
         </TabsTrigger>
@@ -2988,6 +3100,11 @@ export function ProviderDetailTabs({ provider }: ProviderDetailTabsProps) {
       <TabsContent value="summary">
         <SummaryTab provider={provider} />
       </TabsContent>
+      {isParent && (
+        <TabsContent value="org-dashboard">
+          <ParentOrgDashboard providerId={provider.id} />
+        </TabsContent>
+      )}
       <TabsContent value="contacts">
         <ContactsTab provider={provider} />
       </TabsContent>

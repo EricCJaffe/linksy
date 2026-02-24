@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { requireAuth, requireTenantAdmin } from '@/lib/middleware/auth'
+import { getTenantId, requireAuth, requireTenantAdmin } from '@/lib/middleware/auth'
 import { sendTicketStatusNotification } from '@/lib/utils/email'
+import { sendWebhookEvent } from '@/lib/utils/webhooks'
 
 export async function GET(
   request: Request,
@@ -80,6 +81,7 @@ export async function PATCH(
   const { id } = params
   const body = await request.json()
   const supabase = await createServiceClient()
+  const tenantId = getTenantId(auth)
 
   const allowedFields = [
     'status',
@@ -104,6 +106,12 @@ export async function PATCH(
   }
 
   updates.updated_at = new Date().toISOString()
+
+  const { data: previousTicket } = await supabase
+    .from('linksy_tickets')
+    .select('status')
+    .eq('id', id)
+    .single()
 
   const { data: ticket, error: updateError } = await supabase
     .from('linksy_tickets')
@@ -136,11 +144,37 @@ export async function PATCH(
           newStatus: updates.status,
           providerName: (providerData as any)?.name || 'the provider',
           needName: (needData as any)?.name || 'your need',
+          hostId: ticket.provider_id || undefined,
         })
       } catch (err) {
         console.error('[ticket email] Failed to send status notification:', err)
       }
     })()
+  }
+
+  if (
+    tenantId &&
+    updates.status &&
+    previousTicket &&
+    previousTicket.status !== updates.status
+  ) {
+    void sendWebhookEvent({
+      tenantId,
+      eventType: 'ticket.status_changed',
+      payload: {
+        ticket_id: ticket.id,
+        ticket_number: ticket.ticket_number,
+        previous_status: previousTicket.status,
+        new_status: updates.status,
+        source: ticket.source,
+        provider_id: ticket.provider_id,
+        need_id: ticket.need_id,
+        client_name: ticket.client_name,
+        updated_at: ticket.updated_at,
+      },
+    }).catch((err) => {
+      console.error('[webhook] failed to send ticket.status_changed event:', err)
+    })
   }
 
   return NextResponse.json(ticket)

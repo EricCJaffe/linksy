@@ -65,6 +65,20 @@ export function ProviderFiltersBar({ filters, onChange }: ProviderFiltersBarProp
           <SelectItem value="contact_directly">Contact Directly</SelectItem>
         </SelectContent>
       </Select>
+      <Select
+        value={filters.organization_type || 'all'}
+        onValueChange={(value) => onChange({ organization_type: value as any, offset: 0 })}
+      >
+        <SelectTrigger className="w-48">
+          <SelectValue placeholder="Organization Type" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All Organizations</SelectItem>
+          <SelectItem value="parent">Parent Organizations</SelectItem>
+          <SelectItem value="child">Child Locations</SelectItem>
+          <SelectItem value="standalone">Standalone</SelectItem>
+        </SelectContent>
+      </Select>
     </div>
   )
 }

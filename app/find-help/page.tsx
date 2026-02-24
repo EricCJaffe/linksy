@@ -819,6 +819,7 @@ function ProviderCard({ provider, sessionId }: { provider: SearchResult; session
       providerName={provider.name}
       needId={primaryNeed?.id}
       needName={primaryNeed?.name}
+      searchSessionId={sessionId ?? undefined}
     />
     </div>
   )

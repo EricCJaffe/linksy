@@ -25,7 +25,7 @@ export async function POST(
 
   const { id: providerId } = params
   const body = await request.json()
-  const { note_type, content, is_private = false, attachments } = body
+  const { note_type, content, is_private = false, attachments, call_log_data } = body
 
   if (!note_type || !content) {
     return NextResponse.json(
@@ -34,7 +34,7 @@ export async function POST(
     )
   }
 
-  if (!['general', 'outreach', 'update', 'internal'].includes(note_type)) {
+  if (!['general', 'outreach', 'update', 'internal', 'call_log'].includes(note_type)) {
     return NextResponse.json(
       { error: 'Invalid note_type' },
       { status: 400 }
@@ -42,6 +42,21 @@ export async function POST(
   }
 
   const supabase = await createServiceClient()
+
+  // Check if user has access to this provider (including via parent relationship)
+  if (!auth.isSiteAdmin && !auth.isTenantAdmin) {
+    const { data: hasAccess } = await supabase.rpc(
+      'linksy_user_can_access_provider',
+      {
+        p_user_id: auth.user.id,
+        p_provider_id: providerId,
+      }
+    )
+
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+    }
+  }
 
   const insertPayloads: Record<string, any>[] = [
     // Prefer author_id first (current schema), then user_id for legacy compatibility.
@@ -52,6 +67,7 @@ export async function POST(
       content,
       is_private,
       ...(attachments !== undefined && { attachments }),
+      ...(call_log_data !== undefined && { call_log_data }),
     },
     {
       provider_id: providerId,
@@ -60,23 +76,27 @@ export async function POST(
       content,
       is_private,
       ...(attachments !== undefined && { attachments }),
+      ...(call_log_data !== undefined && { call_log_data }),
     },
     {
       provider_id: providerId,
       author_id: auth.user.id,
       note_type,
       content,
+      ...(call_log_data !== undefined && { call_log_data }),
     },
     {
       provider_id: providerId,
       note_type,
       content,
+      ...(call_log_data !== undefined && { call_log_data }),
     },
     {
       provider_id: providerId,
       user_id: auth.user.id,
       note_type,
       content,
+      ...(call_log_data !== undefined && { call_log_data }),
     },
   ]
 

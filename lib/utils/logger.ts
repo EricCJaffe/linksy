@@ -39,8 +39,8 @@ class Logger {
   }
 
   /**
-   * Send log to external service (implement when ready)
-   * TODO: Integrate with Sentry, CloudWatch, or other logging service
+   * Send production error/fatal logs to Sentry.
+   * Additional sinks (for example CloudWatch) can be added later if needed.
    */
   private async sendToExternalService(entry: LogEntry): Promise<void> {
     if (entry.level === 'error' || entry.level === 'fatal') {

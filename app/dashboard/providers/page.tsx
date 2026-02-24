@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Plus, Download, CheckSquare, AlertTriangle } from 'lucide-react'
+import { Plus, Download, CheckSquare, AlertTriangle, Building2, Network } from 'lucide-react'
 import {
   Table,
   TableHeader,
@@ -289,7 +289,17 @@ export default function ProvidersPage() {
                       />
                     </TableCell>
                   )}
-                  <TableCell className="font-medium">{provider.name}</TableCell>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      <span>{provider.name}</span>
+                      {(provider as any).parent_provider_id && (
+                        <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                          <Network className="h-3 w-3 mr-1" />
+                          Child Location
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <Badge variant="outline" className={sectorBadgeClass[provider.sector] || 'bg-muted text-muted-foreground'}>
                       {sectorLabels[provider.sector] || provider.sector}
