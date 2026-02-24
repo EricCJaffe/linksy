@@ -414,6 +414,12 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
     'parent_account_name' in providerAny ||
     'parent_provider_id' in providerAny
 
+  // Check if current user is a contact for this provider and their role
+  const userContact = provider.contacts.find((c) => c.user_id === currentUser?.profile?.id)
+  const isSiteAdmin = currentUser?.profile?.role === 'site_admin'
+  const isProviderAdmin = userContact?.provider_role === 'admin'
+  const canEdit = isSiteAdmin || isProviderAdmin
+
   const [formData, setFormData] = useState({
     name: provider.name || '',
     description: provider.description || '',
@@ -845,26 +851,35 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end">
-        {!isEditing ? (
-          <Button onClick={() => setIsEditing(true)} size="sm">
-            Edit Provider
-          </Button>
-        ) : (
-          <div className="flex gap-2">
-            <Button
-              onClick={handleCancel}
-              variant="outline"
-              size="sm"
-              disabled={updateProvider.isPending}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleSave} size="sm" disabled={updateProvider.isPending || isUpdatingNeeds}>
-              {updateProvider.isPending || isUpdatingNeeds ? 'Saving...' : 'Save Changes'}
-            </Button>
-          </div>
+      <div className="flex justify-between items-start">
+        {!canEdit && userContact && (
+          <p className="text-sm text-muted-foreground">
+            View-only access · Contact your organization admin for edit permissions
+          </p>
         )}
+        <div className={!canEdit && userContact ? '' : 'ml-auto'}>
+          {canEdit && (
+            !isEditing ? (
+              <Button onClick={() => setIsEditing(true)} size="sm">
+                Edit Provider
+              </Button>
+            ) : (
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleCancel}
+                  variant="outline"
+                  size="sm"
+                  disabled={updateProvider.isPending}
+                >
+                  Cancel
+                </Button>
+                <Button onClick={handleSave} size="sm" disabled={updateProvider.isPending || isUpdatingNeeds}>
+                  {updateProvider.isPending || isUpdatingNeeds ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </div>
+            )
+          )}
+        </div>
       </div>
 
       <Card>
