@@ -42,6 +42,8 @@ export async function POST(
     .insert({
       provider_id: providerId,
       user_id: userId,
+      email: userId ? null : body.email, // Store email temporarily if no user yet
+      full_name: userId ? null : body.full_name, // Store full_name temporarily if no user yet
       job_title: body.job_title || null,
       phone: body.phone || null,
       contact_type: body.contact_type || 'provider_employee',

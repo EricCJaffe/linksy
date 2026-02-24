@@ -96,13 +96,24 @@ export async function GET(
   const [contactsWithUsers, notesWithUsers] = await Promise.all([
     Promise.all(
       (contactsRes.data || []).map(async (contact) => {
-        const { data: user } = await supabase
-          .from('users')
-          .select('full_name, email')
-          .eq('id', contact.user_id)
-          .single()
-
-        return { ...contact, user }
+        // If contact has user_id, fetch from users table
+        if (contact.user_id) {
+          const { data: user } = await supabase
+            .from('users')
+            .select('full_name, email')
+            .eq('id', contact.user_id)
+            .single()
+          return { ...contact, user }
+        } else {
+          // For invited contacts without user_id, use email/full_name from contact record
+          return {
+            ...contact,
+            user: {
+              email: contact.email || null,
+              full_name: contact.full_name || null,
+            }
+          }
+        }
       })
     ),
     Promise.all(

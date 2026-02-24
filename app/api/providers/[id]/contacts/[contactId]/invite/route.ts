@@ -34,12 +34,12 @@ export async function POST(
     return NextResponse.json({ error: 'Contact already has an account' }, { status: 400 })
   }
 
-  // Get the contact's email from the body (for new contacts without user records yet)
-  const email = body.email
-  const fullName = body.full_name || body.name
+  // Get email from contact record or request body
+  const email = contact.email || body.email
+  const fullName = contact.full_name || body.full_name || body.name
 
   if (!email) {
-    return NextResponse.json({ error: 'Email is required to send invitation' }, { status: 400 })
+    return NextResponse.json({ error: 'Email is required to send invitation. Please update the contact with an email address.' }, { status: 400 })
   }
 
   try {
