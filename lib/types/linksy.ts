@@ -44,10 +44,11 @@ export type TicketStatus =
   | 'client_not_eligible'
   | 'unable_to_assist'
   | 'client_unresponsive'
-export type ProviderStatusEnum = 'active' | 'paused' | 'inactive'
+export type ProviderStatusEnum = 'active' | 'paused' | 'inactive' | 'pending_approval'
 export type ApplicationStatus = 'pending' | 'approved' | 'rejected'
 export type EventStatus = 'pending' | 'approved' | 'rejected' | 'cancelled'
-export type NoteType = 'general' | 'outreach' | 'update' | 'internal'
+export type NoteType = 'general' | 'outreach' | 'update' | 'internal' | 'call_log'
+export type CallOutcome = 'answered' | 'voicemail' | 'no_answer' | 'busy' | 'disconnected' | 'wrong_number'
 export type SupportTicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed'
 export type SupportTicketPriority = 'low' | 'medium' | 'high' | 'urgent'
 export type SupportTicketCategory = 'technical' | 'account' | 'billing' | 'feature_request' | 'other'
@@ -73,6 +74,7 @@ export interface Provider {
   description: string | null
   sector: Sector
   phone: string | null
+  phone_extension: string | null
   email: string | null
   website: string | null
   hours: string | null
@@ -94,8 +96,16 @@ export interface Provider {
   social_instagram: string | null
   social_twitter: string | null
   social_linkedin: string | null
+  service_zip_codes: string[] | null
   legacy_id: string | null
   legacy_referral_count: number | null
+  imported_at: string | null
+  import_source: string | null
+  reviewed_by: string | null
+  reviewed_at: string | null
+  parent_provider_id: string | null
+  parent_linked_by: string | null
+  parent_linked_at: string | null
   created_at: string
   updated_at: string
   // Host fields
@@ -147,6 +157,16 @@ export interface NoteAttachment {
   type: string
 }
 
+export interface CallLogData {
+  duration_minutes?: number
+  call_outcome: CallOutcome
+  caller_name?: string
+  caller_phone?: string
+  caller_email?: string
+  follow_up_required?: boolean
+  follow_up_date?: string
+}
+
 export interface ProviderNote {
   id: string
   provider_id: string
@@ -155,6 +175,7 @@ export interface ProviderNote {
   is_private: boolean
   is_pinned?: boolean
   content: string
+  call_log_data?: CallLogData | null
   attachments?: NoteAttachment[]
   created_at: string
   user?: { full_name: string | null; email: string }
@@ -237,6 +258,13 @@ export interface Ticket {
   source: string | null
   search_session_id: string | null
   sla_due_at: string | null
+  custom_data?: Record<string, any>
+  // Assignment tracking
+  assigned_to: string | null
+  assigned_at: string | null
+  reassignment_count: number
+  last_reassigned_at: string | null
+  forwarded_from_provider_id: string | null
   created_at: string
   updated_at: string
   need?: Need
@@ -253,6 +281,59 @@ export interface TicketComment {
   author_name: string | null
   author_role: string | null
   created_at: string
+}
+
+// Ticket event types for reassignment audit trail
+export type TicketEventType =
+  | 'created'
+  | 'assigned'
+  | 'reassigned'
+  | 'forwarded'
+  | 'status_changed'
+  | 'comment_added'
+  | 'updated'
+
+export type ReassignmentReason =
+  | 'unable_to_assist'
+  | 'wrong_org'
+  | 'capacity'
+  | 'other'
+  | 'admin_reassignment'
+  | 'internal_assignment'
+
+export type ActorType = 'site_admin' | 'provider_admin' | 'provider_contact' | 'system'
+
+export interface TicketEvent {
+  id: string
+  ticket_id: string
+  event_type: TicketEventType
+  actor_id: string | null
+  actor_type: ActorType | null
+  previous_state: Record<string, any> | null
+  new_state: Record<string, any> | null
+  reason: ReassignmentReason | null
+  notes: string | null
+  metadata: Record<string, any>
+  created_at: string
+  actor?: { full_name: string | null; email: string }
+}
+
+export interface ReassignmentStats {
+  total_reassignments: number
+  provider_initiated: number
+  admin_initiated: number
+  average_reassignments_per_ticket: number
+  top_forwarding_providers: Array<{
+    provider_id: string
+    provider_name: string
+    forward_count: number
+  }>
+  top_receiving_providers: Array<{
+    provider_id: string
+    provider_name: string
+    receive_count: number
+  }>
+  reason_breakdown: Record<ReassignmentReason, number>
 }
 
 export interface TicketFilters {
@@ -304,6 +385,48 @@ export interface ProviderDetail extends Provider {
   tickets: Ticket[]
   contacts: ProviderContact[]
   events: ProviderEvent[]
+}
+
+// Parent/Child Organization Hierarchy
+export interface ProviderHierarchy {
+  provider: Provider
+  parent: Provider | null
+  children: Provider[]
+}
+
+// Parent Organization Aggregated Stats
+export interface ParentOrgStats {
+  parent_id: string
+  parent_name: string
+  total_children: number
+  aggregated_metrics: {
+    total_referrals: number
+    total_interactions: number
+    total_events: number
+    total_notes: number
+    combined_analytics: {
+      profile_views: number
+      phone_clicks: number
+      website_clicks: number
+      directions_clicks: number
+    }
+  }
+  children_stats: Array<{
+    provider_id: string
+    provider_name: string
+    referral_count: number
+    interaction_count: number
+    provider_status: ProviderStatusEnum
+  }>
+}
+
+// Provider access level (for parent/child scenarios)
+export type ProviderAccessLevel = 'self' | 'parent_admin' | 'site_admin'
+
+export interface ProviderAccessInfo {
+  hasAccess: boolean
+  accessLevel: ProviderAccessLevel
+  accessibleProviderIds: string[]
 }
 
 // Documentation / Knowledge Base
@@ -392,7 +515,7 @@ export interface EmailTemplate {
 }
 
 // Custom fields for dynamic intake forms
-export type CustomFieldType = 'text' | 'select' | 'checkbox' | 'date'
+export type CustomFieldType = 'text' | 'textarea' | 'select' | 'checkbox' | 'date' | 'email' | 'phone'
 
 export interface CustomField {
   id: string
@@ -405,12 +528,45 @@ export interface CustomField {
   created_at: string
 }
 
+// Host custom fields for white-label intake forms
+export interface HostCustomField {
+  id: string
+  host_id: string
+  field_label: string
+  field_type: CustomFieldType
+  field_options: string[]
+  placeholder: string | null
+  help_text: string | null
+  is_required: boolean
+  sort_order: number
+  is_active: boolean
+  created_at: string
+  updated_at: string
+  created_by: string | null
+}
+
+// Host email templates for white-label branding
+export interface HostEmailTemplate {
+  id: string
+  host_id: string
+  template_key: string
+  name: string
+  subject: string
+  body_html: string
+  variables: string[]
+  is_active: boolean
+  created_at: string
+  updated_at: string
+  created_by: string | null
+}
+
 // Filter params for provider list
 export interface ProviderFilters {
   q?: string
   sector?: Sector | 'all'
   status?: 'active' | 'inactive' | 'paused' | 'all'
   referral_type?: ReferralType | 'all'
+  organization_type?: 'all' | 'parent' | 'child' | 'standalone'
   limit?: number
   offset?: number
 }

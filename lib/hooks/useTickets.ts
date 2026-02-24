@@ -1,7 +1,7 @@
 'use client'
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import type { Ticket, TicketComment, TicketFilters } from '@/lib/types/linksy'
+import type { Ticket, TicketComment, TicketFilters, TicketEvent } from '@/lib/types/linksy'
 
 function buildTicketParams(filters: TicketFilters): string {
   const params = new URLSearchParams()
@@ -89,6 +89,117 @@ export function useCreateTicketComment() {
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['ticket', variables.ticketId] })
+    },
+  })
+}
+
+export function useForwardTicket() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      ticketId,
+      action,
+      target_provider_id,
+      reason,
+      notes,
+      new_status,
+    }: {
+      ticketId: string
+      action: 'forward_to_admin' | 'forward_to_provider'
+      target_provider_id?: string
+      reason: 'unable_to_assist' | 'wrong_org' | 'capacity' | 'other'
+      notes?: string
+      new_status?: string
+    }) => {
+      const res = await fetch(`/api/tickets/${ticketId}/forward`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, target_provider_id, reason, notes, new_status }),
+      })
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || 'Failed to forward ticket')
+      }
+      return res.json() as Promise<{ success: boolean; ticket: Ticket }>
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['ticket', variables.ticketId] })
+      queryClient.invalidateQueries({ queryKey: ['tickets'] })
+    },
+  })
+}
+
+export function useReassignTicket() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      ticketId,
+      target_provider_id,
+      target_contact_id,
+      reason,
+      notes,
+      preserve_history,
+    }: {
+      ticketId: string
+      target_provider_id: string
+      target_contact_id?: string
+      reason?: string
+      notes?: string
+      preserve_history?: boolean
+    }) => {
+      const res = await fetch(`/api/admin/tickets/${ticketId}/reassign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          target_provider_id,
+          target_contact_id,
+          reason,
+          notes,
+          preserve_history,
+        }),
+      })
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || 'Failed to reassign ticket')
+      }
+      return res.json() as Promise<{ success: boolean; ticket: Ticket }>
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['ticket', variables.ticketId] })
+      queryClient.invalidateQueries({ queryKey: ['tickets'] })
+    },
+  })
+}
+
+export function useAssignTicket() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      ticketId,
+      assigned_to_user_id,
+      notes,
+    }: {
+      ticketId: string
+      assigned_to_user_id: string
+      notes?: string
+    }) => {
+      const res = await fetch(`/api/tickets/${ticketId}/assign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assigned_to_user_id, notes }),
+      })
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || 'Failed to assign ticket')
+      }
+      return res.json() as Promise<{ success: boolean; ticket: Ticket }>
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['ticket', variables.ticketId] })
+      queryClient.invalidateQueries({ queryKey: ['tickets'] })
     },
   })
 }

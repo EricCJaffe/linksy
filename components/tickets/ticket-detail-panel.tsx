@@ -14,12 +14,16 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select'
-import { Globe, Lock, Phone, Plus, Trash2 } from 'lucide-react'
+import { Globe, Lock, Phone, Plus, Trash2, ArrowRight, UserCheck, Clock } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useUpdateTicket, useCreateTicketComment } from '@/lib/hooks/useTickets'
 import { useCallLogs, useCreateCallLog, useDeleteCallLog } from '@/lib/hooks/useCallLogs'
+import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
 import type { Ticket, TicketStatus } from '@/lib/types/linksy'
+import { ForwardTicketDialog } from './forward-ticket-dialog'
+import { AssignInternallyDialog } from './assign-internally-dialog'
+import { TicketHistoryTimeline } from './ticket-history-timeline'
 
 interface TicketDetailPanelProps {
   ticket: Ticket
@@ -63,8 +67,12 @@ function StatusBadge({ status }: { status: TicketStatus }) {
 export function TicketDetailPanel({ ticket }: TicketDetailPanelProps) {
   const updateTicket = useUpdateTicket()
   const createComment = useCreateTicketComment()
+  const { data: currentUser } = useCurrentUser()
   const [commentText, setCommentText] = useState('')
   const [isPrivate, setIsPrivate] = useState(false)
+  const [showForwardDialog, setShowForwardDialog] = useState(false)
+  const [showAssignDialog, setShowAssignDialog] = useState(false)
+  const [showHistoryDialog, setShowHistoryDialog] = useState(false)
 
   const handleStatusChange = (newStatus: string) => {
     updateTicket.mutate({ id: ticket.id, status: newStatus as TicketStatus })
@@ -110,6 +118,53 @@ export function TicketDetailPanel({ ticket }: TicketDetailPanelProps) {
           </SelectContent>
         </Select>
       </div>
+
+      {/* Ticket Actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Ticket Actions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-2">
+            {/* Forward button - available to provider contacts */}
+            {ticket.provider_id && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowForwardDialog(true)}
+                className="flex items-center gap-2"
+              >
+                <ArrowRight className="h-4 w-4" />
+                Forward Ticket
+              </Button>
+            )}
+
+            {/* Assign internally - available to provider admins */}
+            {ticket.provider_id && currentUser?.is_site_admin && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAssignDialog(true)}
+                className="flex items-center gap-2"
+              >
+                <UserCheck className="h-4 w-4" />
+                Assign Internally
+              </Button>
+            )}
+
+            {/* History - available to all */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowHistoryDialog(true)}
+              className="flex items-center gap-2"
+            >
+              <Clock className="h-4 w-4" />
+              View History
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Client & Details */}
       <div className="grid gap-4 md:grid-cols-2">
@@ -248,6 +303,31 @@ export function TicketDetailPanel({ ticket }: TicketDetailPanelProps) {
 
       {/* Call Logs */}
       <CallLogSection ticketId={ticket.id} providerId={ticket.provider_id || undefined} />
+
+      {/* Dialogs */}
+      <ForwardTicketDialog
+        ticketId={ticket.id}
+        ticketNumber={ticket.ticket_number}
+        open={showForwardDialog}
+        onOpenChange={setShowForwardDialog}
+      />
+
+      {ticket.provider_id && (
+        <AssignInternallyDialog
+          ticketId={ticket.id}
+          ticketNumber={ticket.ticket_number}
+          providerId={ticket.provider_id}
+          open={showAssignDialog}
+          onOpenChange={setShowAssignDialog}
+        />
+      )}
+
+      <TicketHistoryTimeline
+        ticketId={ticket.id}
+        ticketNumber={ticket.ticket_number}
+        open={showHistoryDialog}
+        onOpenChange={setShowHistoryDialog}
+      />
     </div>
   )
 }

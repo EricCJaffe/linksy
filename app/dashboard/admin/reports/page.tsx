@@ -141,9 +141,10 @@ const INTERACTION_LABELS: Record<string, { label: string; icon: React.ReactNode 
 }
 
 export default function ReportsPage() {
-  const [activeTab, setActiveTab] = useState<'referrals' | 'search' | 'charts'>('referrals')
+  const [activeTab, setActiveTab] = useState<'referrals' | 'search' | 'charts' | 'reassignments'>('referrals')
   const [data, setData] = useState<ReportsData | null>(null)
   const [searchData, setSearchData] = useState<SearchAnalyticsData | null>(null)
+  const [reassignmentData, setReassignmentData] = useState<any | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [searchLoading, setSearchLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -151,6 +152,7 @@ export default function ReportsPage() {
 
   useEffect(() => { fetchReports() }, [includeLegacy])
   useEffect(() => { fetchSearchAnalytics() }, [])
+  useEffect(() => { if (activeTab === 'reassignments') fetchReassignmentStats() }, [activeTab])
 
   const fetchReports = async () => {
     setIsLoading(true)
@@ -180,6 +182,15 @@ export default function ReportsPage() {
     }
   }
 
+  const fetchReassignmentStats = async () => {
+    try {
+      const res = await fetch('/api/admin/reports/reassignments')
+      if (res.ok) setReassignmentData(await res.json())
+    } catch {
+      // non-fatal
+    }
+  }
+
   if (error && activeTab === 'referrals') {
     return (
       <div className="space-y-6">
@@ -198,8 +209,8 @@ export default function ReportsPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <BarChart3 className="h-8 w-8" />
+          <h1 className="text-3xl font-bold text-primary flex items-center gap-2">
+            <BarChart3 className="h-8 w-8 text-primary" />
             Reports & Analytics
           </h1>
           <p className="text-muted-foreground mt-1">
@@ -229,7 +240,7 @@ export default function ReportsPage() {
       </div>
 
       {/* Tab navigation */}
-      <div className="flex gap-1 border-b">
+      <div className="flex gap-1 border-b border-primary/20">
         <button
           onClick={() => setActiveTab('referrals')}
           className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
@@ -266,6 +277,17 @@ export default function ReportsPage() {
           <PieChartIcon className="h-4 w-4 inline mr-1.5" />
           Visual Charts
         </button>
+        <button
+          onClick={() => setActiveTab('reassignments')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'reassignments'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <GitMerge className="h-4 w-4 inline mr-1.5" />
+          Reassignments
+        </button>
       </div>
 
       {/* Search & AI Analytics Tab */}
@@ -277,25 +299,25 @@ export default function ReportsPage() {
               Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24" />)
             ) : searchData ? (
               <>
-                <Card>
+                <Card className="border-primary/20 bg-gradient-to-b from-primary/5 to-white">
                   <CardContent className="pt-6">
                     <p className="text-sm text-muted-foreground">Total Searches</p>
                     <p className="text-4xl font-bold mt-1">{searchData.totalSessions.toLocaleString()}</p>
                   </CardContent>
                 </Card>
-                <Card>
+                <Card className="border-primary/20 bg-gradient-to-b from-primary/5 to-white">
                   <CardContent className="pt-6">
                     <p className="text-sm text-muted-foreground">Last 30 Days</p>
                     <p className="text-4xl font-bold mt-1">{searchData.sessionsLast30Days.toLocaleString()}</p>
                   </CardContent>
                 </Card>
-                <Card>
+                <Card className="border-accent/60 bg-gradient-to-b from-accent/30 to-white">
                   <CardContent className="pt-6">
                     <p className="text-sm text-muted-foreground">Provider Interactions</p>
                     <p className="text-4xl font-bold mt-1">{searchData.totalInteractions.toLocaleString()}</p>
                   </CardContent>
                 </Card>
-                <Card className={searchData.totalCrisisDetections > 0 ? 'border-red-300' : ''}>
+                <Card className={searchData.totalCrisisDetections > 0 ? 'border-red-300' : 'border-primary/20'}>
                   <CardContent className="pt-6">
                     <p className="text-sm text-muted-foreground flex items-center gap-1">
                       <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
@@ -348,7 +370,7 @@ export default function ReportsPage() {
                             {meta?.icon}{meta?.label ?? item.type}
                           </span>
                           <div className="flex-1 h-5 bg-muted rounded overflow-hidden">
-                            <div className="h-full bg-blue-500 rounded" style={{ width: `${(item.count / max) * 100}%` }} />
+                            <div className="h-full bg-primary rounded" style={{ width: `${(item.count / max) * 100}%` }} />
                           </div>
                           <span className="w-8 shrink-0 text-sm font-semibold text-right">{item.count}</span>
                         </div>
@@ -831,6 +853,216 @@ export default function ReportsPage() {
           ) : (
             <p className="text-muted-foreground">No data available</p>
           )}
+        </div>
+      )}
+
+      {/* Reassignments Tab */}
+      {activeTab === 'reassignments' && (
+        <div className="space-y-6">
+          {/* Summary cards */}
+          <div className="grid gap-4 md:grid-cols-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Reassignments</CardTitle>
+                <GitMerge className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {reassignmentData?.total_reassignments?.toLocaleString() || '0'}
+                </div>
+                <p className="text-xs text-muted-foreground">All time</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Provider Initiated</CardTitle>
+                <ArrowRight className="h-4 w-4 text-orange-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {reassignmentData?.provider_initiated?.toLocaleString() || '0'}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {reassignmentData && reassignmentData.total_reassignments > 0
+                    ? `${Math.round((reassignmentData.provider_initiated / reassignmentData.total_reassignments) * 100)}%`
+                    : '0%'}{' '}
+                  of total
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Admin Initiated</CardTitle>
+                <Users className="h-4 w-4 text-purple-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {reassignmentData?.admin_initiated?.toLocaleString() || '0'}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {reassignmentData && reassignmentData.total_reassignments > 0
+                    ? `${Math.round((reassignmentData.admin_initiated / reassignmentData.total_reassignments) * 100)}%`
+                    : '0%'}{' '}
+                  of total
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Avg per Ticket</CardTitle>
+                <BarChart3 className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {reassignmentData?.average_reassignments_per_ticket?.toFixed(2) || '0.00'}
+                </div>
+                <p className="text-xs text-muted-foreground">Reassigned tickets only</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Top forwarding providers */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ArrowRight className="h-5 w-5 text-orange-600" />
+                Top Forwarding Providers
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {!reassignmentData ? (
+                <Skeleton className="h-64 w-full" />
+              ) : reassignmentData.top_forwarding_providers.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-16">Rank</TableHead>
+                      <TableHead>Provider</TableHead>
+                      <TableHead>Volume</TableHead>
+                      <TableHead className="text-right">Forwards</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {reassignmentData.top_forwarding_providers.slice(0, 10).map((p: any, i: number) => {
+                      const max = reassignmentData.top_forwarding_providers[0]?.forward_count || 1
+                      return (
+                        <TableRow key={p.provider_id}>
+                          <TableCell className="font-medium text-muted-foreground">#{i + 1}</TableCell>
+                          <TableCell className="font-medium">{p.provider_name}</TableCell>
+                          <TableCell className="w-40">
+                            <div className="h-3 bg-muted rounded overflow-hidden">
+                              <div
+                                className="h-full bg-orange-500 rounded"
+                                style={{ width: `${(p.forward_count / max) * 100}%` }}
+                              />
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right font-bold">{p.forward_count}</TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-8">No forwarding data yet</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Top receiving providers */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ArrowRight className="h-5 w-5 text-green-600 rotate-180" />
+                Top Receiving Providers
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {!reassignmentData ? (
+                <Skeleton className="h-64 w-full" />
+              ) : reassignmentData.top_receiving_providers.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-16">Rank</TableHead>
+                      <TableHead>Provider</TableHead>
+                      <TableHead>Volume</TableHead>
+                      <TableHead className="text-right">Received</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {reassignmentData.top_receiving_providers.slice(0, 10).map((p: any, i: number) => {
+                      const max = reassignmentData.top_receiving_providers[0]?.receive_count || 1
+                      return (
+                        <TableRow key={p.provider_id}>
+                          <TableCell className="font-medium text-muted-foreground">#{i + 1}</TableCell>
+                          <TableCell className="font-medium">{p.provider_name}</TableCell>
+                          <TableCell className="w-40">
+                            <div className="h-3 bg-muted rounded overflow-hidden">
+                              <div
+                                className="h-full bg-green-500 rounded"
+                                style={{ width: `${(p.receive_count / max) * 100}%` }}
+                              />
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right font-bold">{p.receive_count}</TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-8">No receiving data yet</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Reassignment reasons breakdown */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <PieChartIcon className="h-5 w-5 text-blue-600" />
+                Reassignment Reasons
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {!reassignmentData ? (
+                <Skeleton className="h-64 w-full" />
+              ) : reassignmentData.reason_breakdown && Object.keys(reassignmentData.reason_breakdown).length > 0 ? (
+                <div className="space-y-3">
+                  {Object.entries(reassignmentData.reason_breakdown)
+                    .filter(([_, count]) => (count as number) > 0)
+                    .sort(([, a], [, b]) => (b as number) - (a as number))
+                    .map(([reason, count]) => {
+                      const total = Object.values(reassignmentData.reason_breakdown).reduce((a: any, b: any) => a + b, 0) as number
+                      const percentage = total > 0 ? ((count as number) / total) * 100 : 0
+                      return (
+                        <div key={reason} className="space-y-1">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="font-medium capitalize">{reason.replace(/_/g, ' ')}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-muted-foreground">{percentage.toFixed(1)}%</span>
+                              <span className="font-bold">{count as number}</span>
+                            </div>
+                          </div>
+                          <div className="h-2 bg-muted rounded overflow-hidden">
+                            <div
+                              className="h-full bg-blue-500 rounded"
+                              style={{ width: `${percentage}%` }}
+                            />
+                          </div>
+                        </div>
+                      )
+                    })}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-8">No reason data yet</p>
+              )}
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>
