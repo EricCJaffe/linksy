@@ -161,6 +161,16 @@ const providerNavItems = [
     href: '/dashboard/support',
     icon: HelpCircle,
   },
+  {
+    title: 'Notifications',
+    href: '/dashboard/notifications',
+    icon: Bell,
+  },
+  {
+    title: 'Help & Docs',
+    href: '/dashboard/help',
+    icon: BookOpen,
+  },
 ]
 
 export function Sidebar() {
@@ -173,7 +183,7 @@ export function Sidebar() {
   const isTenantAdmin = tenantData?.role === 'admin'
   const isProviderContact = providerAccess?.hasAccess === true
 
-  // Filter out Providers and Needs tabs for non-site-admins
+  // Filter out tabs for non-site-admins and provider users
   // Only site admins should see the full provider directory and needs management
   // Provider contacts use the "Provider Portal" section instead
   const filteredMainNav = mainNavItems.filter((item) => {
@@ -183,6 +193,14 @@ export function Sidebar() {
     }
     // Hide Needs tab if NOT a site admin
     if (item.href === '/dashboard/needs' && !isSiteAdmin) {
+      return false
+    }
+    // Hide Referrals tab for provider users (they use "My Referrals" instead)
+    if (item.href === '/dashboard/tickets' && !isSiteAdmin && (isProviderContact || !tenantData)) {
+      return false
+    }
+    // Hide Notifications and Help for provider users (moved to Provider Portal section)
+    if ((item.href === '/dashboard/notifications' || item.href === '/dashboard/help') && !isSiteAdmin && (isProviderContact || !tenantData)) {
       return false
     }
     return true
