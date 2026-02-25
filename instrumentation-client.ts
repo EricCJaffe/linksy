@@ -18,3 +18,6 @@ Sentry.init({
   // Suppress Sentry's own debug output in development
   debug: false,
 })
+
+// Export router transition hook for navigation instrumentation
+export const onRouterTransitionStart = Sentry.captureRouterTransitionStart
