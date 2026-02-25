@@ -1,6 +1,5 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { Sidebar } from '@/components/layout/sidebar'
 import { Header } from '@/components/layout/header'
 import { MobileNav } from '@/components/layout/mobile-nav'
@@ -16,29 +15,15 @@ export default function DashboardLayout({
 }) {
   const { data: user, isLoading: isUserLoading, error: userError } = useCurrentUser()
   const { data: tenantData, isLoading: isTenantLoading, error: tenantError } = useCurrentTenant()
-  const [forceShow, setForceShow] = useState(false)
 
-  // Emergency timeout: show dashboard after 10 seconds even if still loading
-  // Only force show if user data is loaded but tenant is still loading
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      if (!isUserLoading && isTenantLoading) {
-        console.warn('[Dashboard] Tenant loading timeout - forcing dashboard to show')
-        setForceShow(true)
-      }
-    }, 10000)
-
-    return () => clearTimeout(timeout)
-  }, [isUserLoading, isTenantLoading])
-
-  // Show error state if user hook failed (critical)
-  if (userError) {
+  // Show error state if hooks failed
+  if (userError || tenantError) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4 max-w-md p-6">
           <h2 className="text-xl font-semibold text-destructive">Error Loading Dashboard</h2>
           <p className="text-sm text-muted-foreground text-center">
-            User Error: {userError.message}
+            {userError ? `User Error: ${userError.message}` : `Tenant Error: ${tenantError?.message}`}
           </p>
           <p className="text-xs text-muted-foreground text-center">
             Check the browser console for more details. Make sure Supabase is configured correctly.
@@ -54,26 +39,13 @@ export default function DashboardLayout({
     )
   }
 
-  // Note: tenantError is NOT critical - provider-only users won't have tenant memberships
-  // Just log it for debugging but don't block the dashboard
-  if (tenantError) {
-    console.warn('[Dashboard] Tenant query error (non-critical for provider users):', tenantError)
-  }
-
-  // Show loading state while fetching user data
-  // User data is required, tenant data is optional
-  if (isUserLoading) {
+  // Show loading state while fetching user and tenant data
+  if (isUserLoading || isTenantLoading) {
     return <DashboardLoading />
   }
 
   // If no user, the middleware should redirect to login
   if (!user) {
-    return <DashboardLoading />
-  }
-
-  // Show loading for tenant data, but with emergency timeout
-  // Provider-only users may not have tenant data, so this prevents infinite loading
-  if (isTenantLoading && !forceShow) {
     return <DashboardLoading />
   }
 

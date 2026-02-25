@@ -196,11 +196,11 @@ export function Sidebar() {
       return false
     }
     // Hide Referrals tab for provider users (they use "My Referrals" instead)
-    if (item.href === '/dashboard/tickets' && !isSiteAdmin && (isProviderContact || !tenantData)) {
+    if (item.href === '/dashboard/tickets' && !isSiteAdmin && isProviderContact) {
       return false
     }
     // Hide Notifications and Help for provider users (moved to Provider Portal section)
-    if ((item.href === '/dashboard/notifications' || item.href === '/dashboard/help') && !isSiteAdmin && (isProviderContact || !tenantData)) {
+    if ((item.href === '/dashboard/notifications' || item.href === '/dashboard/help') && !isSiteAdmin && isProviderContact) {
       return false
     }
     return true
@@ -279,7 +279,7 @@ export function Sidebar() {
           </div>
         )}
 
-        {!isSiteAdmin && (isProviderContact || !tenantData) && (
+        {!isSiteAdmin && isProviderContact && (
           <div className="space-y-1">
             <p className="px-3 text-xs font-semibold uppercase text-muted-foreground">
               Provider Portal
