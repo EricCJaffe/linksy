@@ -15,6 +15,8 @@ import {
   TopProvidersChart,
   SourceBreakdownChart,
 } from '@/components/analytics/report-charts'
+import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
+import { useProviderAccess } from '@/lib/hooks/useProviderAccess'
 
 interface FunnelData {
   totalSessions: number
@@ -150,17 +152,26 @@ export default function ReportsPage() {
   const [error, setError] = useState<string | null>(null)
   const [includeLegacy, setIncludeLegacy] = useState(true)
 
+  // Get user role and provider access for role-based filtering
+  const { data: user } = useCurrentUser()
+  const { data: providerAccess } = useProviderAccess()
+
+  const isSiteAdmin = user?.profile?.role === 'site_admin'
+  const isProviderUser = providerAccess?.hasAccess && !isSiteAdmin
+  const accessLevel = providerAccess?.accessLevel || 'self'
+
   useEffect(() => { fetchReports() }, [includeLegacy])
   useEffect(() => { fetchSearchAnalytics() }, [])
-  useEffect(() => { if (activeTab === 'reassignments') fetchReassignmentStats() }, [activeTab])
+  useEffect(() => { if (activeTab === 'reassignments' && isSiteAdmin) fetchReassignmentStats() }, [activeTab, isSiteAdmin])
 
   const fetchReports = async () => {
     setIsLoading(true)
     setError(null)
     try {
       const params = new URLSearchParams()
+      params.set('type', 'referrals')
       if (includeLegacy) params.set('includeLegacy', 'true')
-      const res = await fetch(`/api/stats/reports?${params.toString()}`)
+      const res = await fetch(`/api/reports?${params.toString()}`)
       if (!res.ok) throw new Error('Failed to fetch reports')
       setData(await res.json())
     } catch (err) {
@@ -173,7 +184,9 @@ export default function ReportsPage() {
   const fetchSearchAnalytics = async () => {
     setSearchLoading(true)
     try {
-      const res = await fetch('/api/stats/search-analytics')
+      const params = new URLSearchParams()
+      params.set('type', 'search')
+      const res = await fetch(`/api/reports?${params.toString()}`)
       if (res.ok) setSearchData(await res.json())
     } catch {
       // non-fatal
@@ -183,8 +196,11 @@ export default function ReportsPage() {
   }
 
   const fetchReassignmentStats = async () => {
+    if (!isSiteAdmin) return
     try {
-      const res = await fetch('/api/admin/reports/reassignments')
+      const params = new URLSearchParams()
+      params.set('type', 'reassignments')
+      const res = await fetch(`/api/reports?${params.toString()}`)
       if (res.ok) setReassignmentData(await res.json())
     } catch {
       // non-fatal
@@ -214,7 +230,10 @@ export default function ReportsPage() {
             Reports & Analytics
           </h1>
           <p className="text-muted-foreground mt-1">
-            Insights and trends across the platform
+            {isSiteAdmin && 'System-wide analytics and reporting'}
+            {isProviderUser && accessLevel === 'parent_admin' && 'Your organization\'s analytics and reporting'}
+            {isProviderUser && accessLevel === 'self' && 'Your personal analytics and activity'}
+            {!isSiteAdmin && !isProviderUser && 'Insights and trends across the platform'}
           </p>
         </div>
         {activeTab === 'referrals' && (
@@ -277,17 +296,19 @@ export default function ReportsPage() {
           <PieChartIcon className="h-4 w-4 inline mr-1.5" />
           Visual Charts
         </button>
-        <button
-          onClick={() => setActiveTab('reassignments')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-            activeTab === 'reassignments'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <GitMerge className="h-4 w-4 inline mr-1.5" />
-          Reassignments
-        </button>
+        {isSiteAdmin && (
+          <button
+            onClick={() => setActiveTab('reassignments')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'reassignments'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <GitMerge className="h-4 w-4 inline mr-1.5" />
+            Reassignments
+          </button>
+        )}
       </div>
 
       {/* Search & AI Analytics Tab */}
