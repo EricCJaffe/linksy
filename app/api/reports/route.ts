@@ -330,11 +330,11 @@ async function handleReassignmentsReport(supabase: any) {
 
   // Aggregate reassignment stats
   const totalReassignments = events.length
-  const providerInitiated = events.filter(e => e.event_type === 'forwarded').length
-  const adminInitiated = events.filter(e => e.event_type === 'reassigned').length
+  const providerInitiated = events.filter((e: any) => e.event_type === 'forwarded').length
+  const adminInitiated = events.filter((e: any) => e.event_type === 'reassigned').length
 
   // Count unique tickets that were reassigned
-  const uniqueTickets = new Set(events.map(e => e.ticket_id)).size
+  const uniqueTickets = new Set(events.map((e: any) => e.ticket_id)).size
   const averageReassignmentsPerTicket = uniqueTickets > 0
     ? totalReassignments / uniqueTickets
     : 0
@@ -342,8 +342,8 @@ async function handleReassignmentsReport(supabase: any) {
   // Top forwarding providers
   const forwardingCounts = new Map<string, { provider_id: string; provider_name: string; count: number }>()
   events
-    .filter(e => e.from_provider_id)
-    .forEach(e => {
+    .filter((e: any) => e.from_provider_id)
+    .forEach((e: any) => {
       const key = e.from_provider_id
       if (forwardingCounts.has(key)) {
         forwardingCounts.get(key)!.count++
@@ -359,13 +359,13 @@ async function handleReassignmentsReport(supabase: any) {
   const topForwardingProviders = Array.from(forwardingCounts.values())
     .sort((a, b) => b.count - a.count)
     .slice(0, 10)
-    .map(p => ({ ...p, forward_count: p.count }))
+    .map((p: any) => ({ ...p, forward_count: p.count }))
 
   // Top receiving providers
   const receivingCounts = new Map<string, { provider_id: string; provider_name: string; count: number }>()
   events
-    .filter(e => e.to_provider_id)
-    .forEach(e => {
+    .filter((e: any) => e.to_provider_id)
+    .forEach((e: any) => {
       const key = e.to_provider_id
       if (receivingCounts.has(key)) {
         receivingCounts.get(key)!.count++
@@ -381,11 +381,11 @@ async function handleReassignmentsReport(supabase: any) {
   const topReceivingProviders = Array.from(receivingCounts.values())
     .sort((a, b) => b.count - a.count)
     .slice(0, 10)
-    .map(p => ({ ...p, receive_count: p.count }))
+    .map((p: any) => ({ ...p, receive_count: p.count }))
 
   // Reason breakdown
   const reasonBreakdown: Record<string, number> = {}
-  events.forEach(e => {
+  events.forEach((e: any) => {
     const reason = e.reason || 'not_specified'
     reasonBreakdown[reason] = (reasonBreakdown[reason] || 0) + 1
   })
@@ -404,18 +404,18 @@ async function handleReassignmentsReport(supabase: any) {
 // Helper functions
 function aggregateByField(items: any[], field: string) {
   const counts = new Map<string, number>()
-  items.forEach(item => {
+  items.forEach((item: any) => {
     const value = item[field] || 'unknown'
     counts.set(value, (counts.get(value) || 0) + 1)
   })
   return Array.from(counts.entries())
-    .map(([name, count]) => ({ [field === 'need_category' ? 'name' : field]: name, count }))
-    .sort((a, b) => b.count - a.count)
+    .map(([name, count]: [string, number]) => ({ [field === 'need_category' ? 'name' : field]: name, count }))
+    .sort((a: any, b: any) => b.count - a.count)
 }
 
 function aggregateTopProviders(tickets: any[]) {
   const providerCounts = new Map<string, { id: string; name: string; count: number }>()
-  tickets.forEach(ticket => {
+  tickets.forEach((ticket: any) => {
     if (ticket.provider) {
       const key = ticket.provider.id
       if (providerCounts.has(key)) {
@@ -446,7 +446,7 @@ function aggregateMonthlyTrends(items: any[]) {
   }
 
   // Count items by month
-  items.forEach(item => {
+  items.forEach((item: any) => {
     const date = new Date(item.created_at)
     const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
     if (monthCounts.has(key)) {
@@ -455,7 +455,7 @@ function aggregateMonthlyTrends(items: any[]) {
   })
 
   return Array.from(monthCounts.entries())
-    .map(([month, count]) => ({ month, count }))
+    .map(([month, count]: [string, number]) => ({ month, count }))
 }
 
 function calculateRecentActivity(tickets: any[]) {
@@ -463,14 +463,14 @@ function calculateRecentActivity(tickets: any[]) {
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
 
   const last30Days = tickets.filter(
-    t => new Date(t.created_at) >= thirtyDaysAgo
+    (t: any) => new Date(t.created_at) >= thirtyDaysAgo
   ).length
 
   return { last30Days }
 }
 
 function calculateTimeToResolution(tickets: any[]) {
-  const resolvedTickets = tickets.filter(t =>
+  const resolvedTickets = tickets.filter((t: any) =>
     t.status !== 'pending' && t.updated_at
   )
 
@@ -483,7 +483,7 @@ function calculateTimeToResolution(tickets: any[]) {
   }
 
   // Calculate average days to resolution
-  const totalDays = resolvedTickets.reduce((sum, ticket) => {
+  const totalDays = resolvedTickets.reduce((sum: number, ticket: any) => {
     const created = new Date(ticket.created_at).getTime()
     const resolved = new Date(ticket.updated_at).getTime()
     const days = (resolved - created) / (1000 * 60 * 60 * 24)
@@ -494,7 +494,7 @@ function calculateTimeToResolution(tickets: any[]) {
 
   // By status
   const byStatusMap = new Map<string, { sum: number; count: number }>()
-  resolvedTickets.forEach(ticket => {
+  resolvedTickets.forEach((ticket: any) => {
     const created = new Date(ticket.created_at).getTime()
     const resolved = new Date(ticket.updated_at).getTime()
     const days = (resolved - created) / (1000 * 60 * 60 * 24)
@@ -506,7 +506,7 @@ function calculateTimeToResolution(tickets: any[]) {
   })
 
   const byStatus = Array.from(byStatusMap.entries())
-    .map(([status, { sum, count }]) => ({
+    .map(([status, { sum, count }]: [string, { sum: number; count: number }]) => ({
       status,
       avg_days: Math.round(sum / count),
       count,
@@ -537,9 +537,9 @@ async function getTopProvidersByInteraction(supabase: any, sessionIds: string[])
   })
 
   const topProviderIds = Array.from(providerCounts.entries())
-    .sort((a, b) => b[1] - a[1])
+    .sort((a: [string, number], b: [string, number]) => b[1] - a[1])
     .slice(0, 10)
-    .map(([id]) => id)
+    .map(([id]: [string, number]) => id)
 
   if (topProviderIds.length === 0) return []
 
@@ -550,7 +550,7 @@ async function getTopProvidersByInteraction(supabase: any, sessionIds: string[])
 
   if (!providers) return []
 
-  return topProviderIds.map(id => {
+  return topProviderIds.map((id: string) => {
     const provider = providers.find((p: any) => p.id === id)
     return {
       id,
