@@ -228,7 +228,7 @@ async function handleSearchReport(
   // Top providers by interaction
   const topProvidersByInteraction = await getTopProvidersByInteraction(
     supabase,
-    sessions.map(s => s.id)
+    sessions.map((s: any) => s.id)
   )
 
   // Crisis breakdown
