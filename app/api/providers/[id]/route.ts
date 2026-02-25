@@ -293,6 +293,25 @@ export async function PATCH(
     return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
   }
 
+  // Special check: Only site admins can change is_host flag
+  if ('is_host' in updates || 'is_host' in body) {
+    // First, check if is_host is actually changing
+    const { data: currentProvider } = await supabase
+      .from('linksy_providers')
+      .select('is_host')
+      .eq('id', id)
+      .single()
+
+    if (currentProvider && 'is_host' in body && body.is_host !== currentProvider.is_host) {
+      if (!auth.isSiteAdmin) {
+        return NextResponse.json(
+          { error: 'Forbidden - Only site administrators can enable/disable widget hosting' },
+          { status: 403 }
+        )
+      }
+    }
+  }
+
   const { data: provider, error: updateError } = await supabase
     .from('linksy_providers')
     .update(updates)

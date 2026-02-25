@@ -39,6 +39,7 @@ import { useUpdateTicket } from '@/lib/hooks/useTickets'
 import { useUpdateProviderContact, useDeleteProviderContact, useInviteProviderContact } from '@/lib/hooks/useProviderContacts'
 import { useCreateProviderEvent, useUpdateProviderEvent, useDeleteProviderEvent } from '@/lib/hooks/useProviderEvents'
 import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
+import { useProviderPermissions } from '@/lib/hooks/useProviderPermissions'
 import { EventCalendar, formatRecurrence } from '@/components/providers/event-calendar'
 import { ContactManagementDialog } from '@/components/providers/contact-management-dialog'
 import { CallLogForm } from '@/components/providers/call-log-form'
@@ -1718,6 +1719,8 @@ function ContactsTab({ provider }: { provider: ProviderDetail }) {
   const [selectedContact, setSelectedContact] = useState<ProviderContact | undefined>()
   const [isUpdating, setIsUpdating] = useState(false)
 
+  const { data: currentUser } = useCurrentUser()
+  const permissions = useProviderPermissions(provider)
   const updateContact = useUpdateProviderContact()
   const deleteContact = useDeleteProviderContact()
   const inviteContact = useInviteProviderContact()
@@ -1785,10 +1788,12 @@ function ContactsTab({ provider }: { provider: ProviderDetail }) {
         <p className="text-sm text-muted-foreground">
           {provider.contacts.length} active contact{provider.contacts.length !== 1 ? 's' : ''}
         </p>
-        <Button onClick={handleCreate}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Contact
-        </Button>
+        {permissions.canAddContacts && (
+          <Button onClick={handleCreate}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Contact
+          </Button>
+        )}
       </div>
 
       {provider.contacts.length === 0 ? (
@@ -1858,14 +1863,17 @@ function ContactsTab({ provider }: { provider: ProviderDetail }) {
                   </TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEdit(contact)}
-                      >
-                        Edit
-                      </Button>
-                      {!contact.user_id && (
+                      {(permissions.canManageAllContacts ||
+                        (permissions.canEditOwnContact && contact.user_id === currentUser?.profile?.id)) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(contact)}
+                        >
+                          Edit
+                        </Button>
+                      )}
+                      {!contact.user_id && permissions.canManageAllContacts && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -1875,14 +1883,16 @@ function ContactsTab({ provider }: { provider: ProviderDetail }) {
                           {contact.invitation_sent_at ? 'Resend Invite' : 'Send Invite'}
                         </Button>
                       )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleArchive(contact)}
-                        disabled={deleteContact.isPending}
-                      >
-                        Archive
-                      </Button>
+                      {permissions.canArchiveContacts && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleArchive(contact)}
+                          disabled={deleteContact.isPending}
+                        >
+                          Archive
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -1898,6 +1908,7 @@ function ContactsTab({ provider }: { provider: ProviderDetail }) {
         providerId={provider.id}
         contact={selectedContact}
         mode={dialogMode}
+        isOwnContact={selectedContact?.user_id === currentUser?.profile?.id}
       />
     </div>
   )
@@ -2793,6 +2804,7 @@ function NeedsTab({ provider }: { provider: ProviderDetail }) {
 
 function HostSettingsTab({ provider }: { provider: ProviderDetail }) {
   const updateProvider = useUpdateProvider()
+  const permissions = useProviderPermissions(provider)
 
   const [isHost, setIsHost] = useState(provider.is_host ?? false)
   const [embedActive, setEmbedActive] = useState(provider.host_embed_active ?? true)
@@ -2836,14 +2848,25 @@ function HostSettingsTab({ provider }: { provider: ProviderDetail }) {
           <CardTitle className="text-base">Host Settings</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <Label>Enable Widget Hosting</Label>
-              <p className="text-xs text-muted-foreground">
-                Allow this provider to embed the Linksy widget on their site
-              </p>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label>Enable Widget Hosting</Label>
+                <p className="text-xs text-muted-foreground">
+                  Allow this provider to embed the Linksy widget on their site
+                </p>
+              </div>
+              <Switch
+                checked={isHost}
+                onCheckedChange={setIsHost}
+                disabled={!permissions.canEnableHostFlag}
+              />
             </div>
-            <Switch checked={isHost} onCheckedChange={setIsHost} />
+            {!permissions.canEnableHostFlag && (
+              <p className="text-xs text-muted-foreground italic">
+                Only site administrators can enable/disable widget hosting
+              </p>
+            )}
           </div>
           {isHost && (
             <div className="flex items-center justify-between">
@@ -3097,6 +3120,8 @@ export function ProviderDetailTabs({ provider }: ProviderDetailTabsProps) {
   const { data: childrenData } = useProviderChildren(isNotChild ? provider.id : null)
   const isParent = isNotChild && (childrenData?.children.length ?? 0) > 0
 
+  const permissions = useProviderPermissions(provider)
+
   return (
     <Tabs defaultValue="summary">
       <TabsList className="flex-wrap">
@@ -3115,10 +3140,9 @@ export function ProviderDetailTabs({ provider }: ProviderDetailTabsProps) {
         <TabsTrigger value="notes">
           Notes {provider.notes.length > 0 && `(${provider.notes.length})`}
         </TabsTrigger>
-        <TabsTrigger value="needs">
-          Needs {provider.provider_needs.length > 0 && `(${provider.provider_needs.length})`}
-        </TabsTrigger>
-        <TabsTrigger value="host">Host Settings</TabsTrigger>
+        {permissions.shouldShowHostSettingsTab && (
+          <TabsTrigger value="host">Host Settings</TabsTrigger>
+        )}
       </TabsList>
 
       <TabsContent value="summary">
@@ -3144,12 +3168,11 @@ export function ProviderDetailTabs({ provider }: ProviderDetailTabsProps) {
       <TabsContent value="notes">
         <NotesTab provider={provider} />
       </TabsContent>
-      <TabsContent value="needs">
-        <NeedsTab provider={provider} />
-      </TabsContent>
-      <TabsContent value="host">
-        <HostSettingsTab provider={provider} />
-      </TabsContent>
+      {permissions.shouldShowHostSettingsTab && (
+        <TabsContent value="host">
+          <HostSettingsTab provider={provider} />
+        </TabsContent>
+      )}
     </Tabs>
   )
 }

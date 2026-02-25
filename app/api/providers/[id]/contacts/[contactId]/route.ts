@@ -29,17 +29,62 @@ export async function PATCH(
     return NextResponse.json({ error: 'Contact not found' }, { status: 404 })
   }
 
+  // Check permissions
+  let canEdit = auth.isSiteAdmin || auth.isTenantAdmin
+  let isEditingOwnContact = false
+
+  if (!canEdit) {
+    const { data: userContact } = await supabase
+      .from('linksy_provider_contacts')
+      .select('provider_role')
+      .eq('provider_id', providerId)
+      .eq('user_id', auth.user.id)
+      .eq('status', 'active')
+      .single()
+
+    if (userContact?.provider_role === 'admin') {
+      canEdit = true
+    } else if (existingContact.user_id === auth.user.id) {
+      // User editing their own contact
+      canEdit = true
+      isEditingOwnContact = true
+    }
+  }
+
+  if (!canEdit) {
+    return NextResponse.json(
+      { error: 'Forbidden - Insufficient permissions' },
+      { status: 403 }
+    )
+  }
+
   // Build update object
   const updates: Record<string, any> = {}
-  const allowedFields = [
-    'job_title',
-    'phone',
-    'contact_type',
-    'provider_role',
-    'is_primary_contact',
-    'is_default_referral_handler',
-    'status',
-  ]
+  const allowedFields = isEditingOwnContact
+    ? ['job_title', 'phone']  // Regular users can only edit these fields on their own contact
+    : [
+        'job_title',
+        'phone',
+        'contact_type',
+        'provider_role',
+        'is_primary_contact',
+        'is_default_referral_handler',
+        'status',
+      ]
+
+  // Check if user is trying to edit restricted fields
+  if (isEditingOwnContact) {
+    const restrictedFields = Object.keys(body).filter(
+      field => !allowedFields.includes(field)
+    )
+
+    if (restrictedFields.length > 0) {
+      return NextResponse.json(
+        { error: `You can only edit ${allowedFields.join(', ')} on your own contact` },
+        { status: 403 }
+      )
+    }
+  }
 
   for (const field of allowedFields) {
     if (field in body) {
@@ -80,6 +125,24 @@ export async function DELETE(
 
   const { id: providerId, contactId } = params
   const supabase = await createServiceClient()
+
+  // Check if user can archive contacts
+  if (!auth.isSiteAdmin && !auth.isTenantAdmin) {
+    const { data: userContact } = await supabase
+      .from('linksy_provider_contacts')
+      .select('provider_role')
+      .eq('provider_id', providerId)
+      .eq('user_id', auth.user.id)
+      .eq('status', 'active')
+      .single()
+
+    if (!userContact || userContact.provider_role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Forbidden - Admin access required to archive contacts' },
+        { status: 403 }
+      )
+    }
+  }
 
   // Archive instead of hard delete
   const { error: updateError } = await supabase

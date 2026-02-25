@@ -18,6 +18,7 @@ interface ContactManagementDialogProps {
   providerId: string
   contact?: ProviderContact
   mode: 'create' | 'edit'
+  isOwnContact?: boolean
 }
 
 export function ContactManagementDialog({
@@ -26,6 +27,7 @@ export function ContactManagementDialog({
   providerId,
   contact,
   mode,
+  isOwnContact = false,
 }: ContactManagementDialogProps) {
   const createContact = useCreateProviderContact()
   const updateContact = useUpdateProviderContact()
@@ -113,6 +115,15 @@ export function ContactManagementDialog({
             </Alert>
           )}
 
+          {isOwnContact && (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                You can only edit your job title and phone number. Contact your organization admin to change other settings.
+              </AlertDescription>
+            </Alert>
+          )}
+
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="email">Email *</Label>
@@ -166,6 +177,7 @@ export function ContactManagementDialog({
               <Select
                 value={formData.contact_type}
                 onValueChange={(value) => setFormData({ ...formData, contact_type: value })}
+                disabled={isOwnContact}
               >
                 <SelectTrigger id="contact_type">
                   <SelectValue />
@@ -182,6 +194,7 @@ export function ContactManagementDialog({
               <Select
                 value={formData.provider_role}
                 onValueChange={(value) => setFormData({ ...formData, provider_role: value as ProviderContactRole })}
+                disabled={isOwnContact}
               >
                 <SelectTrigger id="provider_role">
                   <SelectValue />
@@ -205,6 +218,7 @@ export function ContactManagementDialog({
                 onCheckedChange={(checked) =>
                   setFormData({ ...formData, is_primary_contact: checked === true })
                 }
+                disabled={isOwnContact}
               />
               <Label htmlFor="is_primary_contact" className="font-normal cursor-pointer">
                 Primary Contact
@@ -218,6 +232,7 @@ export function ContactManagementDialog({
                 onCheckedChange={(checked) =>
                   setFormData({ ...formData, is_default_referral_handler: checked === true })
                 }
+                disabled={isOwnContact}
               />
               <Label htmlFor="is_default_referral_handler" className="font-normal cursor-pointer">
                 Default Referral Handler (new referrals auto-assign to this contact)

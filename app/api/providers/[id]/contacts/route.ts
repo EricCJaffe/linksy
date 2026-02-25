@@ -17,6 +17,24 @@ export async function POST(
   const body = await request.json()
   const supabase = await createServiceClient()
 
+  // Check if user can add contacts to this provider
+  if (!auth.isSiteAdmin && !auth.isTenantAdmin) {
+    const { data: userContact } = await supabase
+      .from('linksy_provider_contacts')
+      .select('provider_role')
+      .eq('provider_id', providerId)
+      .eq('user_id', auth.user.id)
+      .eq('status', 'active')
+      .single()
+
+    if (!userContact || userContact.provider_role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Forbidden - Admin access required to add contacts' },
+        { status: 403 }
+      )
+    }
+  }
+
   // Validate required fields
   if (!body.email) {
     return NextResponse.json({ error: 'Email is required' }, { status: 400 })
