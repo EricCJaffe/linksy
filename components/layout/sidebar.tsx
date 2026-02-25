@@ -53,6 +53,11 @@ const mainNavItems = [
     icon: Ticket,
   },
   {
+    title: 'Reports',
+    href: '/dashboard/reports',
+    icon: BarChart3,
+  },
+  {
     title: 'Notifications',
     href: '/dashboard/notifications',
     icon: Bell,
@@ -77,61 +82,6 @@ const adminNavItems = [
     title: 'Admin Console',
     href: '/dashboard/admin',
     icon: LayoutDashboard,
-  },
-  {
-    title: 'Reports',
-    href: '/dashboard/admin/reports',
-    icon: BarChart3,
-  },
-  {
-    title: 'Events',
-    href: '/dashboard/admin/events',
-    icon: Calendar,
-  },
-  {
-    title: 'Support Tickets',
-    href: '/dashboard/admin/support',
-    icon: LifeBuoy,
-  },
-  {
-    title: 'Crisis Detection',
-    href: '/dashboard/admin/crisis',
-    icon: AlertTriangle,
-  },
-  {
-    title: 'Widget Hosts',
-    href: '/dashboard/admin/hosts',
-    icon: Globe,
-  },
-  {
-    title: 'Docs Manager',
-    href: '/dashboard/admin/docs',
-    icon: FileText,
-  },
-  {
-    title: 'Webhooks',
-    href: '/dashboard/admin/webhooks',
-    icon: Webhook,
-  },
-  {
-    title: 'Email Templates',
-    href: '/dashboard/admin/email-templates',
-    icon: Mail,
-  },
-  {
-    title: 'Merge Providers',
-    href: '/dashboard/admin/merge-providers',
-    icon: Merge,
-  },
-  {
-    title: 'Merge Contacts',
-    href: '/dashboard/admin/merge-contacts',
-    icon: Merge,
-  },
-  {
-    title: 'Review Imports',
-    href: '/dashboard/admin/review-imports',
-    icon: ClipboardCheck,
   },
   {
     title: 'Provider Portal Preview',
