@@ -31,29 +31,14 @@ export function useCurrentTenant() {
 
       const currentTenantId = getCurrentTenantId()
 
-      // Get user's tenant memberships with timeout
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Tenant query timeout')), 3000)
-      )
-
-      const queryPromise = supabase
+      // Get user's tenant memberships
+      const { data: memberships, error: membershipError } = await supabase
         .from('tenant_users')
         .select(`
           *,
           tenant:tenants(*)
         `)
         .eq('user_id', user.id)
-
-      const { data: memberships, error: membershipError } = await Promise.race([
-        queryPromise,
-        timeoutPromise
-      ]).catch((err) => {
-        logger.warn('Tenant query failed or timed out', {
-          user_id: user.id,
-          error: err.message
-        })
-        return { data: null, error: err }
-      }) as { data: any, error: any }
 
       if (membershipError) {
         logger.warn('Error fetching tenant memberships (non-critical for provider users)', {

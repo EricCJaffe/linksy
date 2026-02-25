@@ -18,14 +18,15 @@ export default function DashboardLayout({
   const { data: tenantData, isLoading: isTenantLoading, error: tenantError } = useCurrentTenant()
   const [forceShow, setForceShow] = useState(false)
 
-  // Emergency timeout: show dashboard after 5 seconds even if still loading
+  // Emergency timeout: show dashboard after 10 seconds even if still loading
+  // Only force show if user data is loaded but tenant is still loading
   useEffect(() => {
     const timeout = setTimeout(() => {
-      if (isUserLoading || isTenantLoading) {
-        console.warn('[Dashboard] Loading timeout - forcing dashboard to show')
+      if (!isUserLoading && isTenantLoading) {
+        console.warn('[Dashboard] Tenant loading timeout - forcing dashboard to show')
         setForceShow(true)
       }
-    }, 5000)
+    }, 10000)
 
     return () => clearTimeout(timeout)
   }, [isUserLoading, isTenantLoading])
@@ -59,16 +60,20 @@ export default function DashboardLayout({
     console.warn('[Dashboard] Tenant query error (non-critical for provider users):', tenantError)
   }
 
-  // Only show loading state while fetching user data
-  // Tenant data is optional (provider-only users don't have tenants)
-  // Force show dashboard after timeout to prevent infinite loading
-  if (isUserLoading && !forceShow) {
+  // Show loading state while fetching user data
+  // User data is required, tenant data is optional
+  if (isUserLoading) {
     return <DashboardLoading />
   }
 
   // If no user, the middleware should redirect to login
-  // but show loading just in case (unless we hit the timeout)
-  if (!user && !forceShow) {
+  if (!user) {
+    return <DashboardLoading />
+  }
+
+  // Show loading for tenant data, but with emergency timeout
+  // Provider-only users may not have tenant data, so this prevents infinite loading
+  if (isTenantLoading && !forceShow) {
     return <DashboardLoading />
   }
 
