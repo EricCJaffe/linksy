@@ -155,7 +155,20 @@
       - [x] Totals row (bold, aggregated)
   - [x] **Contacts Tab**
     - [x] List of linked staff users with name, email, job title, is_primary badge
-    - [x] Add/remove contact links
+    - [x] Add/remove contact links (admin only)
+    - [x] Permission enforcement:
+      - [x] Regular users: can only edit own contact (job_title, phone)
+      - [x] Provider admins: can manage all contacts (add, edit, archive)
+      - [x] Site admins: full control over all contacts
+    - [x] Edit restrictions for own contact (dialog shows limited fields only)
+  - [x] **Host Settings Tab** (conditionally shown)
+    - [x] Only visible when `is_host = true` AND user is admin
+    - [x] Enable Widget Hosting toggle (site admin only)
+    - [x] Embed Active toggle (provider admin can edit)
+    - [x] Widget URL display with copy buttons
+    - [x] Token budget configuration
+    - [x] Domain restrictions (allowed_domains)
+    - [x] Usage metrics display
   - [x] **Details Tab**
     - [ ] Social media links (Facebook, Instagram, LinkedIn, YouTube)
     - [ ] Project status dropdown
@@ -381,6 +394,33 @@
 - [ ] Monthly query cap (monthly_query_limit, queries_this_month)
 - [ ] Graceful degradation: show message when limit reached
 - [ ] Usage counter increment on each query
+
+### 5.7 Host-Specific Widget URLs (Alternative to API Key Auth)
+- [x] **Dynamic Route** `/find-help/[provider-slug]`
+  - [x] Server-side rendering with `dynamic = 'force-dynamic'`
+  - [x] Accepts any provider slug without pre-generation at build time
+  - [x] RPC function `linksy_resolve_host(p_slug)` validates host status
+- [x] **Host Requirements**
+  - [x] Provider must have `is_host = true`
+  - [x] Provider must have `is_active = true`
+  - [x] Provider must have `host_embed_active = true`
+- [x] **Domain Restrictions**
+  - [x] Optional `host_allowed_domains` array
+  - [x] Referer header validation for iframe embeds
+  - [x] Direct navigation always allowed (preview mode)
+  - [x] Unauthorized domains show error message
+- [x] **Token Budget**
+  - [x] `host_monthly_token_budget` limits usage
+  - [x] `host_tokens_used_this_month` tracking
+  - [x] Over-budget displays unavailable message
+  - [x] Auto-reset at period boundary
+- [x] **Widget Configuration**
+  - [x] `host_widget_config` JSONB for customization
+  - [x] Widget URL displayed in Host Settings tab
+  - [x] Iframe embed snippet with copy button
+- [x] **Analytics Tagging**
+  - [x] All sessions tagged with `host_provider_id`
+  - [x] Usage tracked separately from API key widgets
 
 ---
 

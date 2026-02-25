@@ -14,6 +14,9 @@ Reference:
 - `docs/INTEGRATIONS.md` — OpenAI, Google Maps, email, OAuth
 - `docs/TASKS.md` — active TODOs and backlog
 - `docs/RELEASES.md` — latest completed work and next release scope
+- `docs/FEATURES/` — detailed feature documentation
+  - Host White-Label Customization (widget hosting, email templates, custom fields)
+  - Parent-Child Organizations
 - `docs/DECISIONS/` — architecture decision records (ADRs)
   - 0001: AI Search Pipeline Architecture
   - 0002: Host Widget Embedding Model

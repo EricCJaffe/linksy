@@ -8,6 +8,10 @@ interface PageProps {
   params: { slug: string }
 }
 
+// Force dynamic rendering for host-specific widget pages
+export const dynamic = 'force-dynamic'
+export const dynamicParams = true
+
 /**
  * /find-help/[slug]
  *

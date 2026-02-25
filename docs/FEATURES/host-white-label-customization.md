@@ -4,10 +4,81 @@ This feature allows host organizations to customize their referral intake experi
 
 ## Overview
 
-Host white-label customization provides two main capabilities:
+Host white-label customization provides three main capabilities:
 
-1. **Email Template Customization** - Override system email templates with host-specific branding and messaging
-2. **Custom Form Fields** - Add custom fields to the referral intake form for collecting host-specific information
+1. **Widget Hosting** - Dedicated URL for embedding the referral widget on host websites
+2. **Email Template Customization** - Override system email templates with host-specific branding and messaging
+3. **Custom Form Fields** - Add custom fields to the referral intake form for collecting host-specific information
+
+## Widget Hosting
+
+### Overview
+
+When a provider is enabled as a host (`is_host = true`), they receive a dedicated widget URL at `/find-help/[provider-slug]`. This URL can be embedded as an iframe on the host's website or accessed directly.
+
+### Widget URL Structure
+
+```
+https://your-domain.com/find-help/provider-slug
+```
+
+Example:
+```
+https://linksy.example.com/find-help/impact-clay
+```
+
+### Configuration Requirements
+
+For a host widget URL to work, the provider must have:
+
+1. `is_host = true` - Widget hosting enabled
+2. `is_active = true` - Provider is active
+3. `host_embed_active = true` - Widget is currently active (can be disabled without removing host status)
+
+### Dynamic Routing
+
+The widget page uses Next.js dynamic routing with server-side rendering:
+
+```typescript
+// app/find-help/[slug]/page.tsx
+export const dynamic = 'force-dynamic'
+export const dynamicParams = true
+```
+
+This configuration ensures:
+- Pages are generated on-demand at runtime (no pre-generation required)
+- New host providers immediately have working widget URLs
+- No rebuild needed when adding/removing hosts
+
+### Widget URL Display
+
+The widget URL is automatically shown in the provider's Host Settings tab when `is_host = true`. Site admins and provider admins can copy the URL and iframe snippet for embedding.
+
+### Domain Restrictions
+
+Hosts can restrict widget access to specific domains via `host_allowed_domains`:
+
+```typescript
+// Only allow embedding on these domains
+host_allowed_domains: ['example.com', 'subdomain.example.com']
+```
+
+When domain restrictions are set:
+- Direct navigation (no Referer header) is always allowed for preview
+- Iframe embeds must originate from an allowed domain
+- Unauthorized domains see an error message
+
+### Token Budget
+
+Widget usage is tracked and can be limited via `host_monthly_token_budget`:
+
+```sql
+UPDATE linksy_providers
+SET host_monthly_token_budget = 100000
+WHERE id = 'host-uuid';
+```
+
+When budget is exceeded, the widget displays an "unavailable" message until the usage resets or budget is increased.
 
 ## Email Template Customization
 

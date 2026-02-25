@@ -86,6 +86,42 @@
 
 ---
 
+### 6. Host widget URLs return 404 "Page Not Found"
+
+**Symptom:** Visiting `/find-help/[provider-slug]` returns 404 even though the provider has `is_host = true`, `is_active = true`, and `host_embed_active = true`.
+
+**Checks:**
+- Verify the provider exists with the correct slug in `linksy_providers` table
+- Confirm `is_host = true`, `is_active = true`, and `host_embed_active = true`
+- Test the RPC function: `SELECT * FROM linksy_resolve_host('provider-slug');` (should return 1 row)
+- Check Vercel deployment logs for build errors related to dynamic routes
+
+**Root Cause:**
+Next.js App Router tries to statically generate pages at build time. Without `dynamic = 'force-dynamic'`, dynamic routes like `/find-help/[slug]` will not be generated at runtime, causing 404s for any slug not pre-generated.
+
+**Fix:**
+The page at `app/find-help/[slug]/page.tsx` must export:
+```typescript
+export const dynamic = 'force-dynamic'
+export const dynamicParams = true
+```
+
+This tells Next.js to:
+- Always render this page on-demand (server-side)
+- Accept any dynamic slug parameter without pre-generation
+
+**Verification:**
+1. Deploy with the fix included
+2. Visit `https://your-domain.com/find-help/provider-slug`
+3. Should load the widget instead of 404
+4. Widget URL is shown in provider Host Settings tab
+
+**Related Migration:**
+- `supabase/migrations/20260217160235_linksy_host_system.sql` - Creates host system
+- `supabase/migrations/20260218205438_resolve_host_return_allowed_domains.sql` - RPC function
+
+---
+
 ## Health Check Endpoints
 
 - No dedicated health check endpoint exists. The simplest smoke test is:
