@@ -208,16 +208,16 @@ async function handleSearchReport(
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
 
   const sessionsLast30Days = sessions.filter(
-    s => new Date(s.created_at) >= thirtyDaysAgo
+    (s: any) => new Date(s.created_at) >= thirtyDaysAgo
   ).length
 
-  const totalCrisisDetections = sessions.filter(s => s.is_crisis).length
+  const totalCrisisDetections = sessions.filter((s: any) => s.is_crisis).length
 
   // Get interactions for these sessions
   let interactionsQuery = supabase
     .from('linksy_interactions')
     .select('*')
-    .in('session_id', sessions.map(s => s.id))
+    .in('session_id', sessions.map((s: any) => s.id))
 
   const { data: interactions } = await interactionsQuery
   const totalInteractions = interactions?.length || 0
@@ -233,9 +233,9 @@ async function handleSearchReport(
 
   // Crisis breakdown
   const crisisBreakdown = sessions
-    .filter(s => s.is_crisis && s.crisis_type)
-    .reduce((acc: any[], s) => {
-      const existing = acc.find(item => item.type === s.crisis_type)
+    .filter((s: any) => s.is_crisis && s.crisis_type)
+    .reduce((acc: any[], s: any) => {
+      const existing = acc.find((item: any) => item.type === s.crisis_type)
       if (existing) {
         existing.count++
       } else {
@@ -243,24 +243,24 @@ async function handleSearchReport(
       }
       return acc
     }, [])
-    .sort((a, b) => b.count - a.count)
+    .sort((a: any, b: any) => b.count - a.count)
 
   // Recent crisis sessions
   const recentCrisisSessions = sessions
-    .filter(s => s.is_crisis)
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .filter((s: any) => s.is_crisis)
+    .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 10)
-    .map(s => ({
+    .map((s: any) => ({
       id: s.id,
       crisis_type: s.crisis_type,
       created_at: s.created_at,
     }))
 
   // Funnel metrics
-  const engagedSessions = sessions.filter(s =>
+  const engagedSessions = sessions.filter((s: any) =>
     s.services_clicked && s.services_clicked.length > 0
   ).length
-  const convertedSessions = sessions.filter(s => s.created_ticket).length
+  const convertedSessions = sessions.filter((s: any) => s.created_ticket).length
 
   const engagementRate = totalSessions > 0
     ? Math.round((engagedSessions / totalSessions) * 100)
@@ -277,9 +277,9 @@ async function handleSearchReport(
 
   // Top zip codes
   const topZipCodes = sessions
-    .filter(s => s.zip_code_searched)
-    .reduce((acc: any[], s) => {
-      const existing = acc.find(item => item.zip_code === s.zip_code_searched)
+    .filter((s: any) => s.zip_code_searched)
+    .reduce((acc: any[], s: any) => {
+      const existing = acc.find((item: any) => item.zip_code === s.zip_code_searched)
       if (existing) {
         existing.count++
       } else {
@@ -287,7 +287,7 @@ async function handleSearchReport(
       }
       return acc
     }, [])
-    .sort((a, b) => b.count - a.count)
+    .sort((a: any, b: any) => b.count - a.count)
     .slice(0, 10)
 
   return NextResponse.json({
