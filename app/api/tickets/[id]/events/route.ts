@@ -63,6 +63,10 @@ export async function GET(
       .order('created_at', { ascending: true })
 
     if (eventsError) {
+      if (eventsError.code === 'PGRST205') {
+        console.warn('[ticket events] table missing; returning empty list')
+        return NextResponse.json({ events: [] })
+      }
       console.error('Error fetching ticket events:', eventsError)
       return NextResponse.json(
         { error: 'Failed to fetch ticket events' },
