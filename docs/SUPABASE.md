@@ -44,6 +44,7 @@
 | `20260224160000_create_host_email_templates.sql` | Host-level email template overrides |
 | `20260224160100_create_host_custom_fields.sql` | Host-specific custom fields |
 | `20260225211500_restore_ticket_custom_data.sql` | Restore `linksy_tickets.custom_data` JSONB |
+| `20260225223000_region_tenant_model.sql` | Create region tenants + assign providers to Impact Clay |
 | `20260223120000_create_webhooks_system.sql` | Outbound webhooks tables, RLS, signing metadata |
 | `20260223133000_create_email_templates.sql` | Email template override table/policies |
 | `20260223160000_add_is_pinned_to_provider_notes.sql` | Optional note pinning support (safe if notes table absent) |

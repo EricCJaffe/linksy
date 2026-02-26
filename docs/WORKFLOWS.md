@@ -38,6 +38,7 @@
   - `supabase migration list`
   - `supabase db push --include-all --yes`
   - `supabase migration repair --status applied <versions...>` (history alignment only; does not execute SQL)
+  - `supabase db push --include-all --yes` to apply `20260225223000_region_tenant_model.sql` after tenant refactor
 
 ### Migration Hygiene Notes
 
@@ -53,7 +54,7 @@
 - **OAuth config check:** `npx tsx scripts/test-oauth-config.ts`
 - **Google OAuth test:** `npx tsx scripts/test-google-oauth.ts`
 - **Cleanup test user:** `source .env.local && node scripts/cleanup-test-user.js`
-- **Backfill provider tenants (after imports):** run `scripts/backfill-provider-tenants.sql` in Supabase SQL editor
+- **Assign providers to Impact Clay tenant (after imports):** run `scripts/backfill-provider-tenants.sql` in Supabase SQL editor
 
 ## Deploy
 

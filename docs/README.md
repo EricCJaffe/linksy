@@ -29,6 +29,7 @@ Reference:
   - 0009: E2E Testing Strategy (new)
   - 0010: Parent/Child Provider Linking Model (new)
   - 0011: Outbound Webhooks Signing Model (new)
+  - 0012: Region Tenant Model (new)
 - `docs/ARCHITECTURE.md` — data model, security layers, component structure
 - `docs/API.md` — API route reference (base template + Linksy-specific)
 - `docs/DEPLOYMENT.md` — Vercel deploy guide

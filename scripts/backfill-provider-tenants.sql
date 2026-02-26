@@ -1,37 +1,35 @@
--- Backfill tenant records for providers that are missing tenant_id
--- Safe to re-run; uses unique tenant slug logic and only fills nulls.
+-- Assign all providers to the Impact Clay region tenant.
+-- Safe to re-run; creates the region tenant if missing and sets tenant_id.
 
 DO $$
 DECLARE
   r RECORD;
-  new_tenant_id UUID;
-  tenant_slug TEXT;
-  slug_counter INT;
+  impact_tenant_id UUID;
 BEGIN
-  FOR r IN
-    SELECT id, name, slug
-    FROM linksy_providers
-    WHERE tenant_id IS NULL
-  LOOP
-    tenant_slug := r.slug;
-    slug_counter := 1;
+  -- Ensure Impact Clay tenant exists
+  SELECT id INTO impact_tenant_id
+  FROM tenants
+  WHERE slug = 'impact-clay'
+  LIMIT 1;
 
-    WHILE EXISTS (SELECT 1 FROM tenants WHERE slug = tenant_slug) LOOP
-      tenant_slug := r.slug || '-' || slug_counter;
-      slug_counter := slug_counter + 1;
-    END LOOP;
-
+  IF impact_tenant_id IS NULL THEN
     INSERT INTO tenants (name, slug, settings, branding)
     VALUES (
-      r.name,
-      tenant_slug,
-      jsonb_build_object('type', 'provider_organization', 'provider_id', r.id),
+      'Impact Clay',
+      'impact-clay',
+      jsonb_build_object('type', 'region'),
       '{}'::jsonb
     )
-    RETURNING id INTO new_tenant_id;
+    RETURNING id INTO impact_tenant_id;
+  END IF;
 
+  -- Assign all providers to Impact Clay
+  FOR r IN
+    SELECT id
+    FROM linksy_providers
+  LOOP
     UPDATE linksy_providers
-    SET tenant_id = new_tenant_id
+    SET tenant_id = impact_tenant_id
     WHERE id = r.id;
   END LOOP;
 END $$;

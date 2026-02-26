@@ -85,6 +85,14 @@ Provider Summary tab state (current):
   - `lib/supabase/client.ts` — browser singleton (uses anon key, respects RLS)
   - `lib/supabase/server.ts` — `createClient()` for server components, `createServiceClient()` for admin ops (bypasses RLS)
 
+## Multi-Tenant Model
+
+- **Site:** Impact Works (site admin scope)
+- **Tenants:** Regions (currently `Impact Clay`, with `United Way of North Florida` reserved for future use)
+- **Providers:** Organizations inside a tenant/region
+- **Locations:** Physical locations for a provider
+- **Users:** Site admins can access all tenants; provider contacts remain provider-scoped
+
 ## Ticket Numbering
 
 - **Referral tickets:** `R-<sequence>-<suffix>` (example: `R-2001-07`). Sequence starts at 2000 for new tickets.

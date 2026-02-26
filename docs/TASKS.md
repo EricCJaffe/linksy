@@ -27,6 +27,9 @@
 - [x] Webhooks admin smoke validation in live/staging target (create/test endpoint, signature validation, retry/history checks) — COMPLETED 2026-02-25
 - [ ] Referral workflow e2e mailbox assertion leg (outbound email content/delivery verification)
 - [ ] Tenant model refactor: move from provider-as-tenant to region tenants (Impact Works site, Impact Clay tenant, add United Way of North Florida tenant)
+- [ ] Apply migration `20260225223000_region_tenant_model.sql`
+- [ ] Run `scripts/backfill-provider-tenants.sql` after imports
+- [ ] Verify tenant UI and webhooks scoped to Impact Clay
 - [ ] Webhook event coverage: verify `ticket.assigned`, `ticket.forwarded`, `ticket.reassigned`
 
 ## MVP Alignment (Reviewed 2026-02-23)

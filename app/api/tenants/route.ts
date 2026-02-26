@@ -6,16 +6,20 @@ import { requireSiteAdmin } from '@/lib/middleware/auth'
 import { logger } from '@/lib/utils/logger'
 import { sendInvitationEmail } from '@/lib/utils/email'
 
-export async function GET() {
+export async function GET(request: Request) {
   const { data: auth, error } = await requireSiteAdmin()
   if (error) return error
 
   const supabase = await createClient()
+  const { searchParams } = new URL(request.url)
+  const type = searchParams.get('type')
 
-  const { data: tenants, error: queryError } = await supabase
-    .from('tenants')
-    .select('*')
-    .order('created_at', { ascending: false })
+  let query = supabase.from('tenants').select('*').order('created_at', { ascending: false })
+  if (type && type !== 'all') {
+    query = query.filter('settings->>type', 'eq', type)
+  }
+
+  const { data: tenants, error: queryError } = await query
 
   if (queryError) {
     return NextResponse.json({ error: queryError.message }, { status: 500 })
@@ -78,7 +82,7 @@ export async function POST(request: Request) {
       country: validation.data.country,
       track_location: validation.data.track_location || false,
       primary_contact_id: adminUserId || null,
-      settings: {},
+      settings: { type: 'region' },
       branding: {},
     })
     .select()

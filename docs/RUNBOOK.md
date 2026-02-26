@@ -127,55 +127,31 @@ This tells Next.js to:
 
 ---
 
-### 7. Webhooks don’t fire after provider imports (missing `tenant_id`)
+### 7. Webhooks don’t fire after provider imports (missing region tenant assignment)
 
 **Symptom:** Webhook test succeeds, but `ticket.created` never appears in deliveries. Server logs show “skipped ticket.created - missing tenant_id”.
 
 **Checks:**
-- Confirm `linksy_providers.tenant_id` is populated for the provider receiving the ticket.
+- Confirm `linksy_providers.tenant_id` is populated for the provider receiving the ticket (should point to region tenant, e.g. Impact Clay).
 - Check latest tickets join:  
   `SELECT t.id, t.ticket_number, t.provider_id, p.tenant_id FROM linksy_tickets t LEFT JOIN linksy_providers p ON p.id = t.provider_id ORDER BY t.created_at DESC LIMIT 1;`
 
 **Fix:**
-- Backfill tenant records for providers missing `tenant_id` (run in SQL editor):
+- Assign providers to the Impact Clay tenant (run in SQL editor):
 ```sql
 do $$
 declare
-  r record;
-  new_tenant_id uuid;
-  tenant_slug text;
-  slug_counter int;
+  impact_tenant_id uuid;
 begin
-  for r in
-    select id, name, slug
-    from linksy_providers
-    where tenant_id is null
-  loop
-    tenant_slug := r.slug;
-    slug_counter := 1;
-
-    while exists (select 1 from tenants where slug = tenant_slug) loop
-      tenant_slug := r.slug || '-' || slug_counter;
-      slug_counter := slug_counter + 1;
-    end loop;
-
-    insert into tenants (name, slug, settings, branding)
-    values (
-      r.name,
-      tenant_slug,
-      jsonb_build_object('type', 'provider_organization', 'provider_id', r.id),
-      '{}'::jsonb
-    )
-    returning id into new_tenant_id;
-
-    update linksy_providers
-    set tenant_id = new_tenant_id
-    where id = r.id;
-  end loop;
+  select id into impact_tenant_id from tenants where slug = 'impact-clay' limit 1;
+  if impact_tenant_id is not null then
+    update linksy_providers set tenant_id = impact_tenant_id;
+    update linksy_webhooks set tenant_id = impact_tenant_id;
+  end if;
 end $$;
 ```
 
-**Prevention:** After bulk provider imports, run the backfill before testing webhooks.
+**Prevention:** After bulk provider imports, run the region assignment before testing webhooks.
 
 ---
 
@@ -191,6 +167,7 @@ end $$;
 **Fix:**
 - Switch the tenant dropdown to the webhook’s `tenant_id`.
 - If the tenant list is incorrect, re-run the provider tenant backfill to repopulate tenant associations.
+- Ensure region tenants have `settings.type = 'region'` (UI filters to region tenants only).
 
 ---
 

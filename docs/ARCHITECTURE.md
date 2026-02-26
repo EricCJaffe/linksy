@@ -14,11 +14,11 @@ This document provides an overview of the system architecture, data models, secu
 
 ## System Overview
 
-This application is built as a **multi-tenant SaaS platform** where multiple organizations (tenants) share the same infrastructure while maintaining complete data isolation.
+This application is built as a **multi-tenant SaaS platform** where multiple organizations (tenants) share the same infrastructure while maintaining complete data isolation. In Linksy’s operating model, **tenants represent regions** (Impact Clay now), while the top-level **site** represents the overall platform (Impact Works).
 
 ### Key Characteristics
 
-- **Multi-Tenant**: One codebase serves multiple customers
+- **Multi-Tenant**: One codebase serves multiple customers and regions
 - **Data Isolation**: Row Level Security (RLS) ensures tenant data separation
 - **Scalable**: Designed to handle growth in users and tenants
 - **Secure**: Multiple layers of security including RLS, authentication, and authorization
@@ -62,7 +62,21 @@ This application is built as a **multi-tenant SaaS platform** where multiple org
 
 ### Core Tables
 
-#### 1. Users (`users`)
+#### 1. Sites (`sites`)
+Top-level platform entity. Linksy currently uses a single site record.
+
+```sql
+sites (
+  id uuid PRIMARY KEY,
+  name text NOT NULL,
+  slug text UNIQUE NOT NULL,
+  is_active boolean DEFAULT true,
+  created_at timestamp,
+  updated_at timestamp
+)
+```
+
+#### 2. Users (`users`)
 Extends Supabase auth.users with profile information.
 
 ```sql
@@ -81,8 +95,8 @@ profiles (
 )
 ```
 
-#### 2. Tenants (`tenants`)
-Organizations that use the platform.
+#### 3. Tenants (`tenants`)
+Organizations that use the platform. In Linksy, **tenants map to regions** and are tagged via `settings.type = 'region'`.
 
 ```sql
 tenants (
@@ -91,13 +105,13 @@ tenants (
   slug text UNIQUE NOT NULL,       -- URL-friendly identifier
   logo_url text,
   primary_color text,
-  settings jsonb,                   -- Tenant-specific settings
+  settings jsonb,                   -- Tenant-specific settings (includes `type: region`)
   created_at timestamp,
   updated_at timestamp
 )
 ```
 
-#### 3. Tenant Users (`tenant_users`)
+#### 4. Tenant Users (`tenant_users`)
 Junction table linking users to tenants with roles.
 
 ```sql
@@ -111,7 +125,7 @@ tenant_users (
 )
 ```
 
-#### 4. Modules (`modules`)
+#### 5. Modules (`modules`)
 Available features that can be enabled per tenant.
 
 ```sql
@@ -135,7 +149,7 @@ tenant_modules (
 )
 ```
 
-#### 5. Files (`files`)
+#### 6. Files (`files`)
 File metadata for Supabase Storage.
 
 ```sql
@@ -155,7 +169,7 @@ files (
 )
 ```
 
-#### 6. Audit Logs (`audit_logs`)
+#### 7. Audit Logs (`audit_logs`)
 Track all important actions in the system.
 
 ```sql
@@ -173,7 +187,7 @@ audit_logs (
 )
 ```
 
-#### 7. Notifications (`notifications`)
+#### 8. Notifications (`notifications`)
 In-app notifications for users.
 
 ```sql
@@ -193,6 +207,8 @@ notifications (
 ### Data Relationships
 
 ```
+sites ─── tenants (1:N)
+tenants ─── linksy_providers (1:N)
 users ──┬── profiles (1:1)
         │
         ├── tenant_users (1:N)

@@ -22,7 +22,7 @@ export default function TenantsPage() {
   const { data: tenants, isLoading } = useQuery<Tenant[]>({
     queryKey: ['tenants'],
     queryFn: async () => {
-      const response = await fetch('/api/tenants')
+      const response = await fetch('/api/tenants?type=region')
       if (!response.ok) {
         throw new Error('Failed to fetch tenants')
       }

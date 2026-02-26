@@ -19,6 +19,7 @@ export interface Tenant {
 }
 
 export interface TenantSettings {
+  type?: 'region' | 'provider' | string
   terminology?: {
     [key: string]: string
   }

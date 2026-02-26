@@ -130,7 +130,7 @@ export default function AdminWebhooksPage() {
 
     async function loadTenants() {
       try {
-        const response = await fetch('/api/tenants')
+        const response = await fetch('/api/tenants?type=region')
         if (!response.ok) return
         const data = await response.json()
         const mapped: TenantOption[] = (data || []).map((tenant: any) => ({

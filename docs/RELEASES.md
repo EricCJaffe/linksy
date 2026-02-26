@@ -11,6 +11,12 @@
   - Webhook admin end-to-end smoke validation and docs polish
 
 ## Recent
+- Date: 2026-02-26
+- Summary:
+  - Added region-tenant model migration and backfill tooling (Impact Clay + United Way of North Florida).
+  - Tenant UI and webhooks now filter to region tenants only.
+  - Tenant creation now tags `settings.type = region` by default.
+
 - Date: 2026-02-25
 - Summary:
   - Fixed OAuth callback routing (public `/auth/*` handling) and added OAuth redirect logging.

@@ -3,8 +3,9 @@ import type { Tenant, CreateTenantInput, UpdateTenantInput } from '@/lib/types/t
 /**
  * Fetch all tenants (site admin only)
  */
-export async function listTenants(): Promise<Tenant[]> {
-  const response = await fetch('/api/tenants')
+export async function listTenants(type: 'region' | 'provider' | 'all' = 'all'): Promise<Tenant[]> {
+  const query = type === 'all' ? '' : `?type=${encodeURIComponent(type)}`
+  const response = await fetch(`/api/tenants${query}`)
 
   if (!response.ok) {
     const error = await response.json()

@@ -31,7 +31,7 @@ export function useCurrentTenant() {
 
       const currentTenantId = getCurrentTenantId()
 
-      // Get user's tenant memberships
+      // Get user's tenant memberships (region tenants only)
       const { data: memberships, error: membershipError } = await supabase
         .from('tenant_users')
         .select(`
@@ -39,6 +39,7 @@ export function useCurrentTenant() {
           tenant:tenants(*)
         `)
         .eq('user_id', user.id)
+        .filter('tenant.settings->>type', 'eq', 'region')
 
       if (membershipError) {
         logger.warn('Error fetching tenant memberships (non-critical for provider users)', {
