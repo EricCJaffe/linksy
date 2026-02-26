@@ -92,6 +92,7 @@ export async function PATCH(
     'follow_up_sent',
     'provider_id',
     'need_id',
+    'client_user_id',
   ]
 
   const updates: Record<string, any> = {}
@@ -103,6 +104,11 @@ export async function PATCH(
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
+  }
+
+  if ('client_user_id' in updates) {
+    updates.assigned_to = updates.client_user_id
+    updates.assigned_at = new Date().toISOString()
   }
 
   updates.updated_at = new Date().toISOString()
