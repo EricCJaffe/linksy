@@ -18,6 +18,7 @@ export default function MyOrganizationPage() {
   const { data: access, isLoading: accessLoading } = useProviderAccess()
   const { data: allProviders } = useProviders({ limit: 1000 }, { enabled: user?.profile?.role === 'site_admin' })
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null)
+  const [providerSearch, setProviderSearch] = useState('')
 
   const isSiteAdmin = user?.profile?.role === 'site_admin'
   const providerId = isSiteAdmin && selectedProviderId ? selectedProviderId : access?.provider?.id
@@ -25,6 +26,9 @@ export default function MyOrganizationPage() {
     enabled: !!providerId,
   })
   const { data: analytics } = useProviderAnalytics(providerId)
+  const filteredProviders = (allProviders?.providers || []).filter((p) =>
+    p.name.toLowerCase().includes(providerSearch.trim().toLowerCase())
+  )
 
   if (accessLoading || providerLoading) {
     return (
@@ -46,13 +50,18 @@ export default function MyOrganizationPage() {
             Select a provider to preview their portal view:
           </AlertDescription>
         </Alert>
-        <div className="max-w-md">
+        <div className="max-w-md space-y-2">
+          <Input
+            placeholder="Search providers..."
+            value={providerSearch}
+            onChange={(e) => setProviderSearch(e.target.value)}
+          />
           <Select value={selectedProviderId || ''} onValueChange={setSelectedProviderId}>
             <SelectTrigger>
               <SelectValue placeholder="Select a provider..." />
             </SelectTrigger>
             <SelectContent>
-              {allProviders?.providers.map((p) => (
+              {filteredProviders.map((p) => (
                 <SelectItem key={p.id} value={p.id}>
                   {p.name}
                 </SelectItem>
@@ -101,14 +110,19 @@ export default function MyOrganizationPage() {
   return (
     <div className="space-y-6">
       {isSiteAdmin && (
-        <div className="max-w-md">
+        <div className="max-w-md space-y-2">
           <label className="text-sm font-medium mb-2 block">Preview as Provider:</label>
+          <Input
+            placeholder="Search providers..."
+            value={providerSearch}
+            onChange={(e) => setProviderSearch(e.target.value)}
+          />
           <Select value={selectedProviderId || ''} onValueChange={setSelectedProviderId}>
             <SelectTrigger>
               <SelectValue placeholder="Select a provider..." />
             </SelectTrigger>
             <SelectContent>
-              {allProviders?.providers.map((p) => (
+              {filteredProviders.map((p) => (
                 <SelectItem key={p.id} value={p.id}>
                   {p.name}
                 </SelectItem>
