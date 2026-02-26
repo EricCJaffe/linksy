@@ -36,6 +36,10 @@ export function OrgSwitcher() {
   const currentTenant = tenantData.tenant
   const memberships = tenantData.memberships
 
+  if (!currentTenant) {
+    return null
+  }
+
   if (memberships.length === 1) {
     return (
       <div className="flex items-center gap-2 rounded-md border px-3 py-2">

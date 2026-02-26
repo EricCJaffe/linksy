@@ -50,23 +50,25 @@ export function useCurrentTenant() {
         return null
       }
 
-      if (!memberships || memberships.length === 0) {
+      const validMemberships = (memberships || []).filter((m: any) => m.tenant)
+
+      if (validMemberships.length === 0) {
         logger.warn('User has no tenant memberships', { user_id: user.id })
         return null
       }
 
       // Find the current tenant or use the first one
-      let currentMembership = memberships.find((m: any) => m.tenant_id === currentTenantId)
+      let currentMembership = validMemberships.find((m: any) => m.tenant_id === currentTenantId)
 
       if (!currentMembership) {
-        currentMembership = memberships[0]
+        currentMembership = validMemberships[0]
         setCurrentTenantId(currentMembership.tenant_id)
       }
 
       return {
         tenant: currentMembership.tenant as Tenant,
         role: currentMembership.role as 'admin' | 'member',
-        memberships: memberships.map((m: any) => ({
+        memberships: validMemberships.map((m: any) => ({
           tenant: m.tenant as Tenant,
           role: m.role as 'admin' | 'member',
         })),
