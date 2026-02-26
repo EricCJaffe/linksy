@@ -81,12 +81,12 @@ Additional items are kept for reference.
 - Verify `E2E_ADMIN_EMAIL` and `E2E_ADMIN_PASSWORD` are set in `.env.local` (for local) or GitHub Secrets (for CI)
 - Confirm the admin user exists in Supabase `users` table with `role = 'site_admin'`
 - Check that the credentials match an actual user account
-- Run `npm run dev` first — E2E tests require a running dev server at `http://localhost:3000`
+- Confirm Playwright can start or reuse the app server (`playwright.config.ts` `webServer` starts `next dev` at `http://127.0.0.1:3000`)
 
 **Fix:**
 - Set env vars: `E2E_ADMIN_EMAIL=admin@example.com` and `E2E_ADMIN_PASSWORD=<password>`
 - Create admin user if missing (signup + promote to site_admin in Supabase dashboard)
-- Ensure dev server is running before executing `npm run test:e2e`
+- If startup fails, start server manually with `npm run dev` and rerun Playwright
 - For CI: add `E2E_ADMIN_EMAIL` and `E2E_ADMIN_PASSWORD` to GitHub Secrets
 
 ---
@@ -182,6 +182,23 @@ end $$;
 - Rely on `supabase migration list` for sync confirmation.
 - Run the diff with a service role that has storage permissions.
 - Run diff against a local Supabase instance where you control storage schema permissions.
+
+---
+
+### 10. Provider user sees "No referrals found" (or empty referrals list) in production
+
+**Symptom:** A non-admin provider user logs in and sees an empty referrals list. Logs may include `User has no tenant memberships`.
+
+**Checks:**
+- The `User has no tenant memberships` log is expected for provider-only users and is not a blocker by itself.
+- Call `GET /api/provider-access` as the provider user and confirm `hasAccess: true` and a valid `provider.id`.
+- Call `GET /api/tickets?provider_id=<provider_id>&limit=50` using that provider id.
+- If the response is empty, verify the user is linked to the provider in `linksy_provider_contacts` with `status = 'active'`.
+- Confirm tickets exist for the provider: `SELECT count(*) FROM linksy_tickets WHERE provider_id = '<provider_id>';`
+
+**Fix:**
+- If `linksy_provider_contacts` is missing or inactive, add/activate the contact for the provider user.
+- If no tickets exist for the provider, seed or reassign tickets to the provider for testing.
 
 ---
 

@@ -76,6 +76,7 @@ Provider Summary tab state (current):
 
 - **Auth provider:** Supabase Auth (email/password + Google OAuth + Microsoft OAuth via Azure)
 - **OAuth:** `components/auth/login-form.tsx` calls `supabase.auth.signInWithOAuth({ provider: 'google' | 'azure' })`; callback at `app/auth/callback/route.ts` exchanges code for session
+- **Auth callback compatibility route:** `app/api/auth/callback/route.ts` also exists for API-style callback handling
 - **Session management:** `lib/supabase/middleware.ts` refreshes sessions on every request via cookies
 - **Middleware:** `middleware.ts` protects `/dashboard/*`, enforces rate limits (100 req/min/IP), validates CSRF on API routes; `/auth/callback` is on the public routes list
 - **User roles:** `site_admin`, `tenant_admin`, `user` (stored in `users.role`)
@@ -124,3 +125,4 @@ Note: `.env.example` includes `NEXT_PUBLIC_ENABLE_*` flags, but there are no dir
 - **Type checking:** `npm run type-check` (runs `tsc --noEmit`)
 - **Linting:** `npm run lint` (ESLint with `eslint-config-next`)
 - **CI:** GitHub Actions runs type-check, lint, and unit tests on every push/PR to main. E2E tests run separately via e2e.yml workflow.
+- **Observability:** Sentry initializes through `instrumentation.ts` (server/edge) and `instrumentation-client.ts` (browser).

@@ -29,6 +29,8 @@ These must be set for the app to function:
 | Variable | Where Used | Notes |
 |----------|------------|-------|
 | `SUPABASE_PROJECT_ID` | `package.json` (`types:generate`) | Supabase project ID used for type generation. |
+| `SUPABASE_ACCESS_TOKEN` | Supabase CLI (`supabase login` alternative) | Personal access token for CLI auth in local/CI automation. |
+| `SUPABASE_PROJECT_REF` | Supabase CLI (`supabase link --project-ref ...`) | Project ref for linking/pushing migrations; often same value used operationally as project ID. |
 
 ## Email (pick one)
 
@@ -48,8 +50,8 @@ If neither is configured, emails are logged to console in development.
 
 | Variable | Where Used | Notes |
 |----------|------------|-------|
-| `NEXT_PUBLIC_SENTRY_DSN` | `sentry.client.config.ts`, `sentry.edge.config.ts`, fallback in `sentry.server.config.ts` | Enables Sentry in client/edge |
-| `SENTRY_DSN` | `sentry.server.config.ts` | Server-side DSN (preferred for server runtime) |
+| `NEXT_PUBLIC_SENTRY_DSN` | `instrumentation-client.ts`, `instrumentation.ts` | Enables Sentry in browser and edge runtime |
+| `SENTRY_DSN` | `instrumentation.ts` | Server-side DSN (preferred for Node runtime) |
 | `SENTRY_AUTH_TOKEN` | `next.config.js` | Enables Sentry source map upload during build |
 | `SENTRY_ENVIRONMENT` | `.env.example` | Listed in template, not referenced in code |
 

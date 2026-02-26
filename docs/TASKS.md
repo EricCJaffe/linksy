@@ -4,8 +4,10 @@
 
 - [ ] `README.md` roadmap items currently unchecked:
   - Multi-language support (i18n)
+  - Billing and subscription management
   - Two-factor authentication (2FA)
-- [ ] No additional `TODO`/`FIXME` markers found in `app/`, `lib/`, `components/`, `scripts/`, or `docs/` as of 2026-02-25.
+  - SSO integration (SAML)
+- [ ] No additional explicit `TODO`/`FIXME` markers found in `app/`, `lib/`, `components/`, `scripts/`, `supabase/`, `README.md`, or `docs/` as of 2026-02-26.
 
 ## Session Snapshot (2026-02-23)
 
@@ -31,6 +33,7 @@
 - [ ] Run `scripts/backfill-provider-tenants.sql` after imports
 - [ ] Verify tenant UI and webhooks scoped to Impact Clay
 - [ ] Webhook event coverage: verify `ticket.assigned`, `ticket.forwarded`, `ticket.reassigned`
+- [ ] Provider user sees "No referrals found" in prod: capture `/api/provider-access` response, then call `/api/tickets?provider_id=<id>&limit=50` with the provider_id from access; if empty, verify `linksy_provider_contacts` has `status='active'` for the user and provider, and confirm tickets exist with that provider_id
 
 ## MVP Alignment (Reviewed 2026-02-23)
 

@@ -30,6 +30,8 @@ Reference:
   - 0010: Parent/Child Provider Linking Model (new)
   - 0011: Outbound Webhooks Signing Model (new)
   - 0012: Region Tenant Model (new)
+  - 0013: Sentry Instrumentation Initialization
+  - 0014: Email Delivery Fallback Model
 - `docs/ARCHITECTURE.md` — data model, security layers, component structure
 - `docs/API.md` — API route reference (base template + Linksy-specific)
 - `docs/DEPLOYMENT.md` — Vercel deploy guide

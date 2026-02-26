@@ -18,6 +18,8 @@
 - **Migrations path:** `supabase/migrations/`
 - **Config path:** no `supabase/config.toml` found in this repo
 - **Type generation:** `npm run types:generate` → outputs to `lib/types/database.ts`
+- **CLI envs used operationally:** `SUPABASE_ACCESS_TOKEN` and `SUPABASE_PROJECT_REF` (for `supabase login/link/db push` flows)
+- **Note:** the current type-generation npm script expects `SUPABASE_PROJECT_ID`; if only project ref is set, export `SUPABASE_PROJECT_ID=$SUPABASE_PROJECT_REF` for that command.
 
 ### Key Migrations
 

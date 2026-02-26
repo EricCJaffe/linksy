@@ -676,6 +676,16 @@ npx tsc --noEmit
 3. Check user has correct tenant association
 4. Verify JWT token includes required claims
 
+### Provider Referrals Missing (Production)
+
+**Issue**: Provider user logs in and sees no referrals (sometimes accompanied by `User has no tenant memberships` in logs).
+
+**Solution**:
+1. `GET /api/provider-access` as the provider user and confirm `hasAccess: true` and a `provider.id`.
+2. `GET /api/tickets?provider_id=<provider_id>&limit=50` and confirm tickets are returned.
+3. If empty, verify `linksy_provider_contacts` includes the user with `status = 'active'`.
+4. Confirm tickets exist for that provider (`linksy_tickets.provider_id`).
+
 ## Updating Your Deployment
 
 ### Making Changes

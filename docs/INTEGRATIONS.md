@@ -5,7 +5,7 @@
 ### Sentry
 - **Purpose:** Error and message capture for server, client, and edge runtimes
 - **Auth:** `SENTRY_DSN` and/or `NEXT_PUBLIC_SENTRY_DSN`; optional `SENTRY_AUTH_TOKEN` for source map upload during build
-- **Entry points:** `sentry.client.config.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`, `lib/utils/logger.ts`
+- **Entry points:** `instrumentation.ts`, `instrumentation-client.ts`, `lib/utils/logger.ts`
 
 ### OpenAI
 - **Purpose:** AI-powered community resource search (embedding + conversational response)

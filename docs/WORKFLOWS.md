@@ -26,11 +26,16 @@
 - **E2E (UI):** `npm run test:e2e:ui`
 - **E2E env requirements:** `E2E_ADMIN_EMAIL`, `E2E_ADMIN_PASSWORD`, `E2E_PROVIDER_ID` (see `e2e/referral-workflow.spec.ts`)
 - **Playwright base URL:** `PLAYWRIGHT_BASE_URL` (defaults to `http://127.0.0.1:3000`)
+- **Playwright web server behavior:** `playwright.config.ts` starts `next dev` automatically via `webServer.command`; running `npm run dev` separately is optional.
 
 ## Supabase
 
 - **Generate types:** `npm run types:generate` (runs `npx supabase gen types typescript --project-id $SUPABASE_PROJECT_ID > lib/types/database.ts`)
-- **Env required for types:** `SUPABASE_PROJECT_ID`
+- **Env required for types script:** `SUPABASE_PROJECT_ID` (script name is currently `PROJECT_ID`, not `PROJECT_REF`)
+- **CLI auth/link (recommended before migration commands):**
+  - `npx supabase login` (or export `SUPABASE_ACCESS_TOKEN`)
+  - `npx supabase link --project-ref $SUPABASE_PROJECT_REF`
+- **If only `SUPABASE_PROJECT_REF` is set:** `SUPABASE_PROJECT_ID=$SUPABASE_PROJECT_REF npm run types:generate`
 - **Migrations path:** `supabase/migrations/`
 - **Config:** no `supabase/config.toml` is present in this repo
 - **Migration filename rule:** only files matching `<timestamp>_name.sql` are treated as migrations by CLI
