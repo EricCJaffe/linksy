@@ -63,6 +63,7 @@ interface DeliveryPagination {
 interface TenantOption {
   id: string
   name: string
+  slug?: string
 }
 
 const DEFAULT_EVENT_SELECTION: Record<WebhookEventType, boolean> = {
@@ -120,10 +121,10 @@ export default function AdminWebhooksPage() {
   const [revealedSecrets, setRevealedSecrets] = useState<Record<string, string>>({})
 
   useEffect(() => {
-    if (!selectedTenantId && currentTenant?.tenant?.id) {
+    if (!selectedTenantId && currentTenant?.tenant?.id && !isSiteAdmin) {
       setSelectedTenantId(currentTenant.tenant.id)
     }
-  }, [currentTenant, selectedTenantId])
+  }, [currentTenant, selectedTenantId, isSiteAdmin])
 
   useEffect(() => {
     if (!isSiteAdmin) return
@@ -136,11 +137,13 @@ export default function AdminWebhooksPage() {
         const mapped: TenantOption[] = (data || []).map((tenant: any) => ({
           id: tenant.id,
           name: tenant.name,
+          slug: tenant.slug,
         }))
         setTenants(mapped)
 
         if (!selectedTenantId && mapped.length > 0) {
-          setSelectedTenantId(mapped[0].id)
+          const impactClay = mapped.find((tenant) => tenant.slug === 'impact-clay')
+          setSelectedTenantId(impactClay?.id || mapped[0].id)
         }
       } catch {
         // no-op

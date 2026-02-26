@@ -132,7 +132,7 @@ export async function POST(
       },
       p_reason: 'internal_assignment',
       p_notes: notes || null,
-      p_metadata: JSON.stringify({ internal_assignment: true }),
+      p_metadata: { internal_assignment: true },
     })
 
     // Send notification to new assignee

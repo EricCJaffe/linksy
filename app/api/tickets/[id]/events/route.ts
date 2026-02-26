@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/middleware/auth'
 
 export async function GET(
@@ -13,6 +13,7 @@ export async function GET(
     const { user, isSiteAdmin } = authData
 
     const supabase = await createClient()
+    const serviceClient = await createServiceClient()
 
     // Fetch ticket to verify access
     const { data: ticket, error: ticketError } = await supabase
@@ -52,7 +53,7 @@ export async function GET(
     }
 
     // Fetch events
-    const { data: events, error: eventsError } = await supabase
+    const { data: events, error: eventsError } = await serviceClient
       .from('linksy_ticket_events')
       .select(`
         *,

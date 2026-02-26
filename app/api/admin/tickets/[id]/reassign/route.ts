@@ -154,10 +154,10 @@ export async function POST(
       },
       p_reason: reason || 'admin_reassignment',
       p_notes: notes || null,
-      p_metadata: JSON.stringify({
+      p_metadata: {
         preserve_history,
         target_contact_id: target_contact_id || null,
-      }),
+      },
     })
 
     // Send notification to new assignee

@@ -127,7 +127,7 @@ export async function POST(
         },
         p_reason: reason,
         p_notes: notes || null,
-        p_metadata: JSON.stringify({ action: 'forward_to_admin' }),
+        p_metadata: { action: 'forward_to_admin' },
       })
 
       // Send notification to site admins
@@ -240,10 +240,10 @@ export async function POST(
         },
         p_reason: reason,
         p_notes: notes || null,
-        p_metadata: JSON.stringify({
+        p_metadata: {
           action: 'forward_to_provider',
           target_provider_id,
-        }),
+        },
       })
 
       // Send notification to new assignee
