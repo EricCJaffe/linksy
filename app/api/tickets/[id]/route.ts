@@ -17,7 +17,7 @@ export async function GET(
   const { data: ticket, error: queryError } = await supabase
     .from('linksy_tickets')
     .select(
-      '*, linksy_providers!left(name), linksy_needs!left(id, name), linksy_ticket_comments(*)'
+      '*, linksy_providers!provider_id(name), linksy_needs!need_id(id, name), linksy_ticket_comments(*)'
     )
     .eq('id', id)
     .order('created_at', { referencedTable: 'linksy_ticket_comments', ascending: true })
