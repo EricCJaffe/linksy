@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { getTenantId, requireAuth, requireTenantAdmin } from '@/lib/middleware/auth'
+import { getTenantId, requireAuth } from '@/lib/middleware/auth'
 import { sendTicketStatusNotification } from '@/lib/utils/email'
 import { sendWebhookEvent } from '@/lib/utils/webhooks'
 
@@ -75,15 +75,16 @@ export async function PATCH(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const { data: auth, error } = await requireTenantAdmin()
+  const { data: auth, error } = await requireAuth()
   if (error) return error
 
   const { id } = params
   const body = await request.json()
   const supabase = await createServiceClient()
   const tenantId = getTenantId(auth)
+  const isAdmin = auth.isSiteAdmin || auth.isTenantAdmin
 
-  const allowedFields = [
+  const adminAllowedFields = [
     'status',
     'description_of_need',
     'client_name',
@@ -94,11 +95,20 @@ export async function PATCH(
     'need_id',
     'client_user_id',
   ]
+  const providerAllowedFields = ['status', 'follow_up_sent']
 
   const updates: Record<string, any> = {}
-  for (const field of allowedFields) {
+  for (const field of adminAllowedFields) {
     if (field in body) {
       updates[field] = body[field]
+    }
+  }
+
+  if (!isAdmin) {
+    for (const key of Object.keys(updates)) {
+      if (!providerAllowedFields.includes(key)) {
+        delete updates[key]
+      }
     }
   }
 
@@ -115,9 +125,26 @@ export async function PATCH(
 
   const { data: previousTicket } = await supabase
     .from('linksy_tickets')
-    .select('status')
+    .select('status, provider_id')
     .eq('id', id)
     .single()
+
+  if (!previousTicket) {
+    return NextResponse.json({ error: 'Ticket not found' }, { status: 404 })
+  }
+
+  if (!isAdmin) {
+    if (!previousTicket.provider_id) {
+      return NextResponse.json({ error: 'Forbidden - Access denied' }, { status: 403 })
+    }
+    const { data: hasAccess } = await supabase.rpc('linksy_user_can_access_provider', {
+      p_user_id: auth.user.id,
+      p_provider_id: previousTicket.provider_id,
+    })
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'Forbidden - Access denied' }, { status: 403 })
+    }
+  }
 
   const { data: ticket, error: updateError } = await supabase
     .from('linksy_tickets')

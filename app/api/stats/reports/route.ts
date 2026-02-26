@@ -47,7 +47,7 @@ export async function GET(request: Request) {
   // Top providers by referral count
   let providerQuery = supabase
     .from('linksy_tickets')
-    .select('provider_id, provider:linksy_providers(name)')
+    .select('provider_id, provider:linksy_providers!provider_id(name)')
   if (!includeLegacy) {
     providerQuery = providerQuery.filter('legacy_id', 'is', null)
   }

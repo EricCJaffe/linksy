@@ -35,7 +35,7 @@ import {
   TableCell,
 } from '@/components/ui/table'
 import { useProvider, useUpdateProvider, useNeedCategories, useCreateNote, useUpdateNote, useProviderAnalytics } from '@/lib/hooks/useProviders'
-import { useUpdateTicket } from '@/lib/hooks/useTickets'
+import { useAssignTicket, useUpdateTicket } from '@/lib/hooks/useTickets'
 import { useUpdateProviderContact, useDeleteProviderContact, useInviteProviderContact } from '@/lib/hooks/useProviderContacts'
 import { useCreateProviderEvent, useUpdateProviderEvent, useDeleteProviderEvent } from '@/lib/hooks/useProviderEvents'
 import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
@@ -1992,6 +1992,7 @@ function ReferralsTab({ provider: initialProvider }: { provider: ProviderDetail 
   const [editingTicketId, setEditingTicketId] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed'>('open')
   const updateTicket = useUpdateTicket()
+  const assignTicket = useAssignTicket()
 
   // Refetch provider data with status filter
   const { data: provider, isLoading } = useProvider(initialProvider.id, statusFilter)
@@ -2002,7 +2003,7 @@ function ReferralsTab({ provider: initialProvider }: { provider: ProviderDetail 
   }
 
   const handleAssignmentChange = (ticketId: string, contactId: string) => {
-    updateTicket.mutate({ id: ticketId, client_user_id: contactId })
+    assignTicket.mutate({ ticketId, assigned_to_user_id: contactId })
   }
 
   // Use filtered data for display, but always calculate counts from initial full dataset
@@ -2117,7 +2118,7 @@ function ReferralsTab({ provider: initialProvider }: { provider: ProviderDetail 
                     Reassign To {contacts.length === 0 && '(No Contacts)'}
                   </Label>
                   <Select
-                    value={ticket.client_user_id || 'unassigned'}
+                    value={ticket.assigned_to || 'unassigned'}
                     onValueChange={(value) => value !== 'unassigned' && handleAssignmentChange(ticket.id, value)}
                     disabled={contacts.length === 0}
                   >
@@ -2126,13 +2127,15 @@ function ReferralsTab({ provider: initialProvider }: { provider: ProviderDetail 
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="unassigned">Unassigned</SelectItem>
-                      {contacts.map((contact) => (
-                        <SelectItem key={contact.id} value={contact.user_id ?? contact.id}>
-                          {contact.user?.full_name || contact.user?.email || 'Unknown'}
-                          {contact.is_primary_contact && ' (Primary)'}
-                          {contact.is_default_referral_handler && ' (Default Handler)'}
-                        </SelectItem>
-                      ))}
+                      {contacts
+                        .filter((contact) => contact.user_id)
+                        .map((contact) => (
+                          <SelectItem key={contact.id} value={contact.user_id as string}>
+                            {contact.user?.full_name || contact.user?.email || 'Unknown'}
+                            {contact.is_primary_contact && ' (Primary)'}
+                            {contact.is_default_referral_handler && ' (Default Handler)'}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>

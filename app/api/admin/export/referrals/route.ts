@@ -29,7 +29,7 @@ export async function GET(request: Request) {
       source,
       created_at,
       updated_at,
-      provider:linksy_providers(name),
+      provider:linksy_providers!provider_id(name),
       need:linksy_needs(name)
     `)
     .order('created_at', { ascending: false })

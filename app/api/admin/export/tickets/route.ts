@@ -23,7 +23,7 @@ export async function GET(request: Request) {
     .select(`
       ticket_number, status, client_name, client_email, client_phone,
       description_of_need, source, sla_due_at, created_at, updated_at,
-      provider:linksy_providers(name), need:linksy_needs(name)
+      provider:linksy_providers!provider_id(name), need:linksy_needs(name)
     `)
     .order('created_at', { ascending: false })
 

@@ -56,8 +56,9 @@ export async function POST(
       )
     }
 
-    // Authorization: Check if user is provider admin or site admin
+    // Authorization: site admins, provider admins, or self-assign by provider contacts
     let isAuthorized = isSiteAdmin
+    let isSelfAssign = false
 
     if (!isAuthorized) {
       const { data: contact } = await supabase
@@ -67,7 +68,8 @@ export async function POST(
         .eq('provider_id', ticket.provider_id)
         .single()
 
-      isAuthorized = contact?.provider_role === 'admin'
+      isSelfAssign = assigned_to_user_id === user.id
+      isAuthorized = contact?.provider_role === 'admin' || isSelfAssign
     }
 
     if (!isAuthorized) {

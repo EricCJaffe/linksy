@@ -126,6 +126,7 @@ export function useForwardTicket() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['ticket', variables.ticketId] })
       queryClient.invalidateQueries({ queryKey: ['tickets'] })
+      queryClient.invalidateQueries({ queryKey: ['provider'] })
     },
   })
 }

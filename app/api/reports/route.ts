@@ -116,7 +116,7 @@ async function handleReferralsReport(
       assigned_to,
       need_category,
       source,
-      provider:linksy_providers(id, name)
+      provider:linksy_providers!provider_id(id, name)
     `)
 
   // Filter by scope
