@@ -151,15 +151,35 @@ export async function POST(
         })
       })()
 
-      // Fire webhook
+      // Fire webhook (prefer provider tenant_id)
       void (async () => {
-        const { fireWebhook } = await import('@/lib/utils/webhooks')
-        await fireWebhook('ticket.forwarded', ticket.site_id, {
-          ticket_id: ticketId,
-          action: 'forward_to_admin',
-          forwarded_by: user.id,
-          reason,
-        })
+        const { sendWebhookEvent } = await import('@/lib/utils/webhooks')
+        let webhookTenantId: string | null = null
+        if (ticket.provider_id) {
+          const { data: provider } = await supabase
+            .from('linksy_providers')
+            .select('tenant_id')
+            .eq('id', ticket.provider_id)
+            .single()
+          webhookTenantId = provider?.tenant_id || null
+        }
+        if (webhookTenantId) {
+          await sendWebhookEvent({
+            tenantId: webhookTenantId,
+            eventType: 'ticket.forwarded',
+            payload: {
+              ticket_id: ticketId,
+              action: 'forward_to_admin',
+              forwarded_by: user.id,
+              reason,
+            },
+          })
+        } else {
+          console.warn('[webhook] skipped ticket.forwarded - missing tenant_id', {
+            ticket_id: ticketId,
+            provider_id: ticket.provider_id,
+          })
+        }
       })()
     } else {
       // Forward to provider: assign to target's default handler
@@ -250,16 +270,36 @@ export async function POST(
         })()
       }
 
-      // Fire webhook
+      // Fire webhook (prefer provider tenant_id)
       void (async () => {
-        const { fireWebhook } = await import('@/lib/utils/webhooks')
-        await fireWebhook('ticket.forwarded', ticket.site_id, {
-          ticket_id: ticketId,
-          action: 'forward_to_provider',
-          target_provider_id,
-          forwarded_by: user.id,
-          reason,
-        })
+        const { sendWebhookEvent } = await import('@/lib/utils/webhooks')
+        let webhookTenantId: string | null = null
+        if (ticket.provider_id) {
+          const { data: provider } = await supabase
+            .from('linksy_providers')
+            .select('tenant_id')
+            .eq('id', ticket.provider_id)
+            .single()
+          webhookTenantId = provider?.tenant_id || null
+        }
+        if (webhookTenantId) {
+          await sendWebhookEvent({
+            tenantId: webhookTenantId,
+            eventType: 'ticket.forwarded',
+            payload: {
+              ticket_id: ticketId,
+              action: 'forward_to_provider',
+              target_provider_id,
+              forwarded_by: user.id,
+              reason,
+            },
+          })
+        } else {
+          console.warn('[webhook] skipped ticket.forwarded - missing tenant_id', {
+            ticket_id: ticketId,
+            provider_id: ticket.provider_id,
+          })
+        }
       })()
     }
 

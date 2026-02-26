@@ -109,8 +109,7 @@ SELECT
   jsonb_build_object(
     'provider_id', t.provider_id,
     'assigned_to', t.assigned_to,
-    'status', t.status,
-    'priority', t.priority
+    'status', t.status
   ),
   t.created_at
 FROM linksy_tickets t
@@ -133,7 +132,7 @@ CREATE POLICY "Site admins can view all ticket events"
     EXISTS (
       SELECT 1 FROM public.users
       WHERE users.id = auth.uid()
-        AND users.is_site_admin = true
+        AND users.role = 'site_admin'
     )
   );
 

@@ -7,6 +7,7 @@
 - **Build:** `npm run build` (runs `next build`)
 - **Start production server:** `npm start` (runs `next start`)
 - **Environment setup:** `cp .env.example .env.local` and fill in values
+- **Playwright browser install (first time only):** `npx playwright install --with-deps chromium`
 
 ## Type Checking and Lint
 
@@ -20,10 +21,16 @@
 - **Coverage:** `npm run test:coverage`
 - **Config:** `vitest.config.ts`, `vitest.setup.ts`
 - **Current tests:** `__tests__/lib/utils/csv.test.ts`, `__tests__/lib/utils/error-handler.test.ts`
+- **E2E (headless):** `npm run test:e2e`
+- **E2E (headed):** `npm run test:e2e:headed`
+- **E2E (UI):** `npm run test:e2e:ui`
+- **E2E env requirements:** `E2E_ADMIN_EMAIL`, `E2E_ADMIN_PASSWORD`, `E2E_PROVIDER_ID` (see `e2e/referral-workflow.spec.ts`)
+- **Playwright base URL:** `PLAYWRIGHT_BASE_URL` (defaults to `http://127.0.0.1:3000`)
 
 ## Supabase
 
 - **Generate types:** `npm run types:generate` (runs `npx supabase gen types typescript --project-id $SUPABASE_PROJECT_ID > lib/types/database.ts`)
+- **Env required for types:** `SUPABASE_PROJECT_ID`
 - **Migrations path:** `supabase/migrations/`
 - **Config:** no `supabase/config.toml` is present in this repo
 - **Migration filename rule:** only files matching `<timestamp>_name.sql` are treated as migrations by CLI
@@ -43,6 +50,10 @@
 - **Import migration dataset:** `source .env.local && node scripts/import-migration-data.js`
 - **Import contacts only:** `source .env.local && node scripts/import-contacts-only.js`
 - **Generate embeddings:** `source .env.local && node scripts/generate-embeddings.js`
+- **OAuth config check:** `npx tsx scripts/test-oauth-config.ts`
+- **Google OAuth test:** `npx tsx scripts/test-google-oauth.ts`
+- **Cleanup test user:** `source .env.local && node scripts/cleanup-test-user.js`
+- **Backfill provider tenants (after imports):** run `scripts/backfill-provider-tenants.sql` in Supabase SQL editor
 
 ## Deploy
 
@@ -66,3 +77,4 @@
 - Trigger: push + pull_request on `main`
 - Steps: `npm ci` → `npm run type-check` → `npm run lint` → `npm run test:run`
 - CI note: lint step sets placeholder values for `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+- E2E workflow: `.github/workflows/e2e.yml` (manual trigger) runs `npm run test:e2e` after installing Playwright browsers.

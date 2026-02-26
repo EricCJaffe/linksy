@@ -27,6 +27,8 @@ Reference:
   - 0007: Provider Summary Needs Taxonomy
   - 0008: Email Template Customization (new)
   - 0009: E2E Testing Strategy (new)
+  - 0010: Parent/Child Provider Linking Model (new)
+  - 0011: Outbound Webhooks Signing Model (new)
 - `docs/ARCHITECTURE.md` — data model, security layers, component structure
 - `docs/API.md` — API route reference (base template + Linksy-specific)
 - `docs/DEPLOYMENT.md` — Vercel deploy guide

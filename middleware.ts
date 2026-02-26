@@ -19,7 +19,11 @@ export async function middleware(request: NextRequest) {
   const { response, user } = await updateSession(request)
 
   const pathname = request.nextUrl.pathname
-  const isPublicRoute = publicRoutes.includes(pathname)
+  if (pathname.startsWith('/auth/')) return response
+  const isPublicRoute =
+    publicRoutes.includes(pathname) ||
+    pathname.startsWith('/auth/') ||
+    pathname.startsWith('/public/')
   const isAuthRoute = authRoutes.includes(pathname)
   const isPublicApiRoute = pathname.startsWith('/api/public/')
   const isApiRoute = pathname.startsWith('/api/')
@@ -68,11 +72,13 @@ export async function middleware(request: NextRequest) {
 
   // Redirect authenticated users away from auth pages
   if (user && isAuthRoute) {
+    console.log('[middleware] redirecting authenticated user away from auth route', { pathname })
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
   // Protect dashboard routes - redirect to login if not authenticated
   if (isDashboardRoute && !user) {
+    console.log('[middleware] redirecting unauthenticated user to login', { pathname })
     const redirectUrl = new URL('/login', request.url)
     redirectUrl.searchParams.set('redirect', pathname)
     return NextResponse.redirect(redirectUrl)
@@ -80,6 +86,7 @@ export async function middleware(request: NextRequest) {
 
   // Redirect unauthenticated users to login for other protected routes
   if (!user && !isPublicRoute && !isPublicApiRoute) {
+    console.log('[middleware] redirecting unauthenticated user to login', { pathname })
     const redirectUrl = new URL('/login', request.url)
     redirectUrl.searchParams.set('redirect', pathname)
     return NextResponse.redirect(redirectUrl)

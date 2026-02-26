@@ -123,6 +123,7 @@ export function LoginForm() {
     try {
       const supabase = createClient()
       const callbackUrl = `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectTo)}`
+      console.log('OAuth redirectTo:', callbackUrl)
 
       const { error: authError } = await supabase.auth.signInWithOAuth({
         provider,

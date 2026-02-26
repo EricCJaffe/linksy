@@ -83,6 +83,7 @@ export default function AdminWebhooksPage() {
   const { data: user } = useCurrentUser()
 
   const isSiteAdmin = user?.profile?.role === 'site_admin'
+  const providerIdFromTenant = (currentTenant?.tenant as any)?.settings?.provider_id as string | undefined
 
   const [tenants, setTenants] = useState<TenantOption[]>([])
   const [selectedTenantId, setSelectedTenantId] = useState<string>('')
@@ -207,6 +208,7 @@ export default function AdminWebhooksPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tenant_id: selectedTenantId || undefined,
+          provider_id: providerIdFromTenant,
           url: createUrl,
           secret: createSecret || undefined,
           is_active: createIsActive,

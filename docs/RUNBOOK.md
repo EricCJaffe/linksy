@@ -1,5 +1,10 @@
 # Runbook
 
+## Top 3 Operational Issues
+
+The first three entries in **Common Issues** are the current top operational problems seen in this repo.
+Additional items are kept for reference.
+
 ## Common Issues
 
 ### 1. OpenAI API key missing or invalid — AI search returns errors
@@ -119,6 +124,73 @@ This tells Next.js to:
 **Related Migration:**
 - `supabase/migrations/20260217160235_linksy_host_system.sql` - Creates host system
 - `supabase/migrations/20260218205438_resolve_host_return_allowed_domains.sql` - RPC function
+
+---
+
+### 7. Webhooks don’t fire after provider imports (missing `tenant_id`)
+
+**Symptom:** Webhook test succeeds, but `ticket.created` never appears in deliveries. Server logs show “skipped ticket.created - missing tenant_id”.
+
+**Checks:**
+- Confirm `linksy_providers.tenant_id` is populated for the provider receiving the ticket.
+- Check latest tickets join:  
+  `SELECT t.id, t.ticket_number, t.provider_id, p.tenant_id FROM linksy_tickets t LEFT JOIN linksy_providers p ON p.id = t.provider_id ORDER BY t.created_at DESC LIMIT 1;`
+
+**Fix:**
+- Backfill tenant records for providers missing `tenant_id` (run in SQL editor):
+```sql
+do $$
+declare
+  r record;
+  new_tenant_id uuid;
+  tenant_slug text;
+  slug_counter int;
+begin
+  for r in
+    select id, name, slug
+    from linksy_providers
+    where tenant_id is null
+  loop
+    tenant_slug := r.slug;
+    slug_counter := 1;
+
+    while exists (select 1 from tenants where slug = tenant_slug) loop
+      tenant_slug := r.slug || '-' || slug_counter;
+      slug_counter := slug_counter + 1;
+    end loop;
+
+    insert into tenants (name, slug, settings, branding)
+    values (
+      r.name,
+      tenant_slug,
+      jsonb_build_object('type', 'provider_organization', 'provider_id', r.id),
+      '{}'::jsonb
+    )
+    returning id into new_tenant_id;
+
+    update linksy_providers
+    set tenant_id = new_tenant_id
+    where id = r.id;
+  end loop;
+end $$;
+```
+
+**Prevention:** After bulk provider imports, run the backfill before testing webhooks.
+
+---
+
+### 8. Webhooks missing in Admin UI (wrong tenant selected)
+
+**Symptom:** Webhook exists in DB but does not show in `/dashboard/admin/webhooks`.
+
+**Checks:**
+- Confirm you selected the tenant that owns the webhook.
+- Query by tenant to verify:
+  `SELECT id, tenant_id, url FROM linksy_webhooks ORDER BY created_at DESC LIMIT 5;`
+
+**Fix:**
+- Switch the tenant dropdown to the webhook’s `tenant_id`.
+- If the tenant list is incorrect, re-run the provider tenant backfill to repopulate tenant associations.
 
 ---
 

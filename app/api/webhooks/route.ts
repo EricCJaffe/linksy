@@ -64,7 +64,19 @@ export async function POST(request: Request) {
   if (error) return error
 
   const body = await request.json()
-  const tenantId = resolveWebhookTenantId(auth, body.tenant_id)
+  const supabase = await createServiceClient()
+
+  let tenantId = resolveWebhookTenantId(auth, body.tenant_id)
+  if (auth.isSiteAdmin && body.provider_id) {
+    const { data: provider } = await supabase
+      .from('linksy_providers')
+      .select('tenant_id')
+      .eq('id', body.provider_id)
+      .single()
+    if (provider?.tenant_id) {
+      tenantId = provider.tenant_id
+    }
+  }
 
   if (!tenantId) {
     return NextResponse.json(
@@ -101,8 +113,6 @@ export async function POST(request: Request) {
     : crypto.randomBytes(32).toString('hex')
 
   const isActive = typeof body.is_active === 'boolean' ? body.is_active : true
-
-  const supabase = await createServiceClient()
 
   const { data: webhook, error: insertError } = await supabase
     .from('linksy_webhooks')

@@ -22,6 +22,13 @@ These must be set for the app to function:
 | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | `lib/utils/geocode.ts` | Client-side static map images |
 | `ADMIN_EMAIL` | `app/api/onboarding/provider/route.ts`, `app/api/onboarding/host/route.ts` | Receives onboarding submissions (falls back to `SMTP_FROM_EMAIL`) |
 | `VERCEL_URL` | `lib/middleware/csrf.ts` | Added as an allowed origin in deployed environments |
+| `BUILD_STANDALONE` | `next.config.js` | Set `true` to output a standalone build (Docker/self-host) |
+
+## Tooling / Scripts
+
+| Variable | Where Used | Notes |
+|----------|------------|-------|
+| `SUPABASE_PROJECT_ID` | `package.json` (`types:generate`) | Supabase project ID used for type generation. |
 
 ## Email (pick one)
 
@@ -44,6 +51,16 @@ If neither is configured, emails are logged to console in development.
 | `NEXT_PUBLIC_SENTRY_DSN` | `sentry.client.config.ts`, `sentry.edge.config.ts`, fallback in `sentry.server.config.ts` | Enables Sentry in client/edge |
 | `SENTRY_DSN` | `sentry.server.config.ts` | Server-side DSN (preferred for server runtime) |
 | `SENTRY_AUTH_TOKEN` | `next.config.js` | Enables Sentry source map upload during build |
+| `SENTRY_ENVIRONMENT` | `.env.example` | Listed in template, not referenced in code |
+
+## E2E / Playwright
+
+| Variable | Where Used | Notes |
+|----------|------------|-------|
+| `E2E_ADMIN_EMAIL` | `e2e/helpers/auth.ts` | Admin login for authenticated E2E flow |
+| `E2E_ADMIN_PASSWORD` | `e2e/helpers/auth.ts` | Admin login for authenticated E2E flow |
+| `E2E_PROVIDER_ID` | `e2e/referral-workflow.spec.ts` | Provider to update during ticket status test |
+| `PLAYWRIGHT_BASE_URL` | `playwright.config.ts` | Defaults to `http://127.0.0.1:3000` |
 
 ## Template Vars in `.env.example`
 

@@ -152,28 +152,53 @@ export async function PATCH(
     })()
   }
 
-  if (
-    tenantId &&
-    updates.status &&
-    previousTicket &&
-    previousTicket.status !== updates.status
-  ) {
-    void sendWebhookEvent({
-      tenantId,
-      eventType: 'ticket.status_changed',
-      payload: {
-        ticket_id: ticket.id,
+  if (updates.status && previousTicket && previousTicket.status !== updates.status) {
+    let webhookTenantId: string | null = null
+    if (ticket.provider_id) {
+      const { data: provider } = await supabase
+        .from('linksy_providers')
+        .select('tenant_id')
+        .eq('id', ticket.provider_id)
+        .single()
+      webhookTenantId = provider?.tenant_id || null
+    }
+    if (!webhookTenantId) {
+      webhookTenantId = tenantId
+    }
+
+    if (webhookTenantId) {
+      console.log('[webhook] enqueue ticket.status_changed', {
         ticket_number: ticket.ticket_number,
-        previous_status: previousTicket.status,
-        new_status: updates.status,
-        source: ticket.source,
+        tenant_id: webhookTenantId,
+      })
+      void sendWebhookEvent({
+        tenantId: webhookTenantId,
+        eventType: 'ticket.status_changed',
+        payload: {
+          ticket_id: ticket.id,
+          ticket_number: ticket.ticket_number,
+          previous_status: previousTicket.status,
+          new_status: updates.status,
+          source: ticket.source,
+          provider_id: ticket.provider_id,
+          need_id: ticket.need_id,
+          client_name: ticket.client_name,
+          updated_at: ticket.updated_at,
+        },
+      }).catch((err) => {
+        console.error('[webhook] failed to send ticket.status_changed event:', err)
+      })
+    } else {
+      console.warn('[webhook] skipped ticket.status_changed - missing tenant_id', {
+        ticket_id: ticket.id,
         provider_id: ticket.provider_id,
-        need_id: ticket.need_id,
-        client_name: ticket.client_name,
-        updated_at: ticket.updated_at,
-      },
-    }).catch((err) => {
-      console.error('[webhook] failed to send ticket.status_changed event:', err)
+      })
+    }
+  } else if (updates.status) {
+    console.log('[webhook] status change not detected', {
+      ticket_id: ticket.id,
+      previous_status: previousTicket?.status ?? null,
+      new_status: updates.status,
     })
   }
 

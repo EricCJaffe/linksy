@@ -156,14 +156,34 @@ export async function POST(
       })
     })()
 
-    // Fire webhook
+    // Fire webhook (prefer provider tenant_id)
     void (async () => {
-      const { fireWebhook } = await import('@/lib/utils/webhooks')
-      await fireWebhook('ticket.assigned', ticket.site_id, {
-        ticket_id: ticketId,
-        assigned_to: assigned_to_user_id,
-        assigned_by: user.id,
-      })
+      const { sendWebhookEvent } = await import('@/lib/utils/webhooks')
+      let webhookTenantId: string | null = null
+      if (ticket.provider_id) {
+        const { data: provider } = await supabase
+          .from('linksy_providers')
+          .select('tenant_id')
+          .eq('id', ticket.provider_id)
+          .single()
+        webhookTenantId = provider?.tenant_id || null
+      }
+      if (webhookTenantId) {
+        await sendWebhookEvent({
+          tenantId: webhookTenantId,
+          eventType: 'ticket.assigned',
+          payload: {
+            ticket_id: ticketId,
+            assigned_to: assigned_to_user_id,
+            assigned_by: user.id,
+          },
+        })
+      } else {
+        console.warn('[webhook] skipped ticket.assigned - missing tenant_id', {
+          ticket_id: ticketId,
+          provider_id: ticket.provider_id,
+        })
+      }
     })()
 
     return NextResponse.json({

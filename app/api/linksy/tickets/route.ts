@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { checkRateLimit } from '@/lib/utils/rate-limit'
+import { sendWebhookEvent } from '@/lib/utils/webhooks'
 
 /**
  * POST /api/linksy/tickets
@@ -35,6 +36,7 @@ export async function POST(request: Request) {
     }
 
     const supabase = await createServiceClient()
+    const SITE_ID = '86bd8d01-0dc5-4479-beff-666712654104'
 
     // Optional host-context controls for public ticket creation
     if (host_provider_id) {
@@ -106,25 +108,20 @@ export async function POST(request: Request) {
       }, { status: 429 })
     }
 
-    // Generate ticket number (format: LINK-YYYYMMDD-XXXX)
-    const date = new Date()
-    const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '')
-
-    // Get count of tickets created today to generate sequential number
-    const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate()).toISOString()
+    // Generate ticket number (format: R-2000-XX)
     const { count } = await supabase
       .from('linksy_tickets')
       .select('*', { count: 'exact', head: true })
-      .gte('created_at', startOfDay)
 
-    const sequentialNumber = String((count || 0) + 1).padStart(4, '0')
-    const ticketNumber = `LINK-${dateStr}-${sequentialNumber}`
+    const sequenceNumber = 2000 + (count || 0) + 1
+    const suffix = String(Math.floor(Math.random() * 100)).padStart(2, '0')
+    const ticketNumber = `R-${sequenceNumber}-${suffix}`
 
     // Create the ticket
     const { data: ticket, error: insertError } = await supabase
       .from('linksy_tickets')
       .insert({
-        site_id: null, // For now, not associating with a specific site
+        site_id: SITE_ID,
         provider_id,
         need_id: need_id || null,
         ticket_number: ticketNumber,
@@ -143,6 +140,45 @@ export async function POST(request: Request) {
     if (insertError) {
       console.error('Error creating ticket:', insertError)
       return NextResponse.json({ error: 'Failed to create referral request' }, { status: 500 })
+    }
+
+    console.log('[webhook] enqueue ticket.created', { ticket_number: ticket.ticket_number })
+    const webhookProviderId = host_provider_id || provider_id
+    let webhookTenantId: string | null = null
+    if (webhookProviderId) {
+      const { data: webhookProvider } = await supabase
+        .from('linksy_providers')
+        .select('tenant_id')
+        .eq('id', webhookProviderId)
+        .single()
+      webhookTenantId = webhookProvider?.tenant_id || null
+    }
+
+    if (webhookTenantId) {
+      console.log('[webhook] enqueue ticket.created', {
+        ticket_number: ticket.ticket_number,
+        tenant_id: webhookTenantId,
+      })
+      void sendWebhookEvent({
+        tenantId: webhookTenantId,
+        eventType: 'ticket.created',
+        payload: {
+          ticket_id: ticket.id,
+          ticket_number: ticket.ticket_number,
+          status: 'pending',
+          source: 'public_search',
+          provider_id,
+          need_id: need_id || null,
+          client_name: client_name || null,
+          created_at: new Date().toISOString(),
+        },
+      }).catch((err) => {
+        console.error('[webhook] failed to send ticket.created event:', err)
+      })
+    } else {
+      console.warn('[webhook] skipped ticket.created - missing tenant_id', {
+        provider_id: webhookProviderId,
+      })
     }
 
     return NextResponse.json({

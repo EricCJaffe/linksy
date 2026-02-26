@@ -193,13 +193,24 @@ export async function POST(request: Request) {
     }
   }
 
+  let ticketNumber = body.ticket_number
+  if (!ticketNumber) {
+    const { count } = await supabase
+      .from('linksy_tickets')
+      .select('*', { count: 'exact', head: true })
+
+    const sequenceNumber = 2000 + (count || 0) + 1
+    const suffix = String(Math.floor(Math.random() * 100)).padStart(2, '0')
+    ticketNumber = `R-${sequenceNumber}-${suffix}`
+  }
+
   const { data: ticket, error: insertError } = await supabase
     .from('linksy_tickets')
     .insert({
       site_id: body.site_id,
       provider_id: body.provider_id || null,
       need_id: body.need_id || null,
-      ticket_number: body.ticket_number,
+      ticket_number: ticketNumber,
       client_name: body.client_name || null,
       client_phone: body.client_phone || null,
       client_email: body.client_email || null,

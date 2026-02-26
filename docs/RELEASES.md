@@ -11,6 +11,14 @@
   - Webhook admin end-to-end smoke validation and docs polish
 
 ## Recent
+- Date: 2026-02-25
+- Summary:
+  - Fixed OAuth callback routing (public `/auth/*` handling) and added OAuth redirect logging.
+  - Restored missing Supabase schema pieces (sites table, `pg_trgm`, ticket `custom_data`, admin contact types).
+  - Unified ticket number format to `R-<sequence>-<suffix>` starting at 2000.
+  - Webhooks: added tenant-aware routing for `ticket.created`, `ticket.status_changed`, `ticket.assigned`, `ticket.forwarded`, and `ticket.reassigned`.
+  - Added backfill script for provider tenants after imports and documented webhook troubleshooting steps.
+
 - Date: 2026-02-23
 - Summary:
   - Reworked provider Summary `Needs Addressed` to taxonomy-driven category/need multi-select in edit mode with grouped display in view mode.

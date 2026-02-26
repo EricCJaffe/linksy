@@ -36,20 +36,26 @@ provider portal).
 - `app/layout.tsx` — root layout (HTML shell, global providers)
 - `app/providers.tsx` — React Query provider, Supabase auth listener
 - `middleware.ts` — auth session refresh, rate limiting, CSRF, route protection
+- `public/widget.js` — embeddable JS snippet that injects `/find-help/[slug]` iframe
+- `app/find-help/page.tsx` — default public widget page (non-host)
 - `app/find-help/[slug]/page.tsx` — public widget page per host provider
 - `app/api/linksy/search/route.ts` — AI search pipeline (embedding → vector search → LLM)
+- `app/api/linksy/tickets/route.ts` — create referral tickets from widget flow
+- `app/api/linksy/interactions/route.ts` — search session interactions (clicks, calls, website)
 
 ## Routing Structure
 
 **Public routes:**
 - `/` — landing page
 - `/login`, `/signup`, `/reset-password` — auth pages
-- `/find-help/[slug]` — embeddable community resource widget
+- `/find-help` — community resource widget (default/hostless)
+- `/find-help/[slug]` — embeddable community resource widget per host
 - `/api/public/directory` — unauthenticated provider directory endpoint
 
 **Auth routes (under `(auth)/` group):**
 - `/login`, `/signup`, `/reset-password`, `/invite/[token]`
 - `/auth/callback` — Supabase OAuth callback
+- `/auth/set-password` — set password after invite flow
 
 **Dashboard routes (protected — require login):**
 - `/dashboard/providers/[id]` — provider detail (tabbed: summary, contacts, referrals, host settings, etc.)
@@ -78,6 +84,10 @@ Provider Summary tab state (current):
 - **Supabase clients:**
   - `lib/supabase/client.ts` — browser singleton (uses anon key, respects RLS)
   - `lib/supabase/server.ts` — `createClient()` for server components, `createServiceClient()` for admin ops (bypasses RLS)
+
+## Ticket Numbering
+
+- **Referral tickets:** `R-<sequence>-<suffix>` (example: `R-2001-07`). Sequence starts at 2000 for new tickets.
 
 ## Module Flags
 

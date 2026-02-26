@@ -4,9 +4,8 @@
 
 - [ ] `README.md` roadmap items currently unchecked:
   - Multi-language support (i18n)
-  - Billing and subscription management
   - Two-factor authentication (2FA)
-  - SSO integration (SAML)
+- [ ] No additional `TODO`/`FIXME` markers found in `app/`, `lib/`, `components/`, `scripts/`, or `docs/` as of 2026-02-25.
 
 ## Session Snapshot (2026-02-23)
 
@@ -20,14 +19,15 @@
 - [x] Support ticket entry point moved to top-right action pattern; provider-side support tab removed from provider detail navigation
 
 ### Pending (Prioritized)
-- [ ] Finalize `Needs` vs `Needs Addressed` final placement/labels after stakeholder review (taxonomy UI shipped, naming/placement decision still pending)
+- [x] Finalize `Needs` vs `Needs Addressed` final placement/labels after stakeholder review (taxonomy UI shipped, naming/placement decision still pending) — COMPLETED 2026-02-25
 - [x] Parent/child account linking model — Sprint 1 (Database + Security) COMPLETE (2026-02-24)
 - [x] Parent/child account linking model — Sprint 2 (Basic UI) COMPLETE (2026-02-24)
 - [x] Parent/child account linking model — Sprint 3 (Dashboard + Reporting) COMPLETE (2026-02-24)
 - [x] Parent/child account linking model — Sprint 4 (Polish + UX) COMPLETE (2026-02-24)
-- [ ] Webhooks admin smoke validation in live/staging target (create/test endpoint, signature validation, retry/history checks)
+- [x] Webhooks admin smoke validation in live/staging target (create/test endpoint, signature validation, retry/history checks) — COMPLETED 2026-02-25
 - [ ] Referral workflow e2e mailbox assertion leg (outbound email content/delivery verification)
-- [ ] Voice input (Whisper) in widget (`/api/linksy/transcribe` + widget mic UX)
+- [ ] Tenant model refactor: move from provider-as-tenant to region tenants (Impact Works site, Impact Clay tenant, add United Way of North Florida tenant)
+- [ ] Webhook event coverage: verify `ticket.assigned`, `ticket.forwarded`, `ticket.reassigned`
 
 ## MVP Alignment (Reviewed 2026-02-23)
 
@@ -44,7 +44,7 @@
 - [x] Bulk import approval flagging: imported records should be reviewable/approvable before full activation — COMPLETED 2026-02-24
 - [x] Referral pending aging notifications: alert/escalation when pending referrals exceed configured age — COMPLETED 2026-02-24
 - [x] Bulk referral status update with automatic client/provider email notifications — COMPLETED 2026-02-24
-- [ ] Auto-reroute option when provider cannot help
+- [x] Auto-reroute option when provider cannot help — COMPLETED 2026-02-25
 - [x] Referral cap per client: enforce maximum of 4 referrals (replace current broader limit behavior) — COMPLETED 2026-02-24
 - [x] Provider service ZIP coverage field: allow providers/admins to define supported ZIP codes and exclude referrals outside that coverage — COMPLETED 2026-02-24
 - [x] Provider phone extension field (UI + DB schema + API support) — COMPLETED 2026-02-24
@@ -71,7 +71,7 @@
 - [x] Merge contact function — ability to merge duplicate contacts into a single record (dedup provider contacts) — COMPLETED 2026-02-24
 - [x] Merge provider function — ability to merge duplicate providers with comprehensive data transfer — COMPLETED 2026-02-24
 - [x] Purge provider function — ability to permanently delete a provider and all associated records (locations, contacts, needs, tickets, notes, events) — COMPLETED 2026-02-24
-- [ ] Finalize `Needs` vs `Needs Addressed` placement — review the Summary page + Notes/Referrals context and lock final field locations/labels so data entry flow is unambiguous
+- [x] Finalize `Needs` vs `Needs Addressed` placement — review the Summary page + Notes/Referrals context and lock final field locations/labels so data entry flow is unambiguous — COMPLETED 2026-02-25
 
 ### Parent/Child Linking Model
 - [x] Sprint 1: Database + Security (COMPLETED 2026-02-24)
@@ -118,23 +118,30 @@
 
 ### Testing
 - [ ] Referral workflow e2e (mailbox assertion leg) — outbound email delivery/content assertions still need mailbox capture strategy (MailHog/test inbox); status-update trigger path is now covered in Playwright
-- [ ] Webhooks admin UI smoke validation — create webhook in `/dashboard/admin/webhooks`, run `Test`, verify signed headers/payload at receiver, confirm delivery history filters/pagination and secret reveal/copy/rotate behavior
+- [x] Webhooks admin UI smoke validation — create webhook in `/dashboard/admin/webhooks`, run `Test`, verify signed headers/payload at receiver, confirm delivery history filters/pagination and secret reveal/copy/rotate behavior — COMPLETED 2026-02-25
 
 ### Widget / Embed
 - [x] Fix iframe cross-origin embedding — `/find-help/*` now overrides `X-Frame-Options` and sets `frame-ancestors *` CSP; all other routes keep `SAMEORIGIN`
 - [x] `host_allowed_domains` enforcement — `linksy_resolve_host` RPC updated to return `allowed_domains`; checked in `find-help/[slug]/page.tsx` against `Referer` header; direct navigation always allowed
 - [x] JavaScript embed snippet — `public/widget.js`; reads `data-slug`, derives base URL from script `src`, injects responsive iframe with `allow="geolocation"`
-- [ ] Voice input (Whisper) — mic button in widget → `MediaRecorder` → `POST /api/linksy/transcribe` → OpenAI Whisper → transcript in textarea; update `widget.js` to add `allow="microphone"` to iframe
 
 ### Authentication
-- [ ] Finalize Microsoft OAuth — verify Azure AD app registration, test login flow end-to-end, confirm callback handling and role assignment
-- [ ] Finalize Google OAuth — verify Google Cloud Console setup, test login flow end-to-end, confirm callback handling and role assignment
+- [x] Finalize Microsoft OAuth — verify Azure AD app registration, test login flow end-to-end, confirm callback handling and role assignment
+- [x] Finalize Google OAuth — verify Google Cloud Console setup, test login flow end-to-end, confirm callback handling and role assignment
 
 ### Provider Portal (Phase 2)
 
 ### Infrastructure
-- [ ] Spanish (es) language support — translations object in widget (~20 strings) + `lang` param threaded to AI prompt; `widgetConfig.language` field; browser/URL auto-detect
-- [ ] 2FA for admin users — TOTP-based (site_admin + tenant_admin roles only); requires TOTP library + DB changes + UI flow
+
+## Phase 2 (Deferred)
+
+- [ ] Voice input (Whisper) in widget (`/api/linksy/transcribe` + widget mic UX)
+- [ ] Microphone input for chatbot
+- [ ] Spanish (es) language support (duplicates README “Multi-language support (i18n)” item)
+- [ ] Multi-language support (i18n) — README roadmap item (covers Spanish language support)
+- [ ] Two-factor authentication (2FA) — README roadmap item (covers admin TOTP)
+- [ ] Billing and subscription management (README roadmap item)
+- [ ] SSO integration (SAML) (README roadmap item)
 
 ## Done
 

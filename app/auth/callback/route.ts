@@ -19,6 +19,7 @@ export async function GET(request: Request) {
 
   // Handle OAuth callback (Google/Microsoft)
   if (code) {
+    console.log('[auth/callback] received code', { hasCode: Boolean(code), next })
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
       // Check if user needs to set password (invited user)
@@ -31,6 +32,7 @@ export async function GET(request: Request) {
 
       return NextResponse.redirect(`${origin}${next}`)
     }
+    console.log('[auth/callback] exchange error', { message: error?.message })
     return NextResponse.redirect(`${origin}/login?error=oauth_error`)
   }
 
