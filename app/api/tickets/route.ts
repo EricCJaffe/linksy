@@ -23,7 +23,7 @@ export async function GET(request: Request) {
   let query = supabase
     .from('linksy_tickets')
     .select(
-      '*, linksy_providers!left(name), linksy_needs!left(name)',
+      '*, linksy_providers!provider_id(name), linksy_needs!need_id(name)',
       { count: 'exact' }
     )
     .order('created_at', { ascending: false })
