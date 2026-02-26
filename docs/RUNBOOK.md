@@ -194,6 +194,20 @@ end $$;
 
 ---
 
+### 9. `supabase db diff` fails with storage permission errors
+
+**Symptom:** `supabase db diff` (even with `--schema public`) fails with:
+`permission denied for table buckets` or storage trigger errors.
+
+**Cause:** The CLI initializes storage-related triggers in the shadow DB and requires elevated permissions.
+
+**Fix/Workarounds:**
+- Rely on `supabase migration list` for sync confirmation.
+- Run the diff with a service role that has storage permissions.
+- Run diff against a local Supabase instance where you control storage schema permissions.
+
+---
+
 ## Health Check Endpoints
 
 - No dedicated health check endpoint exists. The simplest smoke test is:
