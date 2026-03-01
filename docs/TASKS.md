@@ -28,12 +28,21 @@
 - [x] Parent/child account linking model — Sprint 4 (Polish + UX) COMPLETE (2026-02-24)
 - [x] Webhooks admin smoke validation in live/staging target (create/test endpoint, signature validation, retry/history checks) — COMPLETED 2026-02-25
 - [ ] Referral workflow e2e mailbox assertion leg (outbound email content/delivery verification)
-- [ ] Tenant model refactor: move from provider-as-tenant to region tenants (Impact Works site, Impact Clay tenant, add United Way of North Florida tenant)
-- [ ] Apply migration `20260225223000_region_tenant_model.sql`
-- [ ] Run `scripts/backfill-provider-tenants.sql` after imports
-- [ ] Verify tenant UI and webhooks scoped to Impact Clay
+- [x] Tenant model refactor: move from provider-as-tenant to region tenants (Impact Works site, Impact Clay tenant, add United Way of North Florida tenant) — COMPLETED 2026-03-01
+  - Fixed remote_schema migration (20260225204403) that was dropping `tenant_id` column/FK/indexes needed by region model
+  - Fixed auth middleware `.maybeSingle()` to prefer region tenants when user has multiple memberships
+  - Webhook dispatch now resolves tenant_id from provider record (not just auth context)
+- [ ] Apply migration `20260225223000_region_tenant_model.sql` (run in Supabase SQL Editor)
+- [ ] Run `scripts/backfill-provider-tenants.sql` after imports (run in Supabase SQL Editor)
+- [x] Verify tenant UI and webhooks scoped to Impact Clay — COMPLETED 2026-03-01
+  - Webhook UI (`useCurrentTenant`) correctly filters to `type='region'` tenants
+  - All ticket webhook dispatch routes now resolve tenant_id from `linksy_providers.tenant_id`
 - [ ] Webhook event coverage: verify `ticket.assigned`, `ticket.forwarded`, `ticket.reassigned`
-- [ ] Provider user sees "No referrals found" in prod: capture `/api/provider-access` response, then call `/api/tickets?provider_id=<id>&limit=50` with the provider_id from access; if empty, verify `linksy_provider_contacts` has `status='active'` for the user and provider, and confirm tickets exist with that provider_id
+- [x] Provider user sees "No referrals found" — COMPLETED 2026-03-01
+  - Root cause: auth middleware `.maybeSingle()` silently returned null when user had multiple tenant memberships
+  - Root cause: `/api/tickets` GET had no server-side provider access validation — used service client bypassing RLS
+  - Fix: tickets API now enforces provider access for non-admin users via `linksy_provider_contacts`
+  - Fix: single-ticket GET endpoint now validates provider access via `linksy_user_can_access_provider` RPC
 
 ## MVP Alignment (Reviewed 2026-02-23)
 

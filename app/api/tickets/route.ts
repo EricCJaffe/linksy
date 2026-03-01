@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const q = searchParams.get('q') || ''
   const status = searchParams.get('status') || 'all'
-  const providerId = searchParams.get('provider_id') || ''
+  let providerId = searchParams.get('provider_id') || ''
   const needId = searchParams.get('need_id') || ''
   const dateFrom = searchParams.get('date_from') || ''
   const dateTo = searchParams.get('date_to') || ''
@@ -19,6 +19,39 @@ export async function GET(request: Request) {
   const offset = parseInt(searchParams.get('offset') || '0', 10)
 
   const supabase = await createServiceClient()
+
+  // For non-admin users, enforce provider access: only return tickets for
+  // providers the user is linked to via linksy_provider_contacts.
+  let accessibleProviderIds: string[] | null = null
+  if (!auth.isSiteAdmin && !auth.isTenantAdmin) {
+    const { data: contacts } = await supabase
+      .from('linksy_provider_contacts')
+      .select('provider_id')
+      .eq('user_id', auth.user.id)
+      .eq('status', 'active')
+
+    accessibleProviderIds = (contacts || []).map(c => c.provider_id)
+
+    if (accessibleProviderIds.length === 0) {
+      return NextResponse.json({
+        tickets: [],
+        pagination: { total: 0, hasMore: false, nextOffset: null },
+      })
+    }
+
+    // If a provider_id was requested, verify the user has access to it
+    if (providerId && !accessibleProviderIds.includes(providerId)) {
+      return NextResponse.json(
+        { error: 'Forbidden - no access to this provider' },
+        { status: 403 }
+      )
+    }
+
+    // If no specific provider requested, scope to all accessible providers
+    if (!providerId && accessibleProviderIds.length === 1) {
+      providerId = accessibleProviderIds[0]
+    }
+  }
 
   let query = supabase
     .from('linksy_tickets')
@@ -39,6 +72,9 @@ export async function GET(request: Request) {
 
   if (providerId) {
     query = query.eq('provider_id', providerId)
+  } else if (accessibleProviderIds && accessibleProviderIds.length > 0) {
+    // Non-admin with multiple providers but no specific provider_id: filter to accessible
+    query = query.in('provider_id', accessibleProviderIds)
   }
 
   if (needId) {
@@ -268,10 +304,23 @@ export async function POST(request: Request) {
     })()
   }
 
-  const tenantId = getTenantId(auth)
-  if (tenantId) {
+  // Resolve webhook tenant from provider's region tenant, falling back to auth context
+  let webhookTenantId: string | null = null
+  if (ticket.provider_id) {
+    const { data: provider } = await supabase
+      .from('linksy_providers')
+      .select('tenant_id')
+      .eq('id', ticket.provider_id)
+      .single()
+    webhookTenantId = provider?.tenant_id || null
+  }
+  if (!webhookTenantId) {
+    webhookTenantId = getTenantId(auth)
+  }
+
+  if (webhookTenantId) {
     void sendWebhookEvent({
-      tenantId,
+      tenantId: webhookTenantId,
       eventType: 'ticket.created',
       payload: {
         ticket_id: ticket.id,

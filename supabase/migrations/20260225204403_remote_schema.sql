@@ -322,7 +322,8 @@ alter table "public"."linksy_host_email_templates" drop constraint "linksy_host_
 
 alter table "public"."linksy_host_email_templates" drop constraint "linksy_host_email_templates_host_id_template_key_key";
 
-alter table "public"."linksy_providers" drop constraint "linksy_providers_tenant_id_fkey";
+-- PRESERVED: linksy_providers_tenant_id_fkey needed by region tenant model
+-- alter table "public"."linksy_providers" drop constraint "linksy_providers_tenant_id_fkey";
 
 alter table "public"."linksy_ticket_events" drop constraint "linksy_ticket_events_actor_id_fkey";
 
@@ -342,7 +343,8 @@ alter table "public"."linksy_webhook_deliveries" drop constraint "linksy_webhook
 
 alter table "public"."linksy_webhooks" drop constraint "linksy_webhooks_created_by_fkey";
 
-alter table "public"."linksy_webhooks" drop constraint "linksy_webhooks_tenant_id_fkey";
+-- PRESERVED: linksy_webhooks_tenant_id_fkey needed by region tenant model
+-- alter table "public"."linksy_webhooks" drop constraint "linksy_webhooks_tenant_id_fkey";
 
 alter table "public"."sites" drop constraint "sites_slug_key";
 
@@ -380,9 +382,11 @@ drop index if exists "public"."idx_linksy_webhook_deliveries_webhook_id";
 
 drop index if exists "public"."idx_linksy_webhooks_is_active";
 
-drop index if exists "public"."idx_linksy_webhooks_tenant_id";
+-- PRESERVED: idx_linksy_webhooks_tenant_id needed by region tenant model
+-- drop index if exists "public"."idx_linksy_webhooks_tenant_id";
 
-drop index if exists "public"."idx_providers_tenant_id";
+-- PRESERVED: idx_providers_tenant_id needed by region tenant model
+-- drop index if exists "public"."idx_providers_tenant_id";
 
 drop index if exists "public"."idx_ticket_events_actor_id";
 
@@ -778,7 +782,8 @@ alter table "public"."files" add column "updated_at" timestamp with time zone de
 
 alter table "public"."files" add column "uploaded_by" uuid;
 
-alter table "public"."linksy_providers" drop column "tenant_id";
+-- PRESERVED: tenant_id column needed by region tenant model (20260225223000)
+-- alter table "public"."linksy_providers" drop column "tenant_id";
 
 alter table "public"."linksy_tickets" drop column "assigned_at";
 

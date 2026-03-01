@@ -61,12 +61,34 @@ export async function requireAuth(): Promise<
     }
   }
 
-  // Get tenant membership
-  const { data: tenantMembership } = await supabase
+  // Get tenant membership — prefer region tenants over per-provider tenants.
+  // Uses .limit(1) instead of .maybeSingle() because users may have multiple
+  // memberships (e.g. region tenant + legacy per-provider tenants).
+  // Join with tenants to prefer region type, falling back to any membership.
+  const { data: regionMemberships } = await supabase
     .from('tenant_users')
-    .select('tenant_id, role')
+    .select('tenant_id, role, tenant:tenants!inner(settings)')
     .eq('user_id', user.id)
-    .maybeSingle<{ tenant_id: string; role: 'admin' | 'member' }>()
+    .filter('tenant.settings->>type', 'eq', 'region')
+    .limit(1)
+
+  let tenantMembership: { tenant_id: string; role: 'admin' | 'member' } | null = null
+
+  if (regionMemberships && regionMemberships.length > 0) {
+    tenantMembership = {
+      tenant_id: regionMemberships[0].tenant_id,
+      role: regionMemberships[0].role as 'admin' | 'member',
+    }
+  } else {
+    // Fallback: grab any membership if no region tenant found
+    const { data: anyMembership } = await supabase
+      .from('tenant_users')
+      .select('tenant_id, role')
+      .eq('user_id', user.id)
+      .limit(1)
+      .maybeSingle<{ tenant_id: string; role: 'admin' | 'member' }>()
+    tenantMembership = anyMembership
+  }
 
   const authContext: AuthContext = {
     user: {

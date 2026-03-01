@@ -30,6 +30,17 @@ export async function GET(
     return NextResponse.json({ error: queryError.message }, { status: 500 })
   }
 
+  // Enforce provider access for non-admin users
+  if (!auth.isSiteAdmin && !auth.isTenantAdmin && ticket.provider_id) {
+    const { data: hasAccess } = await supabase.rpc('linksy_user_can_access_provider', {
+      p_user_id: auth.user.id,
+      p_provider_id: ticket.provider_id,
+    })
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'Ticket not found' }, { status: 404 })
+    }
+  }
+
   const mapped = {
     id: ticket.id,
     site_id: ticket.site_id,
