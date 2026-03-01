@@ -1,3 +1,6 @@
+// Prevent static prerendering — auth pages create Supabase clients at runtime
+export const dynamic = 'force-dynamic'
+
 export default function AuthLayout({
   children,
 }: {
