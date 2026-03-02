@@ -97,7 +97,7 @@ export function SearchResults({
   if (allResults.length === 0) {
     return (
       <div className="p-8 text-center text-sm text-muted-foreground">
-        No results found for "{query}"
+        No results found for &quot;{query}&quot;
       </div>
     )
   }

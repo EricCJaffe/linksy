@@ -106,7 +106,7 @@ export default function CompanyPage() {
           <CardHeader>
             <CardTitle>Address Information</CardTitle>
             <CardDescription>
-              Manage your organization's physical address
+              Manage your organization&apos;s physical address
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">

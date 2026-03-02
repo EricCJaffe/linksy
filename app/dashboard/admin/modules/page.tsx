@@ -97,7 +97,7 @@ export default function ModulesPage() {
           <div>
             <h4 className="font-medium">Required modules</h4>
             <p className="text-muted-foreground">
-              Core modules marked as "Required" are automatically enabled for all tenants and
+              Core modules marked as &quot;Required&quot; are automatically enabled for all tenants and
               provide essential platform functionality.
             </p>
           </div>

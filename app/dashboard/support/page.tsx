@@ -139,7 +139,7 @@ export default function SubmitSupportTicketPage() {
         <CardHeader>
           <CardTitle>Support Request</CardTitle>
           <CardDescription>
-            Describe your issue or question and we'll get back to you as soon as possible.
+            Describe your issue or question and we&apos;ll get back to you as soon as possible.
           </CardDescription>
         </CardHeader>
         <CardContent>

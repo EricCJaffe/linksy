@@ -374,7 +374,7 @@ export function CustomFormBuilder({ hostId }: CustomFormBuilderProps) {
           <>
             {activeFields.length === 0 && inactiveFields.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                <p>No custom fields yet. Click "Add Field" to create one.</p>
+                <p>No custom fields yet. Click &quot;Add Field&quot; to create one.</p>
               </div>
             ) : (
               <>

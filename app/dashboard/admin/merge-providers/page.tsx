@@ -116,7 +116,7 @@ export default function MergeProvidersPage() {
 
           {duplicates.length === 0 && !loading && (
             <p className="text-sm text-muted-foreground">
-              No duplicates found. Click "Find Duplicates" to search.
+              No duplicates found. Click &quot;Find Duplicates&quot; to search.
             </p>
           )}
 

@@ -105,7 +105,7 @@ export function PurgeProviderDialog({ providerId, providerName }: PurgeProviderD
                 <li>Any pending applications</li>
               </ul>
               <p className="font-semibold text-foreground pt-2">
-                ⚠️ This data cannot be recovered. Consider using "Merge Provider" instead if duplicate records exist.
+                ⚠️ This data cannot be recovered. Consider using &quot;Merge Provider&quot; instead if duplicate records exist.
               </p>
               <div className="border-t pt-4">
                 <Label htmlFor="confirm-name" className="text-foreground">

@@ -7,7 +7,7 @@ export function BrandingTab() {
       <div>
         <h2 className="text-2xl font-bold">Branding</h2>
         <p className="text-sm text-muted-foreground">
-          Customize your organization's appearance and terminology
+          Customize your organization&apos;s appearance and terminology
         </p>
       </div>
 

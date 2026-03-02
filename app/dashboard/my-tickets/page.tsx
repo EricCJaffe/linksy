@@ -47,7 +47,7 @@ export default function MyTicketsPage() {
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            You don't have access to a provider organization.
+            You don&apos;t have access to a provider organization.
           </AlertDescription>
         </Alert>
       </div>

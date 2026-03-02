@@ -134,7 +134,7 @@ export default function MergeContactsPage() {
 
           {duplicates.length === 0 && !loading && (
             <p className="text-sm text-muted-foreground">
-              No duplicates found. Enter a provider ID and click "Find Duplicates" to search.
+              No duplicates found. Enter a provider ID and click &quot;Find Duplicates&quot; to search.
             </p>
           )}
 

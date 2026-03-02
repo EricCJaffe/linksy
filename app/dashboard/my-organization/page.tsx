@@ -81,7 +81,7 @@ export default function MyOrganizationPage() {
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            You don't have access to a provider organization. Please contact support if you
+            You don&apos;t have access to a provider organization. Please contact support if you
             believe this is an error.
           </AlertDescription>
         </Alert>

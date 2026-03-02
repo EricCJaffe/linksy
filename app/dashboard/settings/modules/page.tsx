@@ -94,20 +94,20 @@ export default function ModulesSettingsPage() {
             <h4 className="font-medium">What are modules?</h4>
             <p className="text-muted-foreground">
               Modules are feature packages that can be enabled or disabled to customize your
-              organization's experience. Enable only the features you need.
+              organization&apos;s experience. Enable only the features you need.
             </p>
           </div>
           <div>
             <h4 className="font-medium">Required modules</h4>
             <p className="text-muted-foreground">
-              Some modules are marked as "Required" and cannot be disabled. These provide core
+              Some modules are marked as &quot;Required&quot; and cannot be disabled. These provide core
               functionality essential for the platform.
             </p>
           </div>
           <div>
             <h4 className="font-medium">Module status</h4>
             <p className="text-muted-foreground">
-              "Active" modules are available on the platform. "Inactive" modules have been
+              &quot;Active&quot; modules are available on the platform. &quot;Inactive&quot; modules have been
               disabled by the site administrator and cannot be enabled.
             </p>
           </div>

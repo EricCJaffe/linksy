@@ -108,7 +108,7 @@ export default function SurveyPage({ params }: { params: { token: string } }) {
         <CardHeader className="text-center">
           <CardTitle>How was your experience?</CardTitle>
           <p className="text-sm text-muted-foreground">
-            We'd love your feedback on the referral service you received.
+            We&apos;d love your feedback on the referral service you received.
           </p>
         </CardHeader>
         <CardContent className="space-y-6">

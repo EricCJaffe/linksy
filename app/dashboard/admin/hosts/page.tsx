@@ -122,7 +122,7 @@ export default function HostsPage() {
       ) : hosts?.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
-            No hosts configured yet. Open a provider's detail page and enable host mode in the Host Settings tab.
+            No hosts configured yet. Open a provider&apos;s detail page and enable host mode in the Host Settings tab.
           </CardContent>
         </Card>
       ) : (

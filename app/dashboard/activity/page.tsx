@@ -54,7 +54,7 @@ export default function ActivityPage() {
             Filters
           </CardTitle>
           <CardDescription>
-            Filter activities by type to find what you're looking for
+            Filter activities by type to find what you&apos;re looking for
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -95,7 +95,7 @@ export default function ActivityPage() {
             <CardHeader>
               <CardTitle>Company Activity</CardTitle>
               <CardDescription>
-                See what's happening across your entire workspace
+                See what&apos;s happening across your entire workspace
               </CardDescription>
             </CardHeader>
             <CardContent>

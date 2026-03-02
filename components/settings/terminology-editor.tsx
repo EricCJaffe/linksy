@@ -134,7 +134,7 @@ export function TerminologyEditor() {
           <div className="mt-4 p-4 rounded-md bg-muted/50">
             <p className="text-sm text-muted-foreground">
               <strong>Tip:</strong> Custom labels will replace default terms throughout the application.
-              For example, changing "User" to "Team Member" will update all references in navigation,
+              For example, changing &quot;User&quot; to &quot;Team Member&quot; will update all references in navigation,
               pages, and forms.
             </p>
           </div>

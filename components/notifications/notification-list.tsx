@@ -66,7 +66,7 @@ export function NotificationList() {
         </div>
         <h3 className="mt-4 font-medium">No notifications</h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          You're all caught up!
+          You&apos;re all caught up!
         </p>
       </div>
     )
