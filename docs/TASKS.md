@@ -13,6 +13,9 @@
 
 Full codebase review across API routes, auth/middleware, React components, and data fetching layers. Findings prioritized by severity.
 
+> **Note:** All items below are now tracked in the **Go-Live Roadmap** (below) by phase:
+> CRITICAL → Phase 0.1 | HIGH → Phase 0.2 | RLS/DB → Phase 0.3 | MEDIUM → Phase 1.1 | LOW → Phase 2.1
+
 ### CRITICAL — Fix Before Next Deploy
 
 - [ ] **XSS: Unsanitized `dangerouslySetInnerHTML`** — `components/ui/rich-text-display.tsx:14-18` and `rich-text-editor.tsx:100` render raw HTML without sanitization (e.g. DOMPurify). Any user-provided HTML (provider descriptions, notes) could execute scripts. **Add DOMPurify or similar.**
@@ -217,12 +220,44 @@ Full codebase review across API routes, auth/middleware, React components, and d
 
 Organized into phases. Everything in Phase 0–2 must be completed or have a clear workaround before public launch.
 
-### Phase 0 — Data & Infrastructure (Blockers)
+### Phase 0 — Critical Security & Data (Blockers)
 
-These must be resolved first; everything else depends on clean data and working accounts.
+These must be resolved first. Security issues block go-live; data issues block user acceptance.
 
-#### 0.1 User Migration Strategy
-- [ ] **Design auth migration plan for existing users** — Current state: ~167+ users exist in Supabase with usernames in the `user_id` field and are listed as `linksy_provider_contacts`, but **none have passwords set**. They cannot log in. Options to evaluate:
+#### 0.1 CRITICAL Security Fixes (from [Audit 2026-03-02](AUDIT-2026-03-02.md))
+
+All four are exploitable in production. Must fix before any public traffic.
+
+- [ ] **XSS: Unsanitized `dangerouslySetInnerHTML`** — `rich-text-display.tsx:14-18` and `rich-text-editor.tsx:100` render raw HTML. Add DOMPurify.
+- [ ] **Missing `/api/invitations/accept` endpoint** — Invitation acceptance is completely broken. Create the endpoint.
+- [ ] **Open redirect in `/api/auth/callback`** — `next` param not validated. Validate starts with `/`, no double slashes.
+- [ ] **Race condition in ticket numbering** — Read-then-insert allows duplicate `R-xxxx` numbers. Use `nextval()` or RPC with transactional lock.
+
+#### 0.2 HIGH Security Fixes (from [Audit 2026-03-02](AUDIT-2026-03-02.md))
+
+Serious risks that could cause data leaks or auth bypass. Fix before go-live.
+
+- [ ] **OpenAI API calls missing error handling** — `search/route.ts:117-122` and `:419-435` have no try/catch. Add with user-friendly fallback.
+- [ ] **Hardcoded SITE_ID** — `search/route.ts:303` and `tickets/route.ts:39` hardcode UUID. Move to env var.
+- [ ] **Provider API bypasses RLS** — `providers/route.ts` uses `createServiceClient()`, returns all providers to any requester. Add tenant filter.
+- [ ] **Open redirect in login form** — `login-form.tsx:44,125` takes unvalidated `redirect` param. Validate relative path.
+- [ ] **Non-admin users can set `is_private` on comments** — `tickets/[id]/comments/route.ts` blindly accepts from body. Enforce server-side.
+- [ ] **Merge operation has no transaction/rollback** — `providers/merge/route.ts` continues on error. Wrap in transaction or fail fast.
+
+#### 0.3 RLS / Database Security Fixes (from [Audit 2026-03-02](AUDIT-2026-03-02.md) §RLS Security Audit)
+
+These are database-level access control gaps. Not yet tracked elsewhere.
+
+- [ ] **HIGH: `linksy_provider_contacts` — RLS disabled entirely.** Auth handled at API layer only. Any direct Supabase client (or future endpoint mistake) exposes all contacts. **Re-enable RLS with provider-scoped policies.**
+- [ ] **HIGH: `linksy_provider_notes` — `is_private` not enforced at RLS level.** Private notes could leak to non-admin provider staff if app filtering is bypassed. **Add `is_private = false` condition for non-admin reads.**
+- [ ] **MEDIUM: `linksy_tickets` — No client-view policy.** Clients who submitted referrals via widget cannot query their own ticket status. **Add email-based client view policy.**
+- [ ] **MEDIUM: `linksy_call_logs` — Overly permissive.** Any authenticated user can manage any call log. **Scope to provider contacts for their own provider's tickets.**
+- [ ] **MEDIUM: `linksy_custom_fields` — Unscoped.** Any authenticated user can manage any provider's custom fields. **Scope like `linksy_host_custom_fields`.**
+- [ ] **MEDIUM: `linksy_surveys` — Unrestricted UPDATE.** Any authenticated user can modify any survey result. **Restrict to survey owner or admin.**
+- [ ] **LOW: `linksy_search_sessions` — Anon update has no row filter.** One session could modify another. **Add `id = session_id` filter.**
+
+#### 0.4 User Migration Strategy
+- [ ] **Design auth migration plan for existing users** — Current state: ~167+ users exist in Supabase with usernames in the `user_id` field and are listed as `linksy_provider_contacts`, but **none have passwords set**. They cannot log in. **Note:** Fixing the missing `/api/invitations/accept` endpoint (0.1) is a prerequisite for any invite-based migration flow. Options to evaluate:
   - **(a) Magic link / passwordless invite flow** — Send each user a one-time email link that creates their Supabase Auth session and prompts them to set a password. Leverages existing `/invite/[token]` and `/auth/set-password` infrastructure.
   - **(b) Bulk password-reset emails** — Use Supabase Admin API to trigger `resetPasswordForEmail()` for every migrated user. Simpler but requires valid email addresses on file.
   - **(c) First-login password creation** — Allow users to “claim” their account by verifying email + setting password on first visit (similar to (a) but self-service, no admin trigger).
@@ -233,7 +268,7 @@ These must be resolved first; everything else depends on clean data and working 
 - [ ] Test migration flow end-to-end with a small batch before full rollout
 - [ ] Document rollout communication plan (what email do users receive, what do they do)
 
-#### 0.2 Data Migration & Import (Pre-Go-Live Sync)
+#### 0.5 Data Migration & Import (Pre-Go-Live Sync)
 - [ ] **Build/utilize import function to bring system up to date** — The initial Power Apps → Supabase migration is done (providers, needs, tickets imported), but production data has continued accumulating in the legacy system. Need to:
   - Identify delta: new providers, updated contacts, new referrals since last import
   - Build incremental import script (or re-run full import with upsert logic)
@@ -243,7 +278,7 @@ These must be resolved first; everything else depends on clean data and working 
 - [ ] Verify geocoding is complete for all locations
 - [ ] Final QA pass: spot-check 10+ providers for data accuracy (name, phone, address, needs)
 
-#### 0.3 Template Email Data
+#### 0.6 Template Email Data
 - [ ] **Collect and configure all email template content** — The `linksy_email_templates` system exists but needs production-ready copy for:
   - New referral notification (to provider)
   - Referral status update (to client)
@@ -254,7 +289,7 @@ These must be resolved first; everything else depends on clean data and working 
 - [ ] Get final copy from stakeholders (Impact Clay branding, tone, legal disclaimers)
 - [ ] Load templates into `linksy_email_templates` table via admin UI or migration script
 
-#### 0.4 Email & Domain Setup (Impact Works)
+#### 0.7 Email & Domain Setup (Impact Works)
 - [ ] **Email implications of new Impact Works domain** — Decisions needed:
   - Which domain? (e.g., `impactworks.org`, `impactworks.com`, `impactworks.app`)
   - SPF/DKIM/DMARC records for transactional email (Resend) — required for deliverability
@@ -265,11 +300,26 @@ These must be resolved first; everything else depends on clean data and working 
 - [ ] Configure DNS records (Vercel custom domain + email DNS)
 - [ ] Verify Resend domain authentication (SPF, DKIM, DMARC)
 
-### Phase 1 — Feature Completion (Pre-Go-Live)
+### Phase 1 — Feature Completion & Hardening (Pre-Go-Live)
 
-Core features that users and admins will need on day one.
+Core features that users and admins need on day one, plus stability/quality fixes.
 
-#### 1.1 Reassign Referral to Another Provider
+#### 1.1 MEDIUM Code Quality Fixes (from [Audit 2026-03-02](AUDIT-2026-03-02.md))
+
+Not security-critical but cause reliability issues, data leaks, or poor UX in production.
+
+- [ ] **Crisis keyword test endpoint has no auth** — `crisis-keywords/test/route.ts` accepts unauthenticated POST. Add auth check.
+- [ ] **`setTimeout` not cleaned up in find-help** — `find-help/page.tsx:258-277`. Use `useEffect` with `clearTimeout`.
+- [ ] **Search bar missing AbortController** — `search-bar.tsx:40-64` fetch doesn't abort on unmount/query change.
+- [ ] **Notification subscription not tenant-scoped** — `useNotifications.ts:54-72` subscribes to all inserts. Filter by `user_id`.
+- [ ] **In-memory rate limiter ineffective on Vercel** — `rate-limit.ts` stores state per-instance. Use Upstash Redis for production.
+- [ ] **Activity logging uses browser client** — `activity.ts:35` uses RLS-bound client. Logs silently fail if user lacks permission. Use server-side service client.
+- [ ] **`parseInt` NaN not handled** — `support-tickets/route.ts:15-16` and other routes. Add `|| defaultValue` fallback.
+- [ ] **Unsafe `any` types in hooks** — `useCurrentTenant.ts`, `find-help/page.tsx:334`. Create proper interfaces.
+- [ ] **Error response info disclosure** — Multiple routes return `validation.error.flatten()`. Return generic messages; log server-side.
+- [ ] **CSRF allows `http://` origin in production** — `csrf.ts:34-36`. Only allow HTTP in development.
+
+#### 1.2 Reassign Referral to Another Provider
 - [ ] **Verify “reassign to other provider” feature is working** — Auto-reroute was completed 2026-02-25 (provider can flag “unable to assist” → system offers reassignment). Need to:
   - End-to-end test: create referral → provider marks unable to assist → admin reassigns to new provider
   - Verify the new provider receives notification email
@@ -277,7 +327,7 @@ Core features that users and admins will need on day one.
   - Verify `ticket.reassigned` webhook fires correctly
   - Test from provider portal view (not just admin)
 
-#### 1.2 Events Visibility for End Users
+#### 1.3 Events Visibility for End Users
 - [ ] **Decide where event page/list appears for public users** — Options:
   - **(a) In the chatbot results** — When a user searches a need, show relevant upcoming events alongside providers
   - **(b) Dedicated `/events` public page** — Standalone calendar/list page linked from nav or widget
@@ -287,7 +337,7 @@ Core features that users and admins will need on day one.
 - [ ] Implement chosen approach
 - [ ] Ensure events respect approval status (only `published` events shown publicly)
 
-#### 1.3 AI Search Includes Events
+#### 1.4 AI Search Includes Events
 - [ ] **Extend AI search pipeline to include event listings** — Currently searches only provider services/needs. Need to:
   - Include upcoming published events in the vector search or as supplemental results
   - Add event data to LLM context (event name, date, time, location, description, provider)
@@ -297,7 +347,7 @@ Core features that users and admins will need on day one.
 - [ ] Update search API response to include event cards alongside provider cards
 - [ ] Widget UI: display event result cards with date, time, location, and registration link
 
-#### 1.4 Host Danger Word Filtering
+#### 1.5 Host Danger Word Filtering
 - [ ] **Verify host ability to filter crisis/danger words** — System currently has global `linksy_crisis_keywords` with detection + emergency banners. Need to verify:
   - Hosts can see crisis detection working in their embedded widget
   - Confirm crisis keywords are comprehensive (review current list with stakeholders)
@@ -305,7 +355,7 @@ Core features that users and admins will need on day one.
   - Determine if hosts need per-host keyword customization (beyond global list)
   - Document for hosts how the safety system works
 
-#### 1.5 Reporting Features
+#### 1.6 Reporting Features
 - [ ] **Design and build reporting features** — Analytics dashboard exists with search, provider, crisis, widget, and ticket tabs. Evaluate gaps:
   - Admin-facing reports: referral volume by provider/need/time period, provider response times, aging referrals
   - Exportable reports (CSV/PDF) for board meetings and funders
@@ -316,11 +366,24 @@ Core features that users and admins will need on day one.
 - [ ] Prioritize which reports are needed for go-live vs. post-launch
 - [ ] Build priority reports
 
-### Phase 2 — Business Operations (Go-Live Adjacent)
+### Phase 2 — Business Operations & Polish (Go-Live Adjacent)
 
 Needed for sustainability but not blocking initial launch if timeline is tight.
 
-#### 2.1 Public-Facing Impact Works Website
+#### 2.1 LOW Code Quality Fixes (from [Audit 2026-03-02](AUDIT-2026-03-02.md))
+
+Won't block launch but improve reliability and developer experience.
+
+- [ ] **Array index used as React key** — 15+ instances across find-help, widget, ticket pages. Causes state bugs on reorder/filter.
+- [ ] **Silent `.catch(() => {})` swallowing errors** — `find-help-widget.tsx:213`, `provider-detail-tabs.tsx`, `statistics-tab.tsx`. Failures invisible.
+- [ ] **`alert()` used for errors** — `call-log-form.tsx:59-102`. Replace with toast notifications.
+- [ ] **Environment variables not validated at startup** — `email.ts`, `client.ts` use `!` assertions. Add runtime check.
+- [ ] **Sensitive logging in set-password page** — `set-password/page.tsx` logs token availability to console. Remove.
+- [ ] **File upload paths use `Date.now()` + UUID** — Timestamp unnecessary given UUID. No filename length limit.
+- [ ] **CSV export no error handling** — `audit-logs.ts:60-64`. Add try/catch.
+- [ ] **Missing null check** — `useProviderPermissions.ts:34-35` assumes `provider.contacts` exists. Add `?.`.
+
+#### 2.2 Public-Facing Impact Works Website
 - [ ] **Set up the public Impact Works website** — Decisions needed:
   - Separate marketing site (e.g., WordPress/Webflow at `impactworks.org`) vs. enhanced Linksy landing page at `/`?
   - Content needed: mission statement, about us, for providers (onboarding CTA), for communities (find help CTA), pricing/plans, contact
@@ -329,7 +392,7 @@ Needed for sustainability but not blocking initial launch if timeline is tight.
 - [ ] Build or configure the chosen approach
 - [ ] Set up analytics (Google Analytics / Plausible)
 
-#### 2.2 Stripe Integration — Monthly Recurring Billing
+#### 2.3 Stripe Integration — Monthly Recurring Billing
 - [ ] **Incorporate Stripe for subscription billing** — The base template has a placeholder for billing. Need to:
   - Set up Stripe account and API keys
   - Define pricing tiers (per-host? per-tenant? per-provider? flat fee + usage?)
@@ -341,7 +404,7 @@ Needed for sustainability but not blocking initial launch if timeline is tight.
   - Admin UI: view subscription status, revenue dashboard
 - [ ] Set up Stripe test environment and test full lifecycle (subscribe → invoice → pay → cancel)
 
-#### 2.3 QuickBooks Integration
+#### 2.4 QuickBooks Integration
 - [ ] **Ability to integrate with QuickBooks** — For Impact Works financial management:
   - Evaluate: QuickBooks Online API vs. third-party connector (e.g., Zapier, Make)
   - Sync Stripe invoices/payments → QuickBooks as income entries
