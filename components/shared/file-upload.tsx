@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useState } from 'react'
-import { Upload, X, FileIcon, Image, Video, Music } from 'lucide-react'
+import { Upload, X, FileIcon, Image as ImageIcon, Video, Music } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
@@ -41,7 +41,7 @@ export function FileUpload({
   const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([])
 
   const getFileIcon = (file: File) => {
-    if (file.type.startsWith('image/')) return <Image className="h-8 w-8" />
+    if (file.type.startsWith('image/')) return <ImageIcon className="h-8 w-8" />
     if (file.type.startsWith('video/')) return <Video className="h-8 w-8" />
     if (file.type.startsWith('audio/')) return <Music className="h-8 w-8" />
     return <FileIcon className="h-8 w-8" />

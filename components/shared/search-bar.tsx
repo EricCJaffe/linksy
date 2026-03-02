@@ -125,6 +125,12 @@ export function SearchBar({
     }
   }
 
+  const handleSelect = useCallback((result: SearchResult) => {
+    setIsOpen(false)
+    setQuery('')
+    router.push(result.url)
+  }, [router])
+
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault()
@@ -140,7 +146,7 @@ export function SearchBar({
         router.push(`/search?${params.toString()}`)
       }
     },
-    [query, onSearch, router, selectedIndex, allResults]
+    [query, onSearch, router, selectedIndex, allResults, handleSelect]
   )
 
   const handleClear = useCallback(() => {
@@ -151,12 +157,6 @@ export function SearchBar({
       onSearch('')
     }
   }, [onSearch])
-
-  const handleSelect = (result: SearchResult) => {
-    setIsOpen(false)
-    setQuery('')
-    router.push(result.url)
-  }
 
   return (
     <div ref={containerRef} className={cn('relative', className)}>
