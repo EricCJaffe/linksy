@@ -11,7 +11,7 @@ export async function GET(_request: Request) {
   if (error) return error
 
   const supabase = await createServiceClient()
-  const now = new Date().toISOString()
+  const thresholdHours = 48
 
   // Get all pending tickets with SLA info
   const { data: pendingTickets } = await supabase
@@ -26,18 +26,20 @@ export async function GET(_request: Request) {
   const approaching: any[] = []
   const overdue: any[] = []
   const onTrack: any[] = []
+  const nowMs = Date.now()
 
   for (const t of tickets) {
-    if (!t.sla_due_at) continue
-    const dueAt = new Date(t.sla_due_at)
-    const nowDate = new Date()
-    const hoursRemaining = (dueAt.getTime() - nowDate.getTime()) / (1000 * 60 * 60)
+    // If SLA due date is missing (common in legacy/imported referrals), fall back
+    // to created_at + threshold so aging still reflects real pending backlog.
+    const fallbackDueAtMs = new Date(t.created_at).getTime() + thresholdHours * 60 * 60 * 1000
+    const dueAtMs = t.sla_due_at ? new Date(t.sla_due_at).getTime() : fallbackDueAtMs
+    const hoursRemaining = (dueAtMs - nowMs) / (1000 * 60 * 60)
 
     const ticket = {
       id: t.id,
       ticket_number: t.ticket_number,
       client_name: t.client_name,
-      sla_due_at: t.sla_due_at,
+      sla_due_at: new Date(dueAtMs).toISOString(),
       created_at: t.created_at,
       provider_name: (t as any).linksy_providers?.name || null,
       hours_remaining: Math.round(hoursRemaining * 10) / 10,

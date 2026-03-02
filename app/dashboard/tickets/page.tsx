@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useTickets, useUpdateTicket } from '@/lib/hooks/useTickets'
 import { useProviders } from '@/lib/hooks/useProviders'
 import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
@@ -62,10 +62,15 @@ function StatusBadge({ status }: { status: TicketStatus }) {
 
 export default function TicketsPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { data: user } = useCurrentUser()
   const updateTicket = useUpdateTicket()
+  const statusFromQuery = searchParams.get('status')
+  const initialStatus = statusFromQuery && statusFromQuery in ticketStatusLabels
+    ? statusFromQuery as TicketStatus
+    : 'all'
   const [filters, setFilters] = useState<TicketFilters>({
-    status: 'all',
+    status: initialStatus,
     limit: LIMIT,
     offset: 0,
   })
@@ -99,6 +104,15 @@ export default function TicketsPage() {
     }
     fetchStats()
   }, [data])
+
+  // Allow deep links such as /dashboard/tickets?status=pending
+  useEffect(() => {
+    const statusParam = searchParams.get('status')
+    const nextStatus = statusParam && statusParam in ticketStatusLabels
+      ? statusParam as TicketStatus
+      : 'all'
+    setFilters((prev) => prev.status === nextStatus ? prev : { ...prev, status: nextStatus, offset: 0 })
+  }, [searchParams])
 
   const handleFilterChange = (updates: Partial<TicketFilters>) => {
     setFilters((prev) => ({ ...prev, ...updates, offset: 0 }))

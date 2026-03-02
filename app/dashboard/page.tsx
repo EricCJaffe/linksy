@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
@@ -19,6 +20,7 @@ interface OverviewStats {
 }
 
 export default function DashboardPage() {
+  const router = useRouter()
   const { data: user } = useCurrentUser()
   const { data: providerStats, isLoading: isProviderStatsLoading } = useMyProviderStats()
   const [stats, setStats] = useState<OverviewStats | null>(null)
@@ -82,7 +84,10 @@ export default function DashboardPage() {
 
       {isSiteAdmin && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card className="border-primary/20 bg-gradient-to-b from-primary/5 to-white">
+          <Card
+            className="cursor-pointer border-primary/20 bg-gradient-to-b from-primary/5 to-white"
+            onClick={() => router.push('/dashboard/providers')}
+          >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Providers</CardTitle>
               <Building2 className="h-4 w-4 text-primary" />
@@ -99,7 +104,10 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-primary/20 bg-gradient-to-b from-primary/5 to-white">
+          <Card
+            className="cursor-pointer border-primary/20 bg-gradient-to-b from-primary/5 to-white"
+            onClick={() => router.push('/dashboard/tickets')}
+          >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Referrals</CardTitle>
               <FileText className="h-4 w-4 text-primary" />
@@ -118,7 +126,10 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-accent/60 bg-gradient-to-b from-accent/30 to-white">
+          <Card
+            className="cursor-pointer border-accent/60 bg-gradient-to-b from-accent/30 to-white"
+            onClick={() => router.push('/dashboard/tickets?status=pending')}
+          >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Open Referrals</CardTitle>
               <AlertCircle className="h-4 w-4 text-accent-foreground" />
@@ -135,7 +146,10 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-secondary/70 bg-gradient-to-b from-secondary to-white">
+          <Card
+            className="cursor-pointer border-secondary/70 bg-gradient-to-b from-secondary to-white"
+            onClick={() => router.push('/dashboard/admin/support')}
+          >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Support Tickets</CardTitle>
               <LifeBuoy className="h-4 w-4 text-secondary-foreground" />

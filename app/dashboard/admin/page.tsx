@@ -7,6 +7,7 @@ import {
   Layers,
   Shield,
   BarChart3,
+  Briefcase,
   LayoutDashboard,
   LifeBuoy,
   AlertTriangle,
@@ -17,6 +18,8 @@ import {
   Merge,
   ClipboardCheck,
   Calendar,
+  Palette,
+  Users,
 } from 'lucide-react'
 import { TenantsTab } from '@/components/admin/console/tenants-tab'
 import { ModulesTab } from '@/components/admin/console/modules-tab'
@@ -25,6 +28,9 @@ import { StatisticsTab } from '@/components/admin/console/statistics-tab'
 import { DashboardTab } from '@/components/admin/console/dashboard-tab'
 import { SupportTicketsTab } from '@/components/admin/console/support-tickets-tab'
 import { CrisisTab } from '@/components/admin/console/crisis-tab'
+import { CompanyTab } from '@/components/company/console/company-tab'
+import { BrandingTab } from '@/components/company/console/branding-tab'
+import { UsersTab } from '@/components/company/console/users-tab'
 
 // Lazy-load tabs that are imported from existing pages
 import dynamic from 'next/dynamic'
@@ -113,6 +119,10 @@ export default function AdminConsolePage() {
             <Calendar className="h-4 w-4" />
             <span>Events</span>
           </TabsTrigger>
+          <TabsTrigger value="company-management" className="flex items-center gap-2">
+            <Briefcase className="h-4 w-4" />
+            <span>Company Mgmt</span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard" className="space-y-6">
@@ -173,6 +183,37 @@ export default function AdminConsolePage() {
 
         <TabsContent value="events" className="space-y-6">
           <EventsTab />
+        </TabsContent>
+
+        <TabsContent value="company-management" className="space-y-6">
+          <Tabs defaultValue="company" className="space-y-6">
+            <TabsList className="grid w-full grid-cols-3 lg:w-[450px]">
+              <TabsTrigger value="company" className="flex items-center gap-2">
+                <Building2 className="h-4 w-4" />
+                <span className="hidden sm:inline">Company</span>
+              </TabsTrigger>
+              <TabsTrigger value="branding" className="flex items-center gap-2">
+                <Palette className="h-4 w-4" />
+                <span className="hidden sm:inline">Branding</span>
+              </TabsTrigger>
+              <TabsTrigger value="users" className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                <span className="hidden sm:inline">Users</span>
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="company" className="space-y-6">
+              <CompanyTab />
+            </TabsContent>
+
+            <TabsContent value="branding" className="space-y-6">
+              <BrandingTab />
+            </TabsContent>
+
+            <TabsContent value="users" className="space-y-6">
+              <UsersTab />
+            </TabsContent>
+          </Tabs>
         </TabsContent>
       </Tabs>
     </div>
