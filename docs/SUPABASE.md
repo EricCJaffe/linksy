@@ -51,6 +51,10 @@
 | `20260223133000_create_email_templates.sql` | Email template override table/policies |
 | `20260223160000_add_is_pinned_to_provider_notes.sql` | Optional note pinning support (safe if notes table absent) |
 | `20260223181500_remap_and_cleanup_legacy_need_categories.sql` | Remap legacy categories to active AIRS taxonomy, remove unused inactive categories |
+| `20260225204403_remote_schema.sql` | Remote schema sync (fixed to preserve region model columns) |
+| `20260302_ticket_events_and_sla.sql` | Ticket events audit trail + SLA due date trigger |
+
+> Full schema reference with column-level detail: `docs/AUDIT-2026-03-02.md` §Tables
 
 ### Extensions Used
 
@@ -71,7 +75,13 @@
 | `linksy_resolve_host` | `app/find-help/[slug]/page.tsx`, `app/api/hosts/by-slug/[slug]/route.ts` | Resolve host provider slug + allowed domains |
 | `linksy_user_can_access_provider` | `app/api/providers/[id]/*` | Enforce provider access (self, parent admin, site admin) |
 | `linksy_record_ticket_event` | `app/api/tickets/[id]/*`, `app/api/admin/tickets/[id]/reassign` | Append ticket timeline events |
+| `linksy_get_child_provider_ids` | `app/api/providers/[id]/hierarchy` | Get all child provider IDs for a parent |
+| `is_site_admin()` | RLS policies | Check current user is site_admin (SECURITY DEFINER) |
+| `is_tenant_admin(tenant_id)` | RLS policies | Check current user is tenant admin (SECURITY DEFINER) |
+| `belongs_to_tenant(tenant_id)` | RLS policies | Check current user belongs to tenant (SECURITY DEFINER) |
 | *(direct query)* | `api/providers/[id]/analytics/route.ts` | Aggregate `linksy_interactions` by type for provider analytics |
+
+> Full RPC function reference with signatures and return types: `docs/AUDIT-2026-03-02.md` §RPC Functions
 
 ### Key Tables
 
@@ -82,13 +92,19 @@
 - `linksy_provider_needs` — provider-to-need junction with source tracking
 - `linksy_provider_contacts` — staff linked to providers with roles and invitation flow
 - `linksy_provider_notes` — activity timeline per provider
-- `linksy_tickets` / `linksy_ticket_comments` — referral management
-- `linksy_events` — provider events with approval workflow
+- `linksy_tickets` / `linksy_ticket_comments` / `linksy_ticket_events` — referral management + immutable audit trail
+- `linksy_events` — provider events with approval workflow + recurrence
 - `linksy_search_sessions` — AI search session tracking and analytics
-- `linksy_interactions` — click/call/website analytics per session+provider
+- `linksy_interactions` — click/call/website/directions analytics per session+provider
 - `linksy_crisis_keywords` — crisis detection keywords and emergency resources
 - `linksy_webhooks` / `linksy_webhook_deliveries` — tenant outbound webhook configs and delivery logs
-- `linksy_email_templates` — admin-editable email template overrides
+- `linksy_email_templates` / `linksy_host_email_templates` — admin and host-level email template overrides
+- `linksy_provider_applications` — public onboarding intake (5-step wizard)
+- `linksy_call_logs` — call logging per ticket/provider
+- `linksy_surveys` — client satisfaction surveys (token-based anonymous access)
+- `linksy_host_custom_fields` — host-specific intake form fields
+- `linksy_docs` — knowledge base with full-text search (TSVECTOR)
+- `linksy_support_tickets` / `linksy_support_ticket_comments` — internal platform support
 
 ### Migration Hygiene
 

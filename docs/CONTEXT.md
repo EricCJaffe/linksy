@@ -20,7 +20,7 @@ provider portal).
 |-------|-----------|
 | Framework | Next.js 14 (App Router, React 18) |
 | Language | TypeScript 5 (strict mode) |
-| Database | Supabase (PostgreSQL + pgvector + PostGIS) |
+| Database | Supabase (PostgreSQL + pgvector + PostGIS + pg_trgm) |
 | Auth | Supabase Auth (cookie-based SSR sessions) |
 | Storage | Supabase Storage (`tenant-uploads`, `user-uploads`) |
 | AI | OpenAI (`text-embedding-3-small` for embeddings, `gpt-4o-mini` for chat) |
@@ -29,7 +29,9 @@ provider portal).
 | UI | Tailwind CSS + Radix UI (shadcn/ui) + Lucide icons |
 | State | React Query (TanStack Query v5) |
 | Forms | React Hook Form + Zod validation |
-| Deploy | Vercel |
+| Deploy | Vercel (auto-deploys from GitHub) |
+| Monitoring | Sentry (optional) |
+| Tests | Vitest (unit) + Playwright (E2E) |
 
 ## Key Entry Points
 
@@ -65,6 +67,8 @@ provider portal).
 - `/dashboard/admin/crisis` — crisis keyword management
 - `/dashboard/admin/reports` — analytics and reports
 - `/dashboard/admin/hosts` — host provider management
+- `/dashboard/admin/webhooks` — outbound webhook management
+- `/dashboard/admin/email-templates` — email template customization
 - `/dashboard/settings/*` — profile, branding, users, modules
 
 Provider Summary tab state (current):

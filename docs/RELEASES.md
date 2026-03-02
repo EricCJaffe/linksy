@@ -1,7 +1,19 @@
 # Releases
 
 ## Recent
-- Date: 2026-03-02
+
+- Date: 2026-03-02 (afternoon)
+- Summary: Auth fix, platform audit integration, go-live roadmap
+  - Fixed dashboard stall on login by invalidating stale React Query cache on auth state change (`onAuthStateChange` listener in `providers.tsx`, cache clearing in `login-form.tsx`, reduced staleTime)
+  - Added combined platform audit document (`docs/AUDIT-2026-03-02.md`) covering code review findings + Supabase schema reference + RLS security audit
+  - Created phased go-live roadmap in `docs/TASKS.md` with 4 phases: Phase 0 (critical security + data blockers), Phase 1 (feature completion + hardening), Phase 2 (business operations), Phase 3 (HIPAA compliance)
+  - Integrated all 30+ audit findings into roadmap by severity (CRITICAL/HIGH/MEDIUM/LOW)
+  - Added 7 RLS database security findings not previously tracked
+  - Created `AGENTS.md` for OpenAI Codex (parallel to `CLAUDE.md`)
+  - Updated `FEATURES_CHECKLIST.md` with new sections: user migration, billing, public website, AI event search, compliance
+  - Doc consistency pass across CONTEXT.md, RELEASES.md, CLAUDE.md, SUPABASE.md
+
+- Date: 2026-03-02 (morning)
 - Summary: Code quality and CI health sweep
   - Fixed ESLint config: removed `next/typescript` (Next 15-only); lint now loads correctly under Next 14
   - Fixed Sentry `global-error.tsx`: added `globals.css` import + Tailwind classes so error boundary no longer strips all page styling
