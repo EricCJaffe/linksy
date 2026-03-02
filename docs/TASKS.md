@@ -32,8 +32,9 @@
   - Fixed remote_schema migration (20260225204403) that was dropping `tenant_id` column/FK/indexes needed by region model
   - Fixed auth middleware `.maybeSingle()` to prefer region tenants when user has multiple memberships
   - Webhook dispatch now resolves tenant_id from provider record (not just auth context)
-- [ ] Apply migration `20260225223000_region_tenant_model.sql` (run in Supabase SQL Editor)
-- [ ] Run `scripts/backfill-provider-tenants.sql` after imports (run in Supabase SQL Editor)
+- [x] Apply migration `20260225223000_region_tenant_model.sql` — APPLIED 2026-03-02
+- [x] Run `scripts/backfill-provider-tenants.sql` — APPLIED 2026-03-02 (66/66 contacts backfilled)
+- [ ] **TEST**: Log in as a provider user and verify `/dashboard/my-tickets` shows their referrals (no longer "No referrals found")
 - [x] Verify tenant UI and webhooks scoped to Impact Clay — COMPLETED 2026-03-01
   - Webhook UI (`useCurrentTenant`) correctly filters to `type='region'` tenants
   - All ticket webhook dispatch routes now resolve tenant_id from `linksy_providers.tenant_id`
