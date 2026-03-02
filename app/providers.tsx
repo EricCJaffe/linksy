@@ -1,7 +1,8 @@
 'use client'
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { useState, type ReactNode } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import { ErrorBoundary } from '@/components/shared/error-boundary'
 import { Toaster } from '@/components/ui/toaster'
 
@@ -17,6 +18,24 @@ export function Providers({ children }: { children: ReactNode }) {
         },
       })
   )
+
+  // Invalidate auth-related queries when auth state changes (login/logout)
+  useEffect(() => {
+    const supabase = createClient()
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+        queryClient.invalidateQueries({ queryKey: ['currentUser'] })
+        queryClient.invalidateQueries({ queryKey: ['currentTenant'] })
+      }
+      if (event === 'SIGNED_OUT') {
+        queryClient.clear()
+      }
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [queryClient])
 
   return (
     <ErrorBoundary componentName="RootProviders" showReloadButton>

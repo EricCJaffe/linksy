@@ -75,9 +75,8 @@ export function useCurrentTenant() {
       }
     },
     retry: false, // Don't retry on failure to avoid infinite loading
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
-    refetchOnWindowFocus: false, // Don't refetch when window regains focus
+    staleTime: 30 * 1000, // 30 seconds — keep short so role/tenant changes reflect quickly
+    gcTime: 5 * 60 * 1000, // 5 minutes
   })
 }
 
