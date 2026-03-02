@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useQueryClient } from '@tanstack/react-query'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { loginSchema, type LoginInput } from '@/lib/utils/validation'
@@ -37,6 +38,7 @@ function MicrosoftIcon() {
 export function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const queryClient = useQueryClient()
   const [isLoading, setIsLoading] = useState(false)
   const [oauthLoading, setOauthLoading] = useState<'google' | 'azure' | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -107,6 +109,9 @@ export function LoginForm() {
         return
       }
 
+      // Clear stale auth cache so dashboard fetches fresh user/tenant data
+      queryClient.removeQueries({ queryKey: ['currentUser'] })
+      queryClient.removeQueries({ queryKey: ['currentTenant'] })
       router.push(redirectTo)
       router.refresh()
     } catch (err) {
