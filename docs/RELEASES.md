@@ -1,16 +1,18 @@
 # Releases
 
-## Upcoming
-- Date: TBD (next session)
-- Scope:
-  - Enforce per-client referral cap of 4 (replace current broader limit behavior)
-  - Bulk import approval-flag workflow before full activation
-  - Add call log as a provider note-type option
-  - Finalize parent/child account linking model + UI
-  - Finalize `Needs` vs `Needs Addressed` copy/placement decision
-  - Webhook admin end-to-end smoke validation and docs polish
-
 ## Recent
+- Date: 2026-03-02
+- Summary: Code quality and CI health sweep
+  - Fixed ESLint config: removed `next/typescript` (Next 15-only); lint now loads correctly under Next 14
+  - Fixed Sentry `global-error.tsx`: added `globals.css` import + Tailwind classes so error boundary no longer strips all page styling
+  - Fixed all ~40 `react/no-unescaped-entities` lint errors across 20 files; added `"warn"` rule as safety net
+  - Fixed `jsx-a11y/alt-text` false positive (Lucide `Image` → `ImageIcon` alias)
+  - Fixed `handleSelect` missing `useCallback` dep in `search-bar.tsx`
+  - Removed 3 debug `console.log` from middleware auth redirects
+  - Fixed 8 `react-hooks/exhaustive-deps` warnings (moved fetch fns inside `useEffect` or wrapped in `useCallback`)
+  - Removed 3 dead code files (160 LOC): `accordion.tsx`, `useSla.ts`, `routes.ts`
+  - Net result: lint errors 40+ → 0; lint warnings 20 → 10; type-check and tests green
+
 - Date: 2026-02-26
 - Summary:
   - Added region-tenant model migration and backfill tooling (Impact Clay + United Way of North Florida).

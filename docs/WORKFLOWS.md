@@ -13,6 +13,9 @@
 
 - **Type check:** `npm run type-check` (runs `tsc --noEmit`)
 - **Lint:** `npm run lint` (runs `next lint` — ESLint)
+- **ESLint config:** `.eslintrc.json` extends `next/core-web-vitals` only (not `next/typescript`, which requires Next 15+)
+- **Custom rules:** `react/no-unescaped-entities` downgraded to `"warn"` so stray apostrophes don't break CI
+- **Remaining warnings (10):** 6x `@next/next/no-img-element` (intentional for blob/external URLs), 4x `react-hooks/exhaustive-deps` (cascading deps not worth refactor risk)
 
 ## Tests
 

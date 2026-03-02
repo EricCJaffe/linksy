@@ -9,6 +9,19 @@
   - SSO integration (SAML)
 - [ ] No additional explicit `TODO`/`FIXME` markers found in `app/`, `lib/`, `components/`, `scripts/`, `supabase/`, `README.md`, or `docs/` as of 2026-02-26.
 
+## Session Snapshot (2026-03-02)
+
+### Completed Today
+- [x] Fixed ESLint config: removed `next/typescript` extend (Next 15-only, not available in Next 14); lint now loads cleanly
+- [x] Fixed Sentry `global-error.tsx` styling: added `globals.css` import + Tailwind classes + `reset` prop so error boundary no longer breaks all page styling
+- [x] Fixed all ~40 `react/no-unescaped-entities` lint errors across 20 files; added `"warn"` rule as CI safety net
+- [x] Fixed `jsx-a11y/alt-text` false positive in `file-upload.tsx` (renamed Lucide `Image` to `ImageIcon`)
+- [x] Fixed `handleSelect` missing `useCallback` dep in `search-bar.tsx`
+- [x] Removed 3 debug `console.log` statements from `middleware.ts` auth redirect paths
+- [x] Fixed 8 `react-hooks/exhaustive-deps` warnings: moved fetch functions inside `useEffect` or wrapped in `useCallback` (review-imports, support, dashboard, reports, survey, aging-referrals, support-tickets-tab)
+- [x] Removed 3 dead code files (160 LOC): `components/ui/accordion.tsx`, `lib/hooks/useSla.ts`, `lib/constants/routes.ts`
+- [x] Lint warnings reduced from 40+ errors → 0 errors, 10 warnings (6x `no-img-element`, 4x cascading deps)
+
 ## Session Snapshot (2026-02-23)
 
 ### Completed Today
@@ -148,6 +161,10 @@
 ### Provider Portal (Phase 2)
 
 ### Infrastructure
+- [x] ESLint config fix + JSX entity cleanup + dead code removal — COMPLETED 2026-03-02
+- [x] Sentry `global-error.tsx` styling fix — COMPLETED 2026-03-02
+- [x] `useEffect` exhaustive-deps cleanup (8 warnings) — COMPLETED 2026-03-02
+- [x] Middleware debug log removal — COMPLETED 2026-03-02
 
 ## Phase 2 (Deferred)
 
@@ -175,7 +192,7 @@
 - [x] Referral workflow e2e (public leg) — `e2e/referral-workflow.spec.ts` covers `/find-help` crisis check, AI search results, provider selection, interaction tracking, and referral ticket submission payload/confirmation
 - [x] Referral workflow e2e (authenticated status-update leg) — env-gated admin login helper (`e2e/helpers/auth.ts`) + dashboard ticket status update flow in `e2e/referral-workflow.spec.ts`; verifies ticket has `client_email` and PATCH status update to exercise email trigger path in `app/api/tickets/[id]/route.ts`
 - [x] Vitest discovery scope fix — `vitest.config.ts` now restricts `include` to `__tests__/**/*.test.{ts,tsx}` and excludes `node_modules`, `e2e`, `.next`; `npm run test:run` back to project-only tests (31 passing)
-- [x] Sentry error tracking — `@sentry/nextjs` installed; `sentry.client/server/edge.config.ts` initialized; `lib/utils/logger.ts` `sendToExternalService` calls `Sentry.captureException/captureMessage`; `lib/utils/error-handler.ts` `logError` calls `Sentry.captureException`; `next.config.js` wrapped with `withSentryConfig`; set `NEXT_PUBLIC_SENTRY_DSN` / `SENTRY_DSN` env vars to enable
+- [x] Sentry error tracking — `@sentry/nextjs` installed; instrumentation pattern (`instrumentation.ts` + `instrumentation-client.ts`); `global-error.tsx` with CSS import and Tailwind styling; `next.config.js` wrapped with `withSentryConfig`; set `NEXT_PUBLIC_SENTRY_DSN` / `SENTRY_DSN` env vars to enable
 - [x] Limited field editing for provider staff — `PATCH /api/providers/[id]` now allows active provider contacts to update description, phone, email, website, hours, social links, referral instructions; Edit Profile card on My Organization page with inline form
 - [x] Provider Management bulk actions — checkboxes + bulk activate/deactivate bar + export selected on providers list; `PATCH /api/admin/providers/bulk`
 - [x] LLM Context Card preview — shown in Details tab of provider detail page; `pre` block with mono font; "not generated" fallback

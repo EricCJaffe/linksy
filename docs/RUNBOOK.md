@@ -202,6 +202,23 @@ end $$;
 
 ---
 
+### 11. Sentry `global-error.tsx` breaks all page styling
+
+**Symptom:** When an unhandled error occurs, the entire page renders with no CSS — plain unstyled HTML.
+
+**Cause:** `app/global-error.tsx` renders its own `<html>` tag (it replaces the root layout). If it doesn't import `globals.css`, no Tailwind/CSS variables are loaded.
+
+**Fix:**
+- Ensure `app/global-error.tsx` imports `'./globals.css'` at the top
+- Use Tailwind utility classes in the error boundary markup
+- The `reset` prop should be wired to a "Try again" button
+
+**Verification:**
+1. Confirm `import './globals.css'` exists in `app/global-error.tsx`
+2. The error page should render with proper styling (centered message, styled button)
+
+---
+
 ## Health Check Endpoints
 
 - No dedicated health check endpoint exists. The simplest smoke test is:
