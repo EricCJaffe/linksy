@@ -9,6 +9,51 @@
   - SSO integration (SAML)
 - [ ] No additional explicit `TODO`/`FIXME` markers found in `app/`, `lib/`, `components/`, `scripts/`, `supabase/`, `README.md`, or `docs/` as of 2026-02-26.
 
+## Code Review Findings (2026-03-02)
+
+Full codebase review across API routes, auth/middleware, React components, and data fetching layers. Findings prioritized by severity.
+
+### CRITICAL — Fix Before Next Deploy
+
+- [ ] **XSS: Unsanitized `dangerouslySetInnerHTML`** — `components/ui/rich-text-display.tsx:14-18` and `rich-text-editor.tsx:100` render raw HTML without sanitization (e.g. DOMPurify). Any user-provided HTML (provider descriptions, notes) could execute scripts. **Add DOMPurify or similar.**
+- [ ] **Missing `/api/invitations/accept` endpoint** — `app/(auth)/signup/page.tsx:93` and `components/auth/invite-accept-form.tsx:62` POST to `/api/invitations/accept` but this route does not exist. Invitation acceptance is completely broken. **Create the endpoint.**
+- [ ] **Open redirect in `/api/auth/callback`** — `app/api/auth/callback/route.ts:14` takes `next` param from query string without validation and redirects to it. Attack: `?next=//evil.com`. **Validate `next` starts with `/` and has no double slashes.**
+- [ ] **Race condition in ticket numbering** — `app/api/linksy/tickets/route.ts:112-118` reads ticket count then inserts, allowing duplicate sequence numbers under concurrency. **Use PostgreSQL `nextval()` or an RPC with transactional locking.**
+
+### HIGH — Fix Soon
+
+- [ ] **OpenAI API calls missing error handling** — `app/api/linksy/search/route.ts:117-122` and `:419-435` have no try/catch around OpenAI embedding/chat calls. If the API fails or returns empty data, `embeddingResponse.data[0]` throws. **Wrap in try/catch with user-friendly fallback.**
+- [ ] **Hardcoded SITE_ID in multiple routes** — `app/api/linksy/search/route.ts:303` and `tickets/route.ts:39` hardcode `86bd8d01-0dc5-4479-beff-666712654104`. **Move to environment variable.**
+- [ ] **Provider API bypasses RLS with no tenant filter** — `app/api/linksy/providers/route.ts:9-58` uses `createServiceClient()` and returns all active providers to any requester. **Filter by tenant; use RLS-respecting client or add tenant check.**
+- [ ] **Open redirect in login form** — `components/auth/login-form.tsx:44,125` takes `redirect` param from search params without validation. **Validate it's a relative path.**
+- [ ] **Non-admin users can set `is_private` on comments** — `app/api/tickets/[id]/comments/route.ts` POST blindly accepts `is_private` from body. **Server should enforce: only site_admin can set `is_private: true`.**
+- [ ] **Merge operation has no transaction/rollback** — `app/api/admin/providers/merge/route.ts:74-195` logs errors on location/contact moves but continues, potentially leaving orphaned records. **Fail fast on first error or wrap in a transaction.**
+
+### MEDIUM — Address When Possible
+
+- [ ] **Crisis keyword test endpoint has no auth** — `app/api/crisis-keywords/test/route.ts` accepts arbitrary POST input with no authentication. **Add auth check.**
+- [ ] **`setTimeout` not cleaned up in find-help** — `app/find-help/page.tsx:258-277` sets a 5-second timeout for crisis banner dismissability with no cleanup on unmount. **Use `useEffect` with `clearTimeout`.**
+- [ ] **Search bar missing AbortController** — `components/shared/search-bar.tsx:40-64` fetch in useEffect doesn't abort on unmount/query change. **Add AbortController.**
+- [ ] **Notification subscription not tenant-scoped** — `lib/hooks/useNotifications.ts:54-72` subscribes to all `notifications` inserts without user/tenant filter. **Filter by `user_id`.**
+- [ ] **In-memory rate limiter ineffective on Vercel** — `lib/utils/rate-limit.ts` stores state in-memory per instance. On multi-instance Vercel, limits don't work. **Use Upstash Redis for production.**
+- [ ] **Activity logging uses browser client** — `lib/utils/activity.ts:35` calls `createClient()` (browser, RLS-bound) to insert audit logs. If user lacks insert permission, logs silently fail. **Use server-side service client.**
+- [ ] **`parseInt` NaN not handled** — `app/api/support-tickets/route.ts:15-16` and other routes don't guard against `NaN` from non-numeric query params. **Add `|| defaultValue` fallback.**
+- [ ] **Unsafe `any` types in hooks** — `useCurrentTenant.ts:53,61,71-74`, `find-help/page.tsx:334` use `any` for membership/provider data. **Create proper interfaces.**
+- [ ] **Missing staleTime/gcTime on queries** — `lib/hooks/useModules.ts` and others have no React Query cache config, causing unnecessary refetches. **Add reasonable staleTime.**
+- [ ] **Error response info disclosure** — Multiple routes (e.g. `app/api/invitations/route.ts:76`) return `validation.error.flatten()` exposing schema details. **Return generic messages; log details server-side.**
+- [ ] **CSRF allows `http://` origin in production** — `lib/middleware/csrf.ts:34-36` includes `http://${host}` in allowed origins. **Only allow HTTP in development.**
+
+### LOW — Backlog
+
+- [ ] **Array index used as React key** — 15+ instances across `find-help/page.tsx:464`, `find-help-widget.tsx:339`, `search-results.tsx:52`, ticket/admin pages. Causes state bugs on reorder/filter.
+- [ ] **Silent `.catch(() => {})` swallowing errors** — `find-help-widget.tsx:213`, `provider-detail-tabs.tsx:676,685,761`, `statistics-tab.tsx:17,274`. Failures are invisible.
+- [ ] **`alert()` used for errors** — `components/providers/call-log-form.tsx:59-102` uses `alert()` instead of toast notifications.
+- [ ] **Environment variables not validated at startup** — `lib/utils/email.ts`, `lib/supabase/client.ts` use `!` non-null assertions with no runtime check. App silently breaks if vars missing.
+- [ ] **Sensitive logging in set-password page** — `app/auth/set-password/page.tsx` logs token availability to browser console. **Remove for production.**
+- [ ] **File upload paths use `Date.now()` + UUID** — `app/api/providers/[id]/notes/upload/route.ts:67-68`, `app/api/files/upload/route.ts:73-76`. The timestamp is unnecessary given UUID. No filename length limit.
+- [ ] **CSV export no error handling** — `lib/api/audit-logs.ts:60-64` `exportAuditLogsToCSV` has no try/catch.
+- [ ] **Missing null check** — `lib/hooks/useProviderPermissions.ts:34-35` assumes `provider.contacts` exists without `?.`.
+
 ## Session Snapshot (2026-03-02)
 
 ### Completed Today
