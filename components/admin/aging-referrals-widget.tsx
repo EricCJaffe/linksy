@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -42,7 +42,7 @@ export function AgingReferralsWidget() {
   const [thresholdHours, setThresholdHours] = useState(48)
   const [lastNotified, setLastNotified] = useState<Date | null>(null)
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     setLoading(true)
     try {
       const res = await fetch(`/api/admin/tickets/aging?threshold_hours=${thresholdHours}`)
@@ -55,14 +55,14 @@ export function AgingReferralsWidget() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [thresholdHours])
 
   useEffect(() => {
     fetchStats()
     // Refresh every 5 minutes
     const interval = setInterval(fetchStats, 5 * 60 * 1000)
     return () => clearInterval(interval)
-  }, [thresholdHours])
+  }, [fetchStats])
 
   const handleSendNotifications = async () => {
     if (!confirm(`Send email notifications to all site admins about ${stats?.total || 0} aging referrals?`)) {

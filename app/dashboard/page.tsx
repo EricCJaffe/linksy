@@ -26,26 +26,25 @@ export default function DashboardPage() {
   const [includeLegacy, setIncludeLegacy] = useState(true)
 
   useEffect(() => {
+    const fetchStats = async () => {
+      setIsLoading(true)
+      try {
+        const params = new URLSearchParams()
+        if (includeLegacy) params.set('includeLegacy', 'true')
+
+        const res = await fetch(`/api/stats/overview?${params.toString()}`)
+        if (res.ok) {
+          const data = await res.json()
+          setStats(data)
+        }
+      } catch (error) {
+        console.error('Failed to fetch stats:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
     fetchStats()
   }, [includeLegacy])
-
-  const fetchStats = async () => {
-    setIsLoading(true)
-    try {
-      const params = new URLSearchParams()
-      if (includeLegacy) params.set('includeLegacy', 'true')
-
-      const res = await fetch(`/api/stats/overview?${params.toString()}`)
-      if (res.ok) {
-        const data = await res.json()
-        setStats(data)
-      }
-    } catch (error) {
-      console.error('Failed to fetch stats:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
 
   const isSiteAdmin = user?.profile?.role === 'site_admin'
   const isProviderUser = providerStats?.hasAccess && !isSiteAdmin

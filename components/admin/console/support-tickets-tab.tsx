@@ -54,27 +54,24 @@ export function SupportTicketsTab() {
   const [stats, setStats] = useState({ open: 0, in_progress: 0, total: 0 })
 
   useEffect(() => {
-    fetchTickets()
-  }, [statusFilter])
+    const fetchTickets = async () => {
+      setIsLoading(true)
+      setError(null)
 
-  const fetchTickets = async () => {
-    setIsLoading(true)
-    setError(null)
+      try {
+        const url = statusFilter === 'all'
+          ? '/api/support-tickets?limit=100'
+          : `/api/support-tickets?status=${statusFilter}&limit=100`
 
-    try {
-      const url = statusFilter === 'all'
-        ? '/api/support-tickets?limit=100'
-        : `/api/support-tickets?status=${statusFilter}&limit=100`
+        const response = await fetch(url)
+        if (!response.ok) throw new Error('Failed to fetch tickets')
 
-      const response = await fetch(url)
-      if (!response.ok) throw new Error('Failed to fetch tickets')
+        const data = await response.json()
+        setTickets(data.tickets)
 
-      const data = await response.json()
-      setTickets(data.tickets)
-
-      // Calculate stats
-      if (statusFilter === 'all') {
-        const openCount = data.tickets.filter((t: SupportTicket) => t.status === 'open').length
+        // Calculate stats
+        if (statusFilter === 'all') {
+          const openCount = data.tickets.filter((t: SupportTicket) => t.status === 'open').length
         const inProgressCount = data.tickets.filter((t: SupportTicket) => t.status === 'in_progress').length
         setStats({
           open: openCount,
@@ -87,7 +84,9 @@ export function SupportTicketsTab() {
     } finally {
       setIsLoading(false)
     }
-  }
+    }
+    fetchTickets()
+  }, [statusFilter])
 
   return (
     <div className="space-y-6">

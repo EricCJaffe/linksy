@@ -160,52 +160,57 @@ export default function ReportsPage() {
   const isProviderUser = providerAccess?.hasAccess && !isSiteAdmin
   const accessLevel = providerAccess?.accessLevel || 'self'
 
-  useEffect(() => { fetchReports() }, [includeLegacy])
-  useEffect(() => { fetchSearchAnalytics() }, [])
-  useEffect(() => { if (activeTab === 'reassignments' && isSiteAdmin) fetchReassignmentStats() }, [activeTab, isSiteAdmin])
-
-  const fetchReports = async () => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const params = new URLSearchParams()
-      params.set('type', 'referrals')
-      if (includeLegacy) params.set('includeLegacy', 'true')
-      const res = await fetch(`/api/reports?${params.toString()}`)
-      if (!res.ok) throw new Error('Failed to fetch reports')
-      setData(await res.json())
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
-    } finally {
-      setIsLoading(false)
+  useEffect(() => {
+    const fetchReports = async () => {
+      setIsLoading(true)
+      setError(null)
+      try {
+        const params = new URLSearchParams()
+        params.set('type', 'referrals')
+        if (includeLegacy) params.set('includeLegacy', 'true')
+        const res = await fetch(`/api/reports?${params.toString()}`)
+        if (!res.ok) throw new Error('Failed to fetch reports')
+        setData(await res.json())
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred')
+      } finally {
+        setIsLoading(false)
+      }
     }
-  }
+    fetchReports()
+  }, [includeLegacy])
 
-  const fetchSearchAnalytics = async () => {
-    setSearchLoading(true)
-    try {
-      const params = new URLSearchParams()
-      params.set('type', 'search')
-      const res = await fetch(`/api/reports?${params.toString()}`)
-      if (res.ok) setSearchData(await res.json())
-    } catch {
-      // non-fatal
-    } finally {
-      setSearchLoading(false)
+  useEffect(() => {
+    const fetchSearchAnalytics = async () => {
+      setSearchLoading(true)
+      try {
+        const params = new URLSearchParams()
+        params.set('type', 'search')
+        const res = await fetch(`/api/reports?${params.toString()}`)
+        if (res.ok) setSearchData(await res.json())
+      } catch {
+        // non-fatal
+      } finally {
+        setSearchLoading(false)
+      }
     }
-  }
+    fetchSearchAnalytics()
+  }, [])
 
-  const fetchReassignmentStats = async () => {
-    if (!isSiteAdmin) return
-    try {
-      const params = new URLSearchParams()
-      params.set('type', 'reassignments')
-      const res = await fetch(`/api/reports?${params.toString()}`)
-      if (res.ok) setReassignmentData(await res.json())
-    } catch {
-      // non-fatal
+  useEffect(() => {
+    const fetchReassignmentStats = async () => {
+      if (!isSiteAdmin) return
+      try {
+        const params = new URLSearchParams()
+        params.set('type', 'reassignments')
+        const res = await fetch(`/api/reports?${params.toString()}`)
+        if (res.ok) setReassignmentData(await res.json())
+      } catch {
+        // non-fatal
+      }
     }
-  }
+    if (activeTab === 'reassignments' && isSiteAdmin) fetchReassignmentStats()
+  }, [activeTab, isSiteAdmin])
 
   if (error && activeTab === 'referrals') {
     return (

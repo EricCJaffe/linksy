@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -39,7 +39,7 @@ export default function ReviewImportsPage() {
   const [total, setTotal] = useState(0)
   const [offset, setOffset] = useState(0)
 
-  const fetchPendingProviders = async () => {
+  const fetchPendingProviders = useCallback(async () => {
     setLoading(true)
     try {
       const res = await fetch(`/api/admin/providers/review-imports?limit=${LIMIT}&offset=${offset}`)
@@ -53,11 +53,11 @@ export default function ReviewImportsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [offset])
 
   useEffect(() => {
     fetchPendingProviders()
-  }, [offset])
+  }, [fetchPendingProviders])
 
   const handleReview = async (action: 'approve' | 'reject') => {
     if (selectedIds.size === 0) {

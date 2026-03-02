@@ -25,25 +25,24 @@ export default function SurveyPage({ params }: { params: { token: string } }) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetchSurvey()
-  }, [])
-
-  const fetchSurvey = async () => {
-    try {
-      const res = await fetch(`/api/surveys/${params.token}`)
-      if (res.ok) {
-        const data = await res.json()
-        setSurvey(data)
-        if (data.completed_at) setIsSubmitted(true)
-      } else {
-        setError('Survey not found or has expired.')
+    const fetchSurvey = async () => {
+      try {
+        const res = await fetch(`/api/surveys/${params.token}`)
+        if (res.ok) {
+          const data = await res.json()
+          setSurvey(data)
+          if (data.completed_at) setIsSubmitted(true)
+        } else {
+          setError('Survey not found or has expired.')
+        }
+      } catch {
+        setError('Failed to load survey.')
+      } finally {
+        setIsLoading(false)
       }
-    } catch {
-      setError('Failed to load survey.')
-    } finally {
-      setIsLoading(false)
     }
-  }
+    fetchSurvey()
+  }, [params.token])
 
   const handleSubmit = async () => {
     if (rating === 0) return
