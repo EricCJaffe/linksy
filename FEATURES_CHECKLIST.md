@@ -470,9 +470,63 @@
 
 ---
 
-## 9. FUTURE FEATURES (Phase 2-3)
+## 9. USER MIGRATION & ONBOARDING
 
-- [ ] Stripe billing integration (automated subscriptions)
+- [ ] Auth migration plan for existing users (provider contacts with no passwords)
+- [ ] Bulk invite / magic-link flow for migrated users
+- [ ] Account claim verification (email + set password)
+- [ ] Rollout communication plan
+
+---
+
+## 10. DATA MIGRATION (Pre-Go-Live Sync)
+
+- [ ] Incremental import to sync delta from legacy system
+- [ ] Re-generate embeddings and LLM context cards for new/updated providers
+- [ ] Final data QA pass before cutover
+
+---
+
+## 11. BILLING & FINANCIAL
+
+- [ ] Stripe integration — Checkout, Customer Portal, webhook handlers
+- [ ] Subscription tiers and pricing model
+- [ ] Subscription status linked to host/tenant access
+- [ ] QuickBooks integration (invoice/payment sync)
+
+---
+
+## 12. PUBLIC WEBSITE & DOMAIN
+
+- [ ] Public Impact Works website (marketing, onboarding CTAs, pricing)
+- [ ] Custom domain setup (DNS, Vercel, SSL)
+- [ ] Email domain configuration (SPF/DKIM/DMARC, sender addresses)
+- [ ] Email account provisioning (who gets @impactworks addresses)
+
+---
+
+## 13. AI SEARCH — EVENTS INTEGRATION
+
+- [ ] Events included in AI search pipeline (vector search or supplemental results)
+- [ ] Event data in LLM context cards (name, date, time, location, registration)
+- [ ] Event result cards in widget UI
+- [ ] Filter to future published events only
+
+---
+
+## 14. COMPLIANCE
+
+- [ ] HIPAA risk assessment (audit PHI flows through system)
+- [ ] BAAs with all sub-processors (Supabase, Vercel, OpenAI, Resend)
+- [ ] Encryption audit (at rest + in transit)
+- [ ] PHI access audit logging
+- [ ] Data retention policies
+- [ ] Compliance documentation
+
+---
+
+## 15. FUTURE FEATURES (Phase 3+)
+
 - [ ] Multi-region support (beyond Clay County)
 - [ ] United Way partnership integrations
 - [ ] AIRS/211 taxonomy mapping
@@ -480,7 +534,6 @@
 - [ ] A/B testing for AI prompts
 - [ ] Provider rating/feedback system
 - [ ] Advanced event recurrence (iCal RRULE)
-- [ ] Email notifications (new ticket, status changes)
 - [ ] SMS notifications
 - [ ] Bulk provider import (CSV upload)
 - [ ] AI-suggested provider-needs mappings

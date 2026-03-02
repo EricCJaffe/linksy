@@ -211,14 +211,170 @@ Full codebase review across API routes, auth/middleware, React components, and d
 - [x] `useEffect` exhaustive-deps cleanup (8 warnings) — COMPLETED 2026-03-02
 - [x] Middleware debug log removal — COMPLETED 2026-03-02
 
-## Phase 2 (Deferred)
+---
+
+## Go-Live Roadmap
+
+Organized into phases. Everything in Phase 0–2 must be completed or have a clear workaround before public launch.
+
+### Phase 0 — Data & Infrastructure (Blockers)
+
+These must be resolved first; everything else depends on clean data and working accounts.
+
+#### 0.1 User Migration Strategy
+- [ ] **Design auth migration plan for existing users** — Current state: ~167+ users exist in Supabase with usernames in the `user_id` field and are listed as `linksy_provider_contacts`, but **none have passwords set**. They cannot log in. Options to evaluate:
+  - **(a) Magic link / passwordless invite flow** — Send each user a one-time email link that creates their Supabase Auth session and prompts them to set a password. Leverages existing `/invite/[token]` and `/auth/set-password` infrastructure.
+  - **(b) Bulk password-reset emails** — Use Supabase Admin API to trigger `resetPasswordForEmail()` for every migrated user. Simpler but requires valid email addresses on file.
+  - **(c) First-login password creation** — Allow users to “claim” their account by verifying email + setting password on first visit (similar to (a) but self-service, no admin trigger).
+  - **Decision needed:** Which approach? Does every contact need login access, or only primary contacts?
+- [ ] Audit `linksy_provider_contacts` to confirm which contacts have valid `user_id` references in `auth.users`
+- [ ] Audit email addresses — ensure all contacts who need access have valid, deliverable emails
+- [ ] Build or adapt bulk invite script (likely extends existing `/api/invitations` flow)
+- [ ] Test migration flow end-to-end with a small batch before full rollout
+- [ ] Document rollout communication plan (what email do users receive, what do they do)
+
+#### 0.2 Data Migration & Import (Pre-Go-Live Sync)
+- [ ] **Build/utilize import function to bring system up to date** — The initial Power Apps → Supabase migration is done (providers, needs, tickets imported), but production data has continued accumulating in the legacy system. Need to:
+  - Identify delta: new providers, updated contacts, new referrals since last import
+  - Build incremental import script (or re-run full import with upsert logic)
+  - Reconcile any manual edits made in Linksy with legacy source-of-truth
+  - Run final sync as close to go-live as possible (ideally same-day cutover)
+- [ ] Verify all provider embeddings and LLM context cards are generated for new/updated providers
+- [ ] Verify geocoding is complete for all locations
+- [ ] Final QA pass: spot-check 10+ providers for data accuracy (name, phone, address, needs)
+
+#### 0.3 Template Email Data
+- [ ] **Collect and configure all email template content** — The `linksy_email_templates` system exists but needs production-ready copy for:
+  - New referral notification (to provider)
+  - Referral status update (to client)
+  - Provider invitation / welcome email
+  - User migration / account claim email (ties to 0.1)
+  - Ticket comment notification
+  - Any host-specific template overrides
+- [ ] Get final copy from stakeholders (Impact Clay branding, tone, legal disclaimers)
+- [ ] Load templates into `linksy_email_templates` table via admin UI or migration script
+
+#### 0.4 Email & Domain Setup (Impact Works)
+- [ ] **Email implications of new Impact Works domain** — Decisions needed:
+  - Which domain? (e.g., `impactworks.org`, `impactworks.com`, `impactworks.app`)
+  - SPF/DKIM/DMARC records for transactional email (Resend) — required for deliverability
+  - Who needs `@impactworks` email addresses? (Eric, admins, support inbox)
+  - Set up shared/alias inboxes (e.g., `support@`, `referrals@`, `noreply@`)
+  - Update `ADMIN_EMAIL` env var and Resend sender domain
+  - Update `NEXT_PUBLIC_APP_URL` and `NEXT_PUBLIC_SITE_URL` for the production domain
+- [ ] Configure DNS records (Vercel custom domain + email DNS)
+- [ ] Verify Resend domain authentication (SPF, DKIM, DMARC)
+
+### Phase 1 — Feature Completion (Pre-Go-Live)
+
+Core features that users and admins will need on day one.
+
+#### 1.1 Reassign Referral to Another Provider
+- [ ] **Verify “reassign to other provider” feature is working** — Auto-reroute was completed 2026-02-25 (provider can flag “unable to assist” → system offers reassignment). Need to:
+  - End-to-end test: create referral → provider marks unable to assist → admin reassigns to new provider
+  - Verify the new provider receives notification email
+  - Verify ticket history/comments reflect the reassignment
+  - Verify `ticket.reassigned` webhook fires correctly
+  - Test from provider portal view (not just admin)
+
+#### 1.2 Events Visibility for End Users
+- [ ] **Decide where event page/list appears for public users** — Options:
+  - **(a) In the chatbot results** — When a user searches a need, show relevant upcoming events alongside providers
+  - **(b) Dedicated `/events` public page** — Standalone calendar/list page linked from nav or widget
+  - **(c) On the public provider directory** — Events shown on each provider's public profile
+  - **(d) Combination** — Show in chatbot results AND a dedicated page
+  - **Decision needed:** Which approach? Does this vary by host?
+- [ ] Implement chosen approach
+- [ ] Ensure events respect approval status (only `published` events shown publicly)
+
+#### 1.3 AI Search Includes Events
+- [ ] **Extend AI search pipeline to include event listings** — Currently searches only provider services/needs. Need to:
+  - Include upcoming published events in the vector search or as supplemental results
+  - Add event data to LLM context (event name, date, time, location, description, provider)
+  - Generate embeddings for events (or match events to needs via `linksy_provider_needs`)
+  - LLM should mention relevant events naturally (e.g., “They also have a food distribution event this Saturday...”)
+  - Filter to future events only (no past events in results)
+- [ ] Update search API response to include event cards alongside provider cards
+- [ ] Widget UI: display event result cards with date, time, location, and registration link
+
+#### 1.4 Host Danger Word Filtering
+- [ ] **Verify host ability to filter crisis/danger words** — System currently has global `linksy_crisis_keywords` with detection + emergency banners. Need to verify:
+  - Hosts can see crisis detection working in their embedded widget
+  - Confirm crisis keywords are comprehensive (review current list with stakeholders)
+  - Test: type a crisis keyword in a host-embedded widget → emergency banner appears
+  - Determine if hosts need per-host keyword customization (beyond global list)
+  - Document for hosts how the safety system works
+
+#### 1.5 Reporting Features
+- [ ] **Design and build reporting features** — Analytics dashboard exists with search, provider, crisis, widget, and ticket tabs. Evaluate gaps:
+  - Admin-facing reports: referral volume by provider/need/time period, provider response times, aging referrals
+  - Exportable reports (CSV/PDF) for board meetings and funders
+  - Scheduled report emails (weekly/monthly digest to admin)
+  - Provider-facing reports: their own referral stats, response time metrics
+  - Host-facing reports: widget usage, search volume, top needs
+  - Funder/grant reporting: aggregate impact metrics (people served, referrals completed, needs addressed)
+- [ ] Prioritize which reports are needed for go-live vs. post-launch
+- [ ] Build priority reports
+
+### Phase 2 — Business Operations (Go-Live Adjacent)
+
+Needed for sustainability but not blocking initial launch if timeline is tight.
+
+#### 2.1 Public-Facing Impact Works Website
+- [ ] **Set up the public Impact Works website** — Decisions needed:
+  - Separate marketing site (e.g., WordPress/Webflow at `impactworks.org`) vs. enhanced Linksy landing page at `/`?
+  - Content needed: mission statement, about us, for providers (onboarding CTA), for communities (find help CTA), pricing/plans, contact
+  - Design: brand guidelines, logo, color palette for Impact Works (vs. Impact Clay sub-brand)
+  - SEO: meta tags, Open Graph, sitemap
+- [ ] Build or configure the chosen approach
+- [ ] Set up analytics (Google Analytics / Plausible)
+
+#### 2.2 Stripe Integration — Monthly Recurring Billing
+- [ ] **Incorporate Stripe for subscription billing** — The base template has a placeholder for billing. Need to:
+  - Set up Stripe account and API keys
+  - Define pricing tiers (per-host? per-tenant? per-provider? flat fee + usage?)
+  - Implement Stripe Checkout for onboarding / subscription start
+  - Implement Stripe Customer Portal for self-service billing management
+  - Webhook handler for `invoice.paid`, `invoice.payment_failed`, `customer.subscription.updated`, `customer.subscription.deleted`
+  - Link subscription status to host/tenant `is_active` and feature access
+  - Grace period logic for failed payments
+  - Admin UI: view subscription status, revenue dashboard
+- [ ] Set up Stripe test environment and test full lifecycle (subscribe → invoice → pay → cancel)
+
+#### 2.3 QuickBooks Integration
+- [ ] **Ability to integrate with QuickBooks** — For Impact Works financial management:
+  - Evaluate: QuickBooks Online API vs. third-party connector (e.g., Zapier, Make)
+  - Sync Stripe invoices/payments → QuickBooks as income entries
+  - Map customers (tenants/hosts) to QuickBooks customer records
+  - Recurring subscription revenue recognition
+  - Determine scope: read-only reporting, or two-way sync?
+- [ ] Choose integration approach and implement
+
+### Phase 3 — Compliance & Scale (Post-Launch Priority)
+
+#### 3.1 HIPAA-Level Capacity
+- [ ] **Evaluate and implement HIPAA compliance measures** — Linksy handles referral data that may include protected health information (PHI). Need to:
+  - **Audit current data handling**: What PHI flows through the system? (client names, contact info, health-related needs, referral details)
+  - **Supabase**: Confirm Supabase project is on a HIPAA-eligible plan; execute BAA (Business Associate Agreement) with Supabase
+  - **Vercel**: Evaluate Vercel's HIPAA compliance posture; may need Vercel Enterprise or alternative hosting
+  - **OpenAI**: Execute BAA with OpenAI (available on Enterprise tier); evaluate if PHI is sent to LLM (currently client queries may contain health info)
+  - **Resend/Email**: Ensure email provider supports BAA; transactional emails may contain PHI
+  - **Encryption**: Verify encryption at rest and in transit for all PHI fields
+  - **Access controls**: Audit that RLS properly restricts PHI to authorized users only
+  - **Audit logging**: Ensure all PHI access is logged (existing `audit_logs` table may need expansion)
+  - **Data retention**: Define and enforce retention policies for search sessions, tickets, client data
+  - **Staff training**: Document data handling procedures
+  - **BAA cascade**: Ensure all sub-processors (Supabase, Vercel, OpenAI, Resend, Google Maps) have BAAs in place
+- [ ] Engage compliance consultant if needed for formal HIPAA risk assessment
+- [ ] Document compliance posture and any limitations
+
+### Phase 4 (Deferred / Post-Launch)
 
 - [ ] Voice input (Whisper) in widget (`/api/linksy/transcribe` + widget mic UX)
 - [ ] Microphone input for chatbot
 - [ ] Spanish (es) language support (duplicates README “Multi-language support (i18n)” item)
 - [ ] Multi-language support (i18n) — README roadmap item (covers Spanish language support)
 - [ ] Two-factor authentication (2FA) — README roadmap item (covers admin TOTP)
-- [ ] Billing and subscription management (README roadmap item)
 - [ ] SSO integration (SAML) (README roadmap item)
 
 ## Done
