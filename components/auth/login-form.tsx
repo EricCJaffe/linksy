@@ -35,6 +35,19 @@ function MicrosoftIcon() {
   )
 }
 
+/**
+ * Validate that a redirect target is a safe relative path.
+ * Blocks protocol-relative URLs (//evil.com), absolute URLs, and
+ * anything that doesn't start with a single slash.
+ */
+function safeRedirectPath(raw: string | null): string {
+  const fallback = '/dashboard'
+  if (!raw) return fallback
+  if (!raw.startsWith('/') || raw.startsWith('//')) return fallback
+  if (raw.includes('\\')) return fallback
+  return raw
+}
+
 export function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -43,7 +56,7 @@ export function LoginForm() {
   const [oauthLoading, setOauthLoading] = useState<'google' | 'azure' | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const redirectTo = searchParams.get('redirect') || '/dashboard'
+  const redirectTo = safeRedirectPath(searchParams.get('redirect'))
   const oauthError = searchParams.get('error')
 
   const {

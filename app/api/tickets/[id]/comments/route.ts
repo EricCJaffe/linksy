@@ -49,13 +49,16 @@ export async function POST(
     .eq('id', auth.user.id)
     .single()
 
+  // Only site admins can create private comments
+  const isPrivate = auth.isSiteAdmin && body.is_private === true
+
   const { data: comment, error: insertError } = await supabase
     .from('linksy_ticket_comments')
     .insert({
       ticket_id: id,
       author_id: auth.user.id,
       content: body.content,
-      is_private: body.is_private || false,
+      is_private: isPrivate,
       author_name: profile?.full_name || auth.user.email,
       author_role: profile?.role || auth.user.role,
     })

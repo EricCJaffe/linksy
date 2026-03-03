@@ -1,18 +1,20 @@
 import { NextResponse } from 'next/server'
-import { createServiceClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 
 /**
  * GET /api/linksy/providers
- * Public endpoint for browsing active providers
- * No authentication required
+ * Public endpoint for browsing active providers.
+ * Uses RLS-respecting client instead of service client.
+ * Accepts optional `tenant_id` filter to scope results.
  */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const limit = Math.min(parseInt(searchParams.get('limit') || '100', 10), 200)
+  const tenantId = searchParams.get('tenant_id')
 
-  const supabase = await createServiceClient()
+  const supabase = await createClient()
 
-  const { data: providers, error: queryError } = await supabase
+  let query = supabase
     .from('linksy_providers')
     .select(`
       id,
@@ -46,6 +48,12 @@ export async function GET(request: Request) {
     .eq('is_active', true)
     .order('name', { ascending: true })
     .limit(limit)
+
+  if (tenantId) {
+    query = query.eq('tenant_id', tenantId)
+  }
+
+  const { data: providers, error: queryError } = await query
 
   if (queryError) {
     console.error('Error fetching providers:', queryError)
