@@ -2,6 +2,16 @@
 
 ## Recent
 
+- Date: 2026-03-03
+- Summary: Security audit remediation + documentation overhaul
+  - Resolved all 4 CRITICAL security vulnerabilities: XSS sanitization (DOMPurify), missing `/api/invitations/accept` endpoint, open redirect in auth callback + login form, ticket numbering race condition (PG sequence + RPC)
+  - Resolved all 6 HIGH security vulnerabilities: OpenAI error handling, hardcoded SITE_ID → env var, provider API RLS bypass, `is_private` comment enforcement, merge fail-fast
+  - Resolved 7 of 11 MEDIUM code quality findings: `setTimeout` cleanup, AbortController on search bar, notification user_id scoping, `parseInt` NaN handling, error response disclosure, CSRF http:// gating
+  - Resolved 3 of 8 LOW code quality findings: `alert()` → toast, sensitive logging removal, null check with optional chaining
+  - Wrote RLS security hardening migration (`20260303000002_rls_security_hardening.sql`) covering 6 tables — pending Supabase apply
+  - Major documentation cleanup: rewrote `docs/TASKS.md` (removed duplicates, synced roadmap with actual code state, consolidated completed items), updated `FEATURES_CHECKLIST.md` (audited ~200 items against codebase, marked ~85% complete), updated `docs/AUDIT-2026-03-02.md` (marked completed findings)
+  - Net audit status: 20 of 30+ findings resolved; 9 remain open (4 MEDIUM, 5 LOW code quality; plus RLS migration apply)
+
 - Date: 2026-03-02 (afternoon)
 - Summary: Auth fix, platform audit integration, go-live roadmap
   - Fixed dashboard stall on login by invalidating stale React Query cache on auth state change (`onAuthStateChange` listener in `providers.tsx`, cache clearing in `login-form.tsx`, reduced staleTime)
