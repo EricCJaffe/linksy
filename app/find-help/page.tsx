@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
@@ -99,6 +99,7 @@ export default function FindHelpPage() {
     matched_keyword: string
   } | null>(null)
   const [bannerDismissable, setBannerDismissable] = useState(false)
+  const bannerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const SITE_ID = '86bd8d01-0dc5-4479-beff-666712654104'
 
@@ -273,7 +274,8 @@ export default function FindHelpPage() {
       if (crisisResult) {
         setCrisisBanner(crisisResult)
         setBannerDismissable(false)
-        setTimeout(() => setBannerDismissable(true), 5000)
+        if (bannerTimeoutRef.current) clearTimeout(bannerTimeoutRef.current)
+        bannerTimeoutRef.current = setTimeout(() => setBannerDismissable(true), 5000)
       }
 
       if (!response.ok) {
@@ -313,6 +315,13 @@ export default function FindHelpPage() {
       handleSearch()
     }
   }
+
+  // Clean up banner timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (bannerTimeoutRef.current) clearTimeout(bannerTimeoutRef.current)
+    }
+  }, [])
 
   // Fetch need categories and count providers for each on mount
   useEffect(() => {

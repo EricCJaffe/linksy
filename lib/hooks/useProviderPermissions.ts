@@ -31,7 +31,7 @@ export function useProviderPermissions(
   const { data: currentUser } = useCurrentUser()
 
   // Find the user's contact record in this provider
-  const userContact = provider.contacts.find(
+  const userContact = provider.contacts?.find(
     (c) => c.user_id === currentUser?.profile?.id
   )
 

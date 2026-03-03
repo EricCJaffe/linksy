@@ -61,7 +61,7 @@ export async function PATCH(
     const validation = tenantSchema.pick({ name: true }).safeParse({ name: allowedUpdates.name })
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid input', details: validation.error.flatten() },
+        { error: 'Invalid input. Please check all required fields.' },
         { status: 400 }
       )
     }

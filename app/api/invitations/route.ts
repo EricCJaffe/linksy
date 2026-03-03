@@ -73,7 +73,7 @@ export async function POST(request: Request) {
 
   if (!validation.success) {
     return NextResponse.json(
-      { error: 'Invalid input', details: validation.error.flatten() },
+      { error: 'Invalid input. Please check all required fields.' },
       { status: 400 }
     )
   }

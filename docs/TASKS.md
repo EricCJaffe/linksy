@@ -18,44 +18,44 @@ Full codebase review across API routes, auth/middleware, React components, and d
 
 ### CRITICAL — Fix Before Next Deploy
 
-- [ ] **XSS: Unsanitized `dangerouslySetInnerHTML`** — `components/ui/rich-text-display.tsx:14-18` and `rich-text-editor.tsx:100` render raw HTML without sanitization (e.g. DOMPurify). Any user-provided HTML (provider descriptions, notes) could execute scripts. **Add DOMPurify or similar.**
-- [ ] **Missing `/api/invitations/accept` endpoint** — `app/(auth)/signup/page.tsx:93` and `components/auth/invite-accept-form.tsx:62` POST to `/api/invitations/accept` but this route does not exist. Invitation acceptance is completely broken. **Create the endpoint.**
-- [ ] **Open redirect in `/api/auth/callback`** — `app/api/auth/callback/route.ts:14` takes `next` param from query string without validation and redirects to it. Attack: `?next=//evil.com`. **Validate `next` starts with `/` and has no double slashes.**
-- [ ] **Race condition in ticket numbering** — `app/api/linksy/tickets/route.ts:112-118` reads ticket count then inserts, allowing duplicate sequence numbers under concurrency. **Use PostgreSQL `nextval()` or an RPC with transactional locking.**
+- [x] **XSS: Unsanitized `dangerouslySetInnerHTML`** — Added `isomorphic-dompurify` to `rich-text-display.tsx` and `rich-text-editor.tsx`. — COMPLETED 2026-03-03
+- [x] **Missing `/api/invitations/accept` endpoint** — Created `app/api/invitations/accept/route.ts`. — COMPLETED 2026-03-03
+- [x] **Open redirect in `/api/auth/callback`** — Added `safeRedirectPath()` to both callback routes and login form. — COMPLETED 2026-03-03
+- [x] **Race condition in ticket numbering** — Created PG sequence + `linksy_next_ticket_number()` RPC. — COMPLETED 2026-03-03
 
 ### HIGH — Fix Soon
 
-- [ ] **OpenAI API calls missing error handling** — `app/api/linksy/search/route.ts:117-122` and `:419-435` have no try/catch around OpenAI embedding/chat calls. If the API fails or returns empty data, `embeddingResponse.data[0]` throws. **Wrap in try/catch with user-friendly fallback.**
-- [ ] **Hardcoded SITE_ID in multiple routes** — `app/api/linksy/search/route.ts:303` and `tickets/route.ts:39` hardcode `86bd8d01-0dc5-4479-beff-666712654104`. **Move to environment variable.**
-- [ ] **Provider API bypasses RLS with no tenant filter** — `app/api/linksy/providers/route.ts:9-58` uses `createServiceClient()` and returns all active providers to any requester. **Filter by tenant; use RLS-respecting client or add tenant check.**
-- [ ] **Open redirect in login form** — `components/auth/login-form.tsx:44,125` takes `redirect` param from search params without validation. **Validate it's a relative path.**
-- [ ] **Non-admin users can set `is_private` on comments** — `app/api/tickets/[id]/comments/route.ts` POST blindly accepts `is_private` from body. **Server should enforce: only site_admin can set `is_private: true`.**
-- [ ] **Merge operation has no transaction/rollback** — `app/api/admin/providers/merge/route.ts:74-195` logs errors on location/contact moves but continues, potentially leaving orphaned records. **Fail fast on first error or wrap in a transaction.**
+- [x] **OpenAI API calls missing error handling** — Added try/catch around embedding call with 503 fallback. — COMPLETED 2026-03-03
+- [x] **Hardcoded SITE_ID in multiple routes** — Replaced with `process.env.LINKSY_SITE_ID` (with fallback). — COMPLETED 2026-03-03
+- [x] **Provider API bypasses RLS with no tenant filter** — Switched to `createClient()` (respects RLS) + optional `tenant_id` param. — COMPLETED 2026-03-03
+- [x] **Open redirect in login form** — Added `safeRedirectPath()` validation. — COMPLETED 2026-03-03
+- [x] **Non-admin users can set `is_private` on comments** — Server now enforces `is_private` only for `site_admin`. — COMPLETED 2026-03-03
+- [x] **Merge operation has no transaction/rollback** — Changed to fail-fast: returns error on first sub-operation failure instead of continuing. — COMPLETED 2026-03-03
 
 ### MEDIUM — Address When Possible
 
 - [ ] **Crisis keyword test endpoint has no auth** — `app/api/crisis-keywords/test/route.ts` accepts arbitrary POST input with no authentication. **Add auth check.**
-- [ ] **`setTimeout` not cleaned up in find-help** — `app/find-help/page.tsx:258-277` sets a 5-second timeout for crisis banner dismissability with no cleanup on unmount. **Use `useEffect` with `clearTimeout`.**
-- [ ] **Search bar missing AbortController** — `components/shared/search-bar.tsx:40-64` fetch in useEffect doesn't abort on unmount/query change. **Add AbortController.**
-- [ ] **Notification subscription not tenant-scoped** — `lib/hooks/useNotifications.ts:54-72` subscribes to all `notifications` inserts without user/tenant filter. **Filter by `user_id`.**
+- [x] **`setTimeout` not cleaned up in find-help** — Added `useRef` + `clearTimeout` on unmount. — COMPLETED 2026-03-03
+- [x] **Search bar missing AbortController** — Added `AbortController` with cleanup on unmount/query change. — COMPLETED 2026-03-03
+- [x] **Notification subscription not tenant-scoped** — Scoped realtime subscription to `user_id` filter. — COMPLETED 2026-03-03
 - [ ] **In-memory rate limiter ineffective on Vercel** — `lib/utils/rate-limit.ts` stores state in-memory per instance. On multi-instance Vercel, limits don't work. **Use Upstash Redis for production.**
 - [ ] **Activity logging uses browser client** — `lib/utils/activity.ts:35` calls `createClient()` (browser, RLS-bound) to insert audit logs. If user lacks insert permission, logs silently fail. **Use server-side service client.**
-- [ ] **`parseInt` NaN not handled** — `app/api/support-tickets/route.ts:15-16` and other routes don't guard against `NaN` from non-numeric query params. **Add `|| defaultValue` fallback.**
+- [x] **`parseInt` NaN not handled** — Added `|| defaultValue` fallback across 6 route files. — COMPLETED 2026-03-03
 - [ ] **Unsafe `any` types in hooks** — `useCurrentTenant.ts:53,61,71-74`, `find-help/page.tsx:334` use `any` for membership/provider data. **Create proper interfaces.**
 - [ ] **Missing staleTime/gcTime on queries** — `lib/hooks/useModules.ts` and others have no React Query cache config, causing unnecessary refetches. **Add reasonable staleTime.**
-- [ ] **Error response info disclosure** — Multiple routes (e.g. `app/api/invitations/route.ts:76`) return `validation.error.flatten()` exposing schema details. **Return generic messages; log details server-side.**
-- [ ] **CSRF allows `http://` origin in production** — `lib/middleware/csrf.ts:34-36` includes `http://${host}` in allowed origins. **Only allow HTTP in development.**
+- [x] **Error response info disclosure** — Replaced `validation.error.flatten()` with generic message in 4 routes. — COMPLETED 2026-03-03
+- [x] **CSRF allows `http://` origin in production** — Gated `http://` origin to `NODE_ENV === 'development'` only. — COMPLETED 2026-03-03
 
 ### LOW — Backlog
 
 - [ ] **Array index used as React key** — 15+ instances across `find-help/page.tsx:464`, `find-help-widget.tsx:339`, `search-results.tsx:52`, ticket/admin pages. Causes state bugs on reorder/filter.
 - [ ] **Silent `.catch(() => {})` swallowing errors** — `find-help-widget.tsx:213`, `provider-detail-tabs.tsx:676,685,761`, `statistics-tab.tsx:17,274`. Failures are invisible.
-- [ ] **`alert()` used for errors** — `components/providers/call-log-form.tsx:59-102` uses `alert()` instead of toast notifications.
+- [x] **`alert()` used for errors** — Replaced with `useToast()` in `call-log-form.tsx`. — COMPLETED 2026-03-03
 - [ ] **Environment variables not validated at startup** — `lib/utils/email.ts`, `lib/supabase/client.ts` use `!` non-null assertions with no runtime check. App silently breaks if vars missing.
-- [ ] **Sensitive logging in set-password page** — `app/auth/set-password/page.tsx` logs token availability to browser console. **Remove for production.**
+- [x] **Sensitive logging in set-password page** — Removed all console.log/error statements exposing tokens and user data. — COMPLETED 2026-03-03
 - [ ] **File upload paths use `Date.now()` + UUID** — `app/api/providers/[id]/notes/upload/route.ts:67-68`, `app/api/files/upload/route.ts:73-76`. The timestamp is unnecessary given UUID. No filename length limit.
 - [ ] **CSV export no error handling** — `lib/api/audit-logs.ts:60-64` `exportAuditLogsToCSV` has no try/catch.
-- [ ] **Missing null check** — `lib/hooks/useProviderPermissions.ts:34-35` assumes `provider.contacts` exists without `?.`.
+- [x] **Missing null check** — Added optional chaining (`?.`) to `provider.contacts` in `useProviderPermissions.ts`. — COMPLETED 2026-03-03
 
 ## Session Snapshot (2026-03-02)
 
@@ -228,32 +228,32 @@ These must be resolved first. Security issues block go-live; data issues block u
 
 All four are exploitable in production. Must fix before any public traffic.
 
-- [ ] **XSS: Unsanitized `dangerouslySetInnerHTML`** — `rich-text-display.tsx:14-18` and `rich-text-editor.tsx:100` render raw HTML. Add DOMPurify.
-- [ ] **Missing `/api/invitations/accept` endpoint** — Invitation acceptance is completely broken. Create the endpoint.
-- [ ] **Open redirect in `/api/auth/callback`** — `next` param not validated. Validate starts with `/`, no double slashes.
-- [ ] **Race condition in ticket numbering** — Read-then-insert allows duplicate `R-xxxx` numbers. Use `nextval()` or RPC with transactional lock.
+- [x] **XSS: Unsanitized `dangerouslySetInnerHTML`** — Added isomorphic-dompurify. COMPLETED 2026-03-03
+- [x] **Missing `/api/invitations/accept` endpoint** — Created endpoint. COMPLETED 2026-03-03
+- [x] **Open redirect in `/api/auth/callback`** — Added safeRedirectPath() validation. COMPLETED 2026-03-03
+- [x] **Race condition in ticket numbering** — Created PG sequence + RPC. Migration pending apply. COMPLETED 2026-03-03
 
 #### 0.2 HIGH Security Fixes (from [Audit 2026-03-02](AUDIT-2026-03-02.md))
 
 Serious risks that could cause data leaks or auth bypass. Fix before go-live.
 
-- [ ] **OpenAI API calls missing error handling** — `search/route.ts:117-122` and `:419-435` have no try/catch. Add with user-friendly fallback.
-- [ ] **Hardcoded SITE_ID** — `search/route.ts:303` and `tickets/route.ts:39` hardcode UUID. Move to env var.
-- [ ] **Provider API bypasses RLS** — `providers/route.ts` uses `createServiceClient()`, returns all providers to any requester. Add tenant filter.
-- [ ] **Open redirect in login form** — `login-form.tsx:44,125` takes unvalidated `redirect` param. Validate relative path.
-- [ ] **Non-admin users can set `is_private` on comments** — `tickets/[id]/comments/route.ts` blindly accepts from body. Enforce server-side.
-- [ ] **Merge operation has no transaction/rollback** — `providers/merge/route.ts` continues on error. Wrap in transaction or fail fast.
+- [x] **OpenAI API calls missing error handling** — Added try/catch with 503 fallback. COMPLETED 2026-03-03
+- [x] **Hardcoded SITE_ID** — Replaced with `process.env.LINKSY_SITE_ID`. COMPLETED 2026-03-03
+- [x] **Provider API bypasses RLS** — Switched to `createClient()` + optional tenant_id. COMPLETED 2026-03-03
+- [x] **Open redirect in login form** — Added safeRedirectPath() validation. COMPLETED 2026-03-03
+- [x] **Non-admin users can set `is_private` on comments** — Server enforces site_admin only. COMPLETED 2026-03-03
+- [x] **Merge operation has no transaction/rollback** — Changed to fail-fast on first error. COMPLETED 2026-03-03
 
 #### 0.3 RLS / Database Security Fixes (from [Audit 2026-03-02](AUDIT-2026-03-02.md) §RLS Security Audit)
 
-These are database-level access control gaps. Not yet tracked elsewhere.
+Migration written: `20260303000002_rls_security_hardening.sql`. **Needs to be applied to Supabase.**
 
-- [ ] **HIGH: `linksy_provider_contacts` — RLS disabled entirely.** Auth handled at API layer only. Any direct Supabase client (or future endpoint mistake) exposes all contacts. **Re-enable RLS with provider-scoped policies.**
-- [ ] **HIGH: `linksy_provider_notes` — `is_private` not enforced at RLS level.** Private notes could leak to non-admin provider staff if app filtering is bypassed. **Add `is_private = false` condition for non-admin reads.**
-- [ ] **MEDIUM: `linksy_tickets` — No client-view policy.** Clients who submitted referrals via widget cannot query their own ticket status. **Add email-based client view policy.**
-- [ ] **MEDIUM: `linksy_call_logs` — Overly permissive.** Any authenticated user can manage any call log. **Scope to provider contacts for their own provider's tickets.**
-- [ ] **MEDIUM: `linksy_custom_fields` — Unscoped.** Any authenticated user can manage any provider's custom fields. **Scope like `linksy_host_custom_fields`.**
-- [ ] **MEDIUM: `linksy_surveys` — Unrestricted UPDATE.** Any authenticated user can modify any survey result. **Restrict to survey owner or admin.**
+- [x] **HIGH: `linksy_provider_contacts` — RLS disabled entirely.** Migration re-enables RLS with provider-scoped policies. COMPLETED 2026-03-03 (migration pending apply)
+- [x] **HIGH: `linksy_provider_notes` — `is_private` not enforced at RLS level.** Migration adds separate policies for admin (see all) vs contacts (non-private only). COMPLETED 2026-03-03 (migration pending apply)
+- [x] **MEDIUM: `linksy_tickets` — No client-view policy.** Migration adds email-based client view. COMPLETED 2026-03-03 (migration pending apply)
+- [x] **MEDIUM: `linksy_call_logs` — Overly permissive.** Migration scopes to provider contacts. COMPLETED 2026-03-03 (migration pending apply)
+- [x] **MEDIUM: `linksy_custom_fields` — Unscoped.** Migration scopes to provider admin. COMPLETED 2026-03-03 (migration pending apply)
+- [x] **MEDIUM: `linksy_surveys` — Unrestricted UPDATE.** Migration restricts to admin only. COMPLETED 2026-03-03 (migration pending apply)
 - [ ] **LOW: `linksy_search_sessions` — Anon update has no row filter.** One session could modify another. **Add `id = session_id` filter.**
 
 #### 0.4 User Migration Strategy

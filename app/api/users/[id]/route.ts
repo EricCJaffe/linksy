@@ -55,7 +55,7 @@ export async function PATCH(
 
   if (!validation.success) {
     return NextResponse.json(
-      { error: 'Invalid input', details: validation.error.flatten() },
+      { error: 'Invalid input. Please check all required fields.' },
       { status: 400 }
     )
   }

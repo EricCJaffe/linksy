@@ -16,7 +16,7 @@ export async function GET(request: Request) {
   if (error) return error
 
   const { searchParams } = new URL(request.url)
-  const thresholdHours = parseInt(searchParams.get('threshold_hours') || '48')
+  const thresholdHours = parseInt(searchParams.get('threshold_hours') || '48') || 48
   const sendNotifications = searchParams.get('send_notifications') === 'true'
 
   const supabase = await createServiceClient()
