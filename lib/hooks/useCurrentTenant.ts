@@ -5,6 +5,12 @@ import { createClient } from '@/lib/supabase/client'
 import type { Tenant, TenantUser } from '@/lib/types/tenant'
 import { logger } from '@/lib/utils/logger'
 
+interface TenantMembershipRow {
+  tenant_id: string
+  role: string
+  tenant: Tenant | null
+}
+
 const CURRENT_TENANT_KEY = 'currentTenantId'
 
 function getCurrentTenantId(): string | null {
@@ -50,7 +56,7 @@ export function useCurrentTenant() {
         return null
       }
 
-      const validMemberships = (memberships || []).filter((m: any) => m.tenant)
+      const validMemberships = ((memberships || []) as TenantMembershipRow[]).filter((m) => m.tenant)
 
       if (validMemberships.length === 0) {
         logger.warn('User has no tenant memberships', { user_id: user.id })
@@ -58,7 +64,7 @@ export function useCurrentTenant() {
       }
 
       // Find the current tenant or use the first one
-      let currentMembership = validMemberships.find((m: any) => m.tenant_id === currentTenantId)
+      let currentMembership = validMemberships.find((m) => m.tenant_id === currentTenantId)
 
       if (!currentMembership) {
         currentMembership = validMemberships[0]
@@ -68,7 +74,7 @@ export function useCurrentTenant() {
       return {
         tenant: currentMembership.tenant as Tenant,
         role: currentMembership.role as 'admin' | 'member',
-        memberships: validMemberships.map((m: any) => ({
+        memberships: validMemberships.map((m) => ({
           tenant: m.tenant as Tenant,
           role: m.role as 'admin' | 'member',
         })),

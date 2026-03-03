@@ -84,8 +84,8 @@ function BarChart({ items, colorClass = 'bg-primary' }: {
   const max = Math.max(...items.map((i) => i.count), 1)
   return (
     <div className="space-y-2">
-      {items.map((item, i) => (
-        <div key={i} className="flex items-center gap-3">
+      {items.map((item) => (
+        <div key={item.label} className="flex items-center gap-3">
           <span className="w-40 shrink-0 truncate text-sm text-right text-muted-foreground" title={item.label}>
             {item.label}
           </span>
@@ -106,11 +106,11 @@ function MonthlyTrendChart({ data }: { data: { month: string; count: number }[] 
   const max = Math.max(...data.map((d) => d.count), 1)
   return (
     <div className="flex items-end gap-1 h-32">
-      {data.map((d, i) => {
+      {data.map((d) => {
         const heightPct = (d.count / max) * 100
         const label = new Date(d.month + '-01').toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
         return (
-          <div key={i} className="flex-1 flex flex-col items-center gap-1 group">
+          <div key={d.month} className="flex-1 flex flex-col items-center gap-1 group">
             <div className="relative w-full flex items-end justify-center h-24">
               <div
                 className="w-full bg-primary rounded-t transition-all group-hover:bg-primary/80"
@@ -322,7 +322,7 @@ export default function ReportsPage() {
           {/* Summary stat cards */}
           <div className="grid gap-4 md:grid-cols-4">
             {searchLoading ? (
-              Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24" />)
+              Array.from({ length: 4 }).map((_, i) => <Skeleton key={`skel-${i}`} className="h-24" />)
             ) : searchData ? (
               <>
                 <Card className="border-primary/20 bg-gradient-to-b from-primary/5 to-white">
@@ -596,7 +596,7 @@ export default function ReportsPage() {
       {/* Summary stat cards */}
       <div className="grid gap-4 md:grid-cols-3">
         {isLoading ? (
-          Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24" />)
+          Array.from({ length: 3 }).map((_, i) => <Skeleton key={`skel-${i}`} className="h-24" />)
         ) : data && (
           <>
             <Card>
@@ -732,7 +732,7 @@ export default function ReportsPage() {
             {isLoading ? (
               <div className="space-y-2">
                 {Array.from({ length: 6 }).map((_, i) => (
-                  <Skeleton key={i} className="h-6 w-full" />
+                  <Skeleton key={`skel-${i}`} className="h-6 w-full" />
                 ))}
               </div>
             ) : data && data.referralsByCategory.length > 0 ? (
@@ -758,7 +758,7 @@ export default function ReportsPage() {
             {isLoading ? (
               <div className="space-y-2">
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <Skeleton key={i} className="h-6 w-full" />
+                  <Skeleton key={`skel-${i}`} className="h-6 w-full" />
                 ))}
               </div>
             ) : data && data.referralsByStatus.length > 0 ? (
@@ -860,7 +860,7 @@ export default function ReportsPage() {
         <div className="space-y-6">
           {isLoading ? (
             <div className="grid gap-4 md:grid-cols-2">
-              {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[350px]" />)}
+              {Array.from({ length: 4 }).map((_, i) => <Skeleton key={`skel-${i}`} className="h-[350px]" />)}
             </div>
           ) : data ? (
             <>

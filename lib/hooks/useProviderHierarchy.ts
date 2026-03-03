@@ -29,6 +29,8 @@ export function useProviderHierarchy(providerId: string | null) {
       return res.json() as Promise<ProviderHierarchy>
     },
     enabled: !!providerId,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   })
 }
 
@@ -49,6 +51,8 @@ export function useProviderChildren(providerId: string | null) {
       return res.json() as Promise<ChildrenResponse>
     },
     enabled: !!providerId,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   })
 }
 
@@ -128,5 +132,7 @@ export function useParentOrgStats(
       return res.json() as Promise<ParentOrgStats>
     },
     enabled: !!providerId,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   })
 }

@@ -13,6 +13,7 @@ import {
   type AuditLogFilters as Filters,
 } from '@/lib/api/audit-logs'
 import { logger } from '@/lib/utils/logger'
+import { toast } from '@/hooks/use-toast'
 
 export default function AuditLogsPage() {
   const [filters, setFilters] = useState<Filters>({
@@ -31,8 +32,14 @@ export default function AuditLogsPage() {
     try {
       await exportAuditLogsToCSV(filters)
     } catch (error) {
+      const message = error instanceof Error ? error.message : 'Export failed'
       logger.error('Export failed', error instanceof Error ? error : new Error('Unknown error'), {
         filters
+      })
+      toast({
+        title: 'Export failed',
+        description: message,
+        variant: 'destructive',
       })
     } finally {
       setIsExporting(false)

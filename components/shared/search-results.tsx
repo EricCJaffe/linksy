@@ -49,11 +49,11 @@ function highlightMatch(text: string, query: string) {
     <>
       {parts.map((part, i) =>
         part.toLowerCase() === query.toLowerCase() ? (
-          <mark key={i} className="bg-yellow-200 dark:bg-yellow-900">
+          <mark key={`${i}-${part}`} className="bg-yellow-200 dark:bg-yellow-900">
             {part}
           </mark>
         ) : (
-          part
+          <span key={`${i}-${part}`}>{part}</span>
         )
       )}
     </>
@@ -106,8 +106,8 @@ export function SearchResults({
 
   return (
     <div className="max-h-[400px] overflow-y-auto">
-      {groups.map((group, groupIdx) => (
-        <div key={groupIdx} className="border-b last:border-b-0">
+      {groups.map((group) => (
+        <div key={group.label} className="border-b last:border-b-0">
           <div className="bg-muted/50 px-4 py-2">
             <h3 className="text-xs font-medium uppercase text-muted-foreground">
               {group.label}

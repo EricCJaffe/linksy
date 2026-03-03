@@ -12,6 +12,8 @@ export function useCrisisKeywords(site_id?: string) {
       if (!res.ok) throw new Error('Failed to fetch crisis keywords')
       return res.json()
     },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 15 * 60 * 1000,
   })
 }
 

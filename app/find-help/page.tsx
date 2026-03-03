@@ -340,8 +340,8 @@ export default function FindHelpPage() {
         // Count providers for each category
         const categoriesWithCounts = categoriesData.map((category: NeedCategory) => {
           const needIds = category.needs.map((n) => n.id)
-          const providerCount = providersData.providers.filter((provider: any) =>
-            provider.provider_needs?.some((pn: any) => needIds.includes(pn.need?.id))
+          const providerCount = providersData.providers.filter((provider: { provider_needs?: { need?: { id: string } }[] }) =>
+            provider.provider_needs?.some((pn) => needIds.includes(pn.need?.id ?? ''))
           ).length
 
           return {
@@ -352,7 +352,7 @@ export default function FindHelpPage() {
 
         // Only show categories with providers
         const categoriesWithProviders = categoriesWithCounts.filter(
-          (cat: any) => cat.providerCount > 0
+          (cat: NeedCategory & { providerCount: number }) => cat.providerCount > 0
         )
 
         setCategories(categoriesWithProviders)
@@ -440,9 +440,9 @@ export default function FindHelpPage() {
                 <p className="text-sm mt-0.5 opacity-90">{crisisBanner.response_template}</p>
               )}
               <div className="mt-2 flex flex-wrap gap-2">
-                {crisisBanner.emergency_resources.map((r, i) => (
+                {crisisBanner.emergency_resources.map((r) => (
                   <a
-                    key={i}
+                    key={`${r.name}-${r.phone}`}
                     href={`tel:${r.phone.replace(/\D/g, '')}`}
                     className="inline-flex items-center gap-1 bg-white text-red-700 rounded px-2 py-1 text-sm font-semibold hover:bg-red-50"
                   >
@@ -470,7 +470,7 @@ export default function FindHelpPage() {
               {/* Message history */}
               <div className="space-y-4 max-h-[500px] overflow-y-auto">
                 {messages.map((message, index) => (
-                  <div key={index}>
+                  <div key={`msg-${index}-${message.role}`}>
                     <div
                       className={`flex ${
                         message.role === 'user' ? 'justify-end' : 'justify-start'
@@ -686,7 +686,7 @@ function ProviderCard({ provider, sessionId }: { provider: SearchResult; session
         interaction_type: interactionType,
         session_id: sessionId ?? undefined,
       }),
-    }).catch(() => {})
+    }).catch(() => { /* analytics — non-fatal */ })
   }
   const location = provider.primaryLocation
   const address = location

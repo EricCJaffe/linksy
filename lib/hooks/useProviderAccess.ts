@@ -11,5 +11,7 @@ export function useProviderAccess() {
       if (!res.ok) throw new Error('Failed to fetch provider access')
       return res.json()
     },
+    staleTime: 30 * 1000, // 30 seconds — keep short so access changes reflect quickly
+    gcTime: 5 * 60 * 1000,
   })
 }

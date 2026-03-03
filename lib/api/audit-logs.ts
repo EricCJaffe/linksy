@@ -60,10 +60,12 @@ export async function fetchAuditLogs(
 export async function exportAuditLogsToCSV(
   filters: AuditLogFilters = {}
 ): Promise<void> {
-  // Fetch all logs (without pagination for export)
   const { logs } = await fetchAuditLogs({ ...filters, limit: 10000 })
 
-  // Convert to CSV
+  if (logs.length === 0) {
+    throw new Error('No audit logs to export for the selected filters.')
+  }
+
   const headers = [
     'Timestamp',
     'User',
@@ -89,7 +91,6 @@ export async function exportAuditLogsToCSV(
     ...rows.map((row) =>
       row
         .map((cell) => {
-          // Escape quotes and wrap in quotes if contains comma
           const escaped = String(cell).replace(/"/g, '""')
           return escaped.includes(',') || escaped.includes('\n')
             ? `"${escaped}"`
@@ -99,19 +100,22 @@ export async function exportAuditLogsToCSV(
     ),
   ].join('\n')
 
-  // Download CSV
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
   const link = document.createElement('a')
   const url = URL.createObjectURL(blob)
 
-  link.setAttribute('href', url)
-  link.setAttribute(
-    'download',
-    `audit-logs-${new Date().toISOString().split('T')[0]}.csv`
-  )
-  link.style.visibility = 'hidden'
+  try {
+    link.setAttribute('href', url)
+    link.setAttribute(
+      'download',
+      `audit-logs-${new Date().toISOString().split('T')[0]}.csv`
+    )
+    link.style.visibility = 'hidden'
 
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  } finally {
+    URL.revokeObjectURL(url)
+  }
 }

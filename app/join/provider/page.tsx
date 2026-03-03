@@ -91,7 +91,7 @@ export default function ProviderOnboardingPage() {
       .then((data) => {
         if (Array.isArray(data)) setCategories(data)
       })
-      .catch(() => {})
+      .catch(() => { /* categories load is best-effort */ })
   }, [])
 
   /* ─── Helpers ─── */
