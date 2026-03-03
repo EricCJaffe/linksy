@@ -91,13 +91,13 @@ Core features that users and admins need on day one, plus remaining quality fixe
 
 #### 1.1 Remaining Code Quality Fixes (from [Audit 2026-03-02](AUDIT-2026-03-02.md))
 
-7 of 11 MEDIUM audit findings were fixed on 2026-03-03. These 4 remain:
+10 of 11 MEDIUM audit findings resolved. 1 remaining requires infrastructure (Upstash Redis):
 
-- [ ] **Crisis keyword test endpoint has no auth** — `app/api/crisis-keywords/test/route.ts` accepts unauthenticated POST. Add auth check.
+- [x] **Crisis keyword test endpoint has no auth** — Added `requireAuth()`. COMPLETED 2026-03-03
 - [ ] **In-memory rate limiter ineffective on Vercel** — `lib/utils/rate-limit.ts` stores state per-instance. Use Upstash Redis for production.
-- [ ] **Activity logging uses browser client** — `lib/utils/activity.ts:35` uses RLS-bound browser client. Logs silently fail. Use server-side service client.
-- [ ] **Unsafe `any` types in hooks** — `useCurrentTenant.ts:53,61,71-74`, `find-help/page.tsx:334`. Create proper interfaces.
-- [ ] **Missing staleTime/gcTime on queries** — `lib/hooks/useModules.ts` and others refetch unnecessarily. Add reasonable staleTime.
+- [x] **Activity logging uses browser client** — Switched to server-side API call. COMPLETED 2026-03-03
+- [x] **Unsafe `any` types in hooks** — Created proper interfaces for `useCurrentTenant.ts` and `find-help/page.tsx`. COMPLETED 2026-03-03
+- [x] **Missing staleTime/gcTime on queries** — Added to 11 hooks across 8 files. COMPLETED 2026-03-03
 
 #### 1.2 Reassign Referral to Another Provider
 - [ ] **End-to-end verification of auto-reroute** — Feature completed 2026-02-25 (provider flags "unable to assist" → system offers reassignment). Need to:
@@ -151,15 +151,18 @@ Core features that users and admins need on day one, plus remaining quality fixe
 
 Needed for sustainability but not blocking initial launch if timeline is tight.
 
-#### 2.1 LOW Code Quality Fixes (from [Audit 2026-03-02](AUDIT-2026-03-02.md))
+#### 2.1 LOW Code Quality Fixes (from [Audit 2026-03-02](AUDIT-2026-03-02.md)) — ALL RESOLVED
 
-3 of 8 LOW findings were fixed on 2026-03-03 (`alert()` → toast, sensitive logging removed, null check added). These 5 remain:
+All 8 LOW findings resolved.
 
-- [ ] **Array index used as React key** — 15+ instances across find-help, widget, ticket pages. Causes state bugs on reorder/filter.
-- [ ] **Silent `.catch(() => {})` swallowing errors** — `find-help-widget.tsx`, `provider-detail-tabs.tsx`, `statistics-tab.tsx`. Failures invisible.
-- [ ] **Environment variables not validated at startup** — `email.ts`, `client.ts` use `!` assertions. Add runtime check.
-- [ ] **File upload paths use `Date.now()` + UUID** — Timestamp unnecessary given UUID. No filename length limit.
-- [ ] **CSV export no error handling** — `lib/api/audit-logs.ts:60-64`. Add try/catch.
+- [x] **Array index used as React key** — Replaced with stable keys across 4 components. COMPLETED 2026-03-03
+- [x] **Silent `.catch(() => {})` swallowing errors** — Added intent comments to all silent catches. COMPLETED 2026-03-03
+- [x] **Environment variables not validated at startup** — Added runtime validation to Supabase client/server. COMPLETED 2026-03-03
+- [x] **File upload paths use `Date.now()` + UUID** — Simplified to UUID-only, added filename length limit. COMPLETED 2026-03-03
+- [x] **CSV export no error handling** — Added empty guard, try/finally for URL cleanup, user-facing toast on failure. COMPLETED 2026-03-03
+- [x] **`alert()` used for errors** — Replaced with `useToast()`. COMPLETED 2026-03-03
+- [x] **Sensitive logging in set-password page** — Removed all console.log/error. COMPLETED 2026-03-03
+- [x] **Missing null check** — Added optional chaining to `provider.contacts`. COMPLETED 2026-03-03
 
 #### 2.2 Public-Facing Impact Works Website
 - [ ] **Decide approach:** Separate marketing site (WordPress/Webflow) vs. enhanced Linksy landing page at `/`
@@ -251,6 +254,11 @@ Items completed across all sessions, newest first.
 
 ### 2026-03-03
 
+- [x] **9 remaining audit fixes** — Resolved 4 MEDIUM + 5 LOW findings:
+  - MEDIUM: Crisis keyword auth, activity logging client→server, unsafe `any` types, query staleTime/gcTime
+  - LOW: Array index keys, silent catches, env var validation, file upload paths, CSV export error handling
+- [x] **Reports page crash fix** — Fixed "Failed to fetch reports" caused by references to dropped columns (`assigned_to`, `need_category`, `imported_at`) and `is_crisis` → `crisis_detected`
+- [x] **Documentation sync** — Updated TASKS.md, FEATURES_CHECKLIST.md, AUDIT doc, and RELEASES.md to match actual codebase state
 - [x] **20 security and quality fixes** — Resolved all 4 CRITICAL + 6 HIGH + 7 MEDIUM + 3 LOW audit findings in a single session:
   - CRITICAL: XSS sanitization (DOMPurify), missing invitations/accept endpoint, open redirect in callback + login, ticket numbering race condition
   - HIGH: OpenAI error handling, hardcoded SITE_ID, provider API RLS bypass, is_private enforcement, merge fail-fast
