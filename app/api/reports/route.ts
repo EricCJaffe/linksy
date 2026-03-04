@@ -113,22 +113,24 @@ async function handleReferralsReport(
       provider_id,
       created_at,
       updated_at,
-      assigned_to,
-      need_category,
+      need_id,
       source,
-      provider:linksy_providers!provider_id(id, name)
+      legacy_id,
+      provider:linksy_providers!provider_id(id, name),
+      need:linksy_needs!need_id(id, name, category:linksy_need_categories!category_id(name))
     `)
 
   // Filter by scope
   if (dataScope === 'providers') {
     ticketsQuery = ticketsQuery.in('provider_id', providerIds)
   } else if (dataScope === 'personal') {
-    ticketsQuery = ticketsQuery.eq('assigned_to', userId)
+    // For personal scope, filter by provider contact's providers
+    ticketsQuery = ticketsQuery.in('provider_id', providerIds)
   }
 
-  // Filter by legacy flag (exclude imported_at IS NOT NULL if includeLegacy is false)
+  // Filter by legacy flag (exclude legacy-imported tickets if includeLegacy is false)
   if (!includeLegacy) {
-    ticketsQuery = ticketsQuery.is('imported_at', null)
+    ticketsQuery = ticketsQuery.is('legacy_id', null)
   }
 
   const { data: tickets, error } = await ticketsQuery
@@ -139,7 +141,7 @@ async function handleReferralsReport(
 
   // Aggregate data
   const referralsByStatus = aggregateByField(tickets, 'status')
-  const referralsByCategory = aggregateByField(tickets, 'need_category')
+  const referralsByCategory = aggregateByCategory(tickets)
   const referralsBySource = aggregateByField(tickets, 'source')
   const topReferrers = aggregateTopProviders(tickets)
   const monthlyTrends = aggregateMonthlyTrends(tickets)
@@ -211,16 +213,19 @@ async function handleSearchReport(
     (s: any) => new Date(s.created_at) >= thirtyDaysAgo
   ).length
 
-  const totalCrisisDetections = sessions.filter((s: any) => s.is_crisis).length
+  const totalCrisisDetections = sessions.filter((s: any) => s.crisis_detected).length
 
   // Get interactions for these sessions
-  let interactionsQuery = supabase
-    .from('linksy_interactions')
-    .select('*')
-    .in('session_id', sessions.map((s: any) => s.id))
-
-  const { data: interactions } = await interactionsQuery
-  const totalInteractions = interactions?.length || 0
+  const sessionIds = sessions.map((s: any) => s.id)
+  let interactions: any[] = []
+  if (sessionIds.length > 0) {
+    const { data: interactionData } = await supabase
+      .from('linksy_interactions')
+      .select('*')
+      .in('session_id', sessionIds)
+    interactions = interactionData || []
+  }
+  const totalInteractions = interactions.length
 
   // Aggregate interaction types
   const interactionsByType = aggregateByField(interactions || [], 'interaction_type')
@@ -233,7 +238,7 @@ async function handleSearchReport(
 
   // Crisis breakdown
   const crisisBreakdown = sessions
-    .filter((s: any) => s.is_crisis && s.crisis_type)
+    .filter((s: any) => s.crisis_detected && s.crisis_type)
     .reduce((acc: any[], s: any) => {
       const existing = acc.find((item: any) => item.type === s.crisis_type)
       if (existing) {
@@ -247,7 +252,7 @@ async function handleSearchReport(
 
   // Recent crisis sessions
   const recentCrisisSessions = sessions
-    .filter((s: any) => s.is_crisis)
+    .filter((s: any) => s.crisis_detected)
     .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 10)
     .map((s: any) => ({
@@ -313,91 +318,17 @@ async function handleSearchReport(
 }
 
 async function handleReassignmentsReport(supabase: any) {
-  // Fetch reassignment events
-  const { data: events, error } = await supabase
-    .from('linksy_ticket_events')
-    .select(`
-      *,
-      ticket:linksy_tickets(provider_id),
-      from_provider:linksy_providers!from_provider_id(id, name),
-      to_provider:linksy_providers!to_provider_id(id, name)
-    `)
-    .in('event_type', ['reassigned', 'forwarded'])
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
-
-  // Aggregate reassignment stats
-  const totalReassignments = events.length
-  const providerInitiated = events.filter((e: any) => e.event_type === 'forwarded').length
-  const adminInitiated = events.filter((e: any) => e.event_type === 'reassigned').length
-
-  // Count unique tickets that were reassigned
-  const uniqueTickets = new Set(events.map((e: any) => e.ticket_id)).size
-  const averageReassignmentsPerTicket = uniqueTickets > 0
-    ? totalReassignments / uniqueTickets
-    : 0
-
-  // Top forwarding providers
-  const forwardingCounts = new Map<string, { provider_id: string; provider_name: string; count: number }>()
-  events
-    .filter((e: any) => e.from_provider_id)
-    .forEach((e: any) => {
-      const key = e.from_provider_id
-      if (forwardingCounts.has(key)) {
-        forwardingCounts.get(key)!.count++
-      } else {
-        forwardingCounts.set(key, {
-          provider_id: key,
-          provider_name: (e as any).from_provider?.name || 'Unknown',
-          count: 1,
-        })
-      }
-    })
-
-  const topForwardingProviders = Array.from(forwardingCounts.values())
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 10)
-    .map((p: any) => ({ ...p, forward_count: p.count }))
-
-  // Top receiving providers
-  const receivingCounts = new Map<string, { provider_id: string; provider_name: string; count: number }>()
-  events
-    .filter((e: any) => e.to_provider_id)
-    .forEach((e: any) => {
-      const key = e.to_provider_id
-      if (receivingCounts.has(key)) {
-        receivingCounts.get(key)!.count++
-      } else {
-        receivingCounts.set(key, {
-          provider_id: key,
-          provider_name: (e as any).to_provider?.name || 'Unknown',
-          count: 1,
-        })
-      }
-    })
-
-  const topReceivingProviders = Array.from(receivingCounts.values())
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 10)
-    .map((p: any) => ({ ...p, receive_count: p.count }))
-
-  // Reason breakdown
-  const reasonBreakdown: Record<string, number> = {}
-  events.forEach((e: any) => {
-    const reason = e.reason || 'not_specified'
-    reasonBreakdown[reason] = (reasonBreakdown[reason] || 0) + 1
-  })
-
+  // linksy_ticket_events table was removed in schema migration.
+  // Until it's recreated, return empty reassignment stats.
+  // TODO: Recreate linksy_ticket_events table or derive reassignment data from ticket comments/audit logs.
   return NextResponse.json({
-    total_reassignments: totalReassignments,
-    provider_initiated: providerInitiated,
-    admin_initiated: adminInitiated,
-    average_reassignments_per_ticket: averageReassignmentsPerTicket,
-    top_forwarding_providers: topForwardingProviders,
-    top_receiving_providers: topReceivingProviders,
-    reason_breakdown: reasonBreakdown,
+    total_reassignments: 0,
+    provider_initiated: 0,
+    admin_initiated: 0,
+    average_reassignments_per_ticket: 0,
+    top_forwarding_providers: [],
+    top_receiving_providers: [],
+    reason_breakdown: {},
   })
 }
 
@@ -409,8 +340,19 @@ function aggregateByField(items: any[], field: string) {
     counts.set(value, (counts.get(value) || 0) + 1)
   })
   return Array.from(counts.entries())
-    .map(([name, count]: [string, number]) => ({ [field === 'need_category' ? 'name' : field]: name, count }))
+    .map(([name, count]: [string, number]) => ({ [field]: name, count }))
     .sort((a: any, b: any) => b.count - a.count)
+}
+
+function aggregateByCategory(tickets: any[]) {
+  const counts = new Map<string, number>()
+  tickets.forEach((ticket: any) => {
+    const categoryName = ticket.need?.category?.name || ticket.need?.name || 'Uncategorized'
+    counts.set(categoryName, (counts.get(categoryName) || 0) + 1)
+  })
+  return Array.from(counts.entries())
+    .map(([name, count]: [string, number]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
 }
 
 function aggregateTopProviders(tickets: any[]) {

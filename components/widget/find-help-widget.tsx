@@ -210,7 +210,7 @@ export function FindHelpWidget({ hostProviderId, hostProviderName, widgetConfig 
         interaction_type: interactionType,
         session_id: sessionId ?? undefined,
       }),
-    }).catch(() => {})
+    }).catch(() => { /* analytics — non-fatal */ })
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -255,9 +255,9 @@ export function FindHelpWidget({ hostProviderId, hostProviderName, widgetConfig 
               <p className="text-xs mt-0.5 opacity-90">{crisisBanner.response_template}</p>
             )}
             <div className="mt-2 flex flex-wrap gap-2">
-              {crisisBanner.emergency_resources.map((r, i) => (
+              {crisisBanner.emergency_resources.map((r) => (
                 <a
-                  key={i}
+                  key={`${r.name}-${r.phone}`}
                   href={`tel:${r.phone.replace(/\D/g, '')}`}
                   className="inline-flex items-center gap-1 bg-white text-red-700 rounded px-2 py-1 text-xs font-semibold hover:bg-red-50"
                 >
@@ -336,7 +336,7 @@ export function FindHelpWidget({ hostProviderId, hostProviderName, widgetConfig 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
         {messages.map((msg, i) => (
-          <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+          <div key={`msg-${i}-${msg.role}`} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div
               className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
                 msg.role === 'user'

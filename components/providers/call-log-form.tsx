@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useToast } from '@/hooks/use-toast'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -33,6 +34,7 @@ const callOutcomes: { value: CallOutcome; label: string }[] = [
 ]
 
 export function CallLogForm({ providerId, onSuccess, onCancel }: CallLogFormProps) {
+  const { toast } = useToast()
   const [saving, setSaving] = useState(false)
   const [formData, setFormData] = useState<{
     content: string
@@ -60,7 +62,7 @@ export function CallLogForm({ providerId, onSuccess, onCancel }: CallLogFormProp
     e.preventDefault()
 
     if (!formData.call_outcome) {
-      alert('Please select a call outcome')
+      toast({ title: 'Missing field', description: 'Please select a call outcome', variant: 'destructive' })
       return
     }
 
@@ -96,7 +98,7 @@ export function CallLogForm({ providerId, onSuccess, onCancel }: CallLogFormProp
       onSuccess()
     } catch (error: any) {
       console.error('Error saving call log:', error)
-      alert(error.message || 'Failed to save call log')
+      toast({ title: 'Error', description: error.message || 'Failed to save call log', variant: 'destructive' })
       setSaving(false)
     }
   }

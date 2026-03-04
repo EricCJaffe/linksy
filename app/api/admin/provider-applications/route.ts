@@ -12,8 +12,8 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url)
   const status = searchParams.get('status') || 'pending'
-  const limit = parseInt(searchParams.get('limit') || '50')
-  const offset = parseInt(searchParams.get('offset') || '0')
+  const limit = parseInt(searchParams.get('limit') || '50') || 50
+  const offset = parseInt(searchParams.get('offset') || '0') || 0
 
   const supabase = await createServiceClient()
 

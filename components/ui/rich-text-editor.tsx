@@ -5,6 +5,7 @@ import StarterKit from '@tiptap/starter-kit'
 import { TextStyle } from '@tiptap/extension-text-style'
 import Color from '@tiptap/extension-color'
 import TextAlign from '@tiptap/extension-text-align'
+import DOMPurify from 'isomorphic-dompurify'
 import { useEffect, useRef } from 'react'
 import {
   Bold,
@@ -120,7 +121,7 @@ export function RichTextEditor({ value, onChange, disabled, placeholder, onReady
       <div className="rounded-md border bg-muted/40">
         <div
           className="prose prose-sm max-w-none px-3 py-2 text-muted-foreground [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
-          dangerouslySetInnerHTML={{ __html: value || '<p class="text-muted-foreground italic">No content</p>' }}
+          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(value || '<p class="text-muted-foreground italic">No content</p>', { USE_PROFILES: { html: true } }) }}
         />
       </div>
     )

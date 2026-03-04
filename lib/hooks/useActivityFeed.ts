@@ -59,6 +59,8 @@ export function useActivityFeed(
       return undefined
     },
     initialPageParam: 0,
+    staleTime: 1 * 60 * 1000, // 1 minute
+    gcTime: 5 * 60 * 1000,
   })
 }
 
@@ -71,5 +73,7 @@ export function useActivities(filters: ActivityFilters = {}) {
   return useQuery({
     queryKey: ['activities', scope, action_type, limit],
     queryFn: () => fetchActivities(scope, action_type, limit, 0),
+    staleTime: 1 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
   })
 }

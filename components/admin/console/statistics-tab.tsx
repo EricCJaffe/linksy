@@ -14,7 +14,7 @@ function GeocodingCard() {
     fetch('/api/admin/geocode')
       .then((r) => r.json())
       .then(setStats)
-      .catch(() => {})
+      .catch(() => { /* stats load is best-effort */ })
   }, [result])
 
   const runGeocoding = async () => {
@@ -271,7 +271,7 @@ function ContextCardsCard() {
     fetch('/api/admin/linksy/context-cards')
       .then((r) => r.json())
       .then(setStats)
-      .catch(() => {})
+      .catch(() => { /* stats load is best-effort */ })
   }, [result])
 
   const runGeneration = async (force = false) => {

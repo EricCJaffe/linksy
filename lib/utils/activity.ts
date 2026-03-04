@@ -1,4 +1,3 @@
-import { createClient } from '@/lib/supabase/client'
 import { logger } from '@/lib/utils/logger'
 
 export interface Activity {
@@ -32,15 +31,18 @@ export async function logActivity(
   details?: Record<string, any> | null
 ): Promise<void> {
   try {
-    const supabase = createClient()
-
-    await supabase.from('audit_logs').insert({
-      tenant_id: tenantId,
-      user_id: userId,
-      action,
-      resource_type: resourceType,
-      resource_id: resourceId,
-      details,
+    // Use fetch to POST to server-side API (avoids browser client RLS issues)
+    await fetch('/api/audit-logs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tenant_id: tenantId,
+        user_id: userId,
+        action,
+        resource_type: resourceType,
+        resource_id: resourceId,
+        details,
+      }),
     })
   } catch (error) {
     logger.error(

@@ -115,10 +115,27 @@ export async function POST(request: Request) {
 
     // Step 1: Generate embedding for the user's query
     const openai = getOpenAI()
-    const embeddingResponse = await openai.embeddings.create({
-      model: 'text-embedding-3-small',
-      input: query.trim(),
-    })
+    let embeddingResponse
+    try {
+      embeddingResponse = await openai.embeddings.create({
+        model: 'text-embedding-3-small',
+        input: query.trim(),
+      })
+    } catch (embeddingError) {
+      console.error('OpenAI embedding API error:', embeddingError)
+      return NextResponse.json(
+        { error: 'Our search service is temporarily unavailable. Please try again in a moment.' },
+        { status: 503 }
+      )
+    }
+
+    if (!embeddingResponse.data?.[0]?.embedding) {
+      console.error('OpenAI embedding returned empty data')
+      return NextResponse.json(
+        { error: 'Search service returned an invalid response. Please try again.' },
+        { status: 502 }
+      )
+    }
 
     const queryEmbedding = embeddingResponse.data[0].embedding
 
@@ -300,7 +317,7 @@ export async function POST(request: Request) {
     const tokensUsed = embeddingResponse.usage?.total_tokens ?? 0
     let activeSessionId: string | null = sessionId ?? null
 
-    const SITE_ID = '86bd8d01-0dc5-4479-beff-666712654104'
+    const SITE_ID = process.env.LINKSY_SITE_ID || '86bd8d01-0dc5-4479-beff-666712654104'
 
     // Create session on first message (no sessionId provided)
     if (!activeSessionId) {

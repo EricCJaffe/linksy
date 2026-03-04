@@ -2,6 +2,18 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
 /**
+ * Validate that a redirect target is a safe relative path.
+ * Blocks protocol-relative URLs (//evil.com), absolute URLs, and
+ * anything that doesn't start with a single slash.
+ */
+function safeRedirectPath(raw: string | null, fallback: string): string {
+  if (!raw) return fallback
+  if (!raw.startsWith('/') || raw.startsWith('//')) return fallback
+  if (raw.includes('\\')) return fallback
+  return raw
+}
+
+/**
  * GET /auth/callback
  * Handles:
  * - OAuth redirects from Google and Microsoft (code parameter)
@@ -13,7 +25,7 @@ export async function GET(request: Request) {
   const code = searchParams.get('code')
   const token_hash = searchParams.get('token_hash')
   const type = searchParams.get('type')
-  const next = searchParams.get('next') ?? '/dashboard'
+  const next = safeRedirectPath(searchParams.get('next'), '/dashboard')
 
   const supabase = await createClient()
 

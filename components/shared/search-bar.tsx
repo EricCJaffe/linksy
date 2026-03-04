@@ -44,9 +44,12 @@ export function SearchBar({
       return
     }
 
+    const controller = new AbortController()
     setIsLoading(true)
 
-    fetch(`/api/search?q=${encodeURIComponent(debouncedQuery)}`)
+    fetch(`/api/search?q=${encodeURIComponent(debouncedQuery)}`, {
+      signal: controller.signal,
+    })
       .then((res) => res.json())
       .then((data) => {
         setResults(data)
@@ -54,6 +57,7 @@ export function SearchBar({
         setSelectedIndex(-1)
       })
       .catch((error) => {
+        if (error instanceof DOMException && error.name === 'AbortError') return
         logger.error('Search error', error instanceof Error ? error : new Error('Unknown error'), {
           query: debouncedQuery
         })
@@ -61,6 +65,8 @@ export function SearchBar({
       .finally(() => {
         setIsLoading(false)
       })
+
+    return () => controller.abort()
   }, [debouncedQuery])
 
   // Keyboard shortcut: Cmd/Ctrl + K

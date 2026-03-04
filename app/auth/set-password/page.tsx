@@ -21,48 +21,32 @@ function SetPasswordForm() {
   const supabase = createClient()
 
   useEffect(() => {
-    console.log('[SET-PASSWORD] Page loaded')
-    console.log('[SET-PASSWORD] Current URL:', window.location.href)
-    console.log('[SET-PASSWORD] Hash:', window.location.hash)
-
-    // Manually extract tokens from hash and set session
+    // Extract tokens from URL hash and establish session
     const hash = window.location.hash
-    const params = new URLSearchParams(hash.substring(1)) // Remove # and parse
+    const params = new URLSearchParams(hash.substring(1))
 
     const accessToken = params.get('access_token')
     const refreshToken = params.get('refresh_token')
 
-    console.log('[SET-PASSWORD] Access token found:', !!accessToken)
-    console.log('[SET-PASSWORD] Refresh token found:', !!refreshToken)
-
     if (accessToken && refreshToken) {
-      console.log('[SET-PASSWORD] Setting session manually...')
-
       supabase.auth.setSession({
         access_token: accessToken,
         refresh_token: refreshToken,
-      }).then(({ data, error }) => {
-        console.log('[SET-PASSWORD] setSession result:', { data, error })
-
-        if (error) {
-          console.error('[SET-PASSWORD] Failed to set session:', error)
+      }).then(({ data, error: sessionError }) => {
+        if (sessionError) {
           setError('Session expired. Please request a new invitation.')
           setVerifying(false)
           return
         }
 
         if (data.user) {
-          console.log('[SET-PASSWORD] Session established! User:', data.user.email)
-          console.log('[SET-PASSWORD] User metadata:', data.user.user_metadata)
           setVerifying(false)
         } else {
-          console.error('[SET-PASSWORD] No user in session')
           setError('Session expired. Please request a new invitation.')
           setVerifying(false)
         }
       })
     } else {
-      console.error('[SET-PASSWORD] No tokens in hash!')
       setError('Session expired. Please request a new invitation.')
       setVerifying(false)
     }
@@ -97,7 +81,6 @@ function SetPasswordForm() {
       // Password set successfully - redirect to dashboard
       router.push('/dashboard')
     } catch (err: any) {
-      console.error('Error setting password:', err)
       setError(err.message || 'Failed to set password. Please try again.')
       setLoading(false)
     }

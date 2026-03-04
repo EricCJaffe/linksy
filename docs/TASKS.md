@@ -1,275 +1,339 @@
 # Tasks
 
-## Explicit TODO/FIXME Sources (Code + Docs scan)
+> Last updated: 2026-03-03. See `FEATURES_CHECKLIST.md` for the full feature inventory.
 
-- [ ] `README.md` roadmap items currently unchecked:
-  - Multi-language support (i18n)
-  - Billing and subscription management
-  - Two-factor authentication (2FA)
-  - SSO integration (SAML)
-- [ ] No additional explicit `TODO`/`FIXME` markers found in `app/`, `lib/`, `components/`, `scripts/`, `supabase/`, `README.md`, or `docs/` as of 2026-02-26.
+## Go-Live Roadmap
 
-## Code Review Findings (2026-03-02)
+Organized into phases. Everything in Phase 0–2 must be completed or have a clear workaround before public launch.
 
-Full codebase review across API routes, auth/middleware, React components, and data fetching layers. Findings prioritized by severity.
+### Phase 0 — Critical Security & Data (Blockers)
 
-### CRITICAL — Fix Before Next Deploy
+These must be resolved first. Security issues block go-live; data issues block user acceptance.
 
-- [ ] **XSS: Unsanitized `dangerouslySetInnerHTML`** — `components/ui/rich-text-display.tsx:14-18` and `rich-text-editor.tsx:100` render raw HTML without sanitization (e.g. DOMPurify). Any user-provided HTML (provider descriptions, notes) could execute scripts. **Add DOMPurify or similar.**
-- [ ] **Missing `/api/invitations/accept` endpoint** — `app/(auth)/signup/page.tsx:93` and `components/auth/invite-accept-form.tsx:62` POST to `/api/invitations/accept` but this route does not exist. Invitation acceptance is completely broken. **Create the endpoint.**
-- [ ] **Open redirect in `/api/auth/callback`** — `app/api/auth/callback/route.ts:14` takes `next` param from query string without validation and redirects to it. Attack: `?next=//evil.com`. **Validate `next` starts with `/` and has no double slashes.**
-- [ ] **Race condition in ticket numbering** — `app/api/linksy/tickets/route.ts:112-118` reads ticket count then inserts, allowing duplicate sequence numbers under concurrency. **Use PostgreSQL `nextval()` or an RPC with transactional locking.**
+#### 0.1 CRITICAL Security Fixes — COMPLETE
 
-### HIGH — Fix Soon
+All four critical vulnerabilities from [Audit 2026-03-02](AUDIT-2026-03-02.md) are resolved.
 
-- [ ] **OpenAI API calls missing error handling** — `app/api/linksy/search/route.ts:117-122` and `:419-435` have no try/catch around OpenAI embedding/chat calls. If the API fails or returns empty data, `embeddingResponse.data[0]` throws. **Wrap in try/catch with user-friendly fallback.**
-- [ ] **Hardcoded SITE_ID in multiple routes** — `app/api/linksy/search/route.ts:303` and `tickets/route.ts:39` hardcode `86bd8d01-0dc5-4479-beff-666712654104`. **Move to environment variable.**
-- [ ] **Provider API bypasses RLS with no tenant filter** — `app/api/linksy/providers/route.ts:9-58` uses `createServiceClient()` and returns all active providers to any requester. **Filter by tenant; use RLS-respecting client or add tenant check.**
-- [ ] **Open redirect in login form** — `components/auth/login-form.tsx:44,125` takes `redirect` param from search params without validation. **Validate it's a relative path.**
-- [ ] **Non-admin users can set `is_private` on comments** — `app/api/tickets/[id]/comments/route.ts` POST blindly accepts `is_private` from body. **Server should enforce: only site_admin can set `is_private: true`.**
-- [ ] **Merge operation has no transaction/rollback** — `app/api/admin/providers/merge/route.ts:74-195` logs errors on location/contact moves but continues, potentially leaving orphaned records. **Fail fast on first error or wrap in a transaction.**
+- [x] **XSS: Unsanitized `dangerouslySetInnerHTML`** — Added isomorphic-dompurify. COMPLETED 2026-03-03
+- [x] **Missing `/api/invitations/accept` endpoint** — Created endpoint. COMPLETED 2026-03-03
+- [x] **Open redirect in `/api/auth/callback`** — Added safeRedirectPath() validation. COMPLETED 2026-03-03
+- [x] **Race condition in ticket numbering** — Created PG sequence + RPC. COMPLETED 2026-03-03
 
-### MEDIUM — Address When Possible
+#### 0.2 HIGH Security Fixes — COMPLETE
 
-- [ ] **Crisis keyword test endpoint has no auth** — `app/api/crisis-keywords/test/route.ts` accepts arbitrary POST input with no authentication. **Add auth check.**
-- [ ] **`setTimeout` not cleaned up in find-help** — `app/find-help/page.tsx:258-277` sets a 5-second timeout for crisis banner dismissability with no cleanup on unmount. **Use `useEffect` with `clearTimeout`.**
-- [ ] **Search bar missing AbortController** — `components/shared/search-bar.tsx:40-64` fetch in useEffect doesn't abort on unmount/query change. **Add AbortController.**
-- [ ] **Notification subscription not tenant-scoped** — `lib/hooks/useNotifications.ts:54-72` subscribes to all `notifications` inserts without user/tenant filter. **Filter by `user_id`.**
-- [ ] **In-memory rate limiter ineffective on Vercel** — `lib/utils/rate-limit.ts` stores state in-memory per instance. On multi-instance Vercel, limits don't work. **Use Upstash Redis for production.**
-- [ ] **Activity logging uses browser client** — `lib/utils/activity.ts:35` calls `createClient()` (browser, RLS-bound) to insert audit logs. If user lacks insert permission, logs silently fail. **Use server-side service client.**
-- [ ] **`parseInt` NaN not handled** — `app/api/support-tickets/route.ts:15-16` and other routes don't guard against `NaN` from non-numeric query params. **Add `|| defaultValue` fallback.**
-- [ ] **Unsafe `any` types in hooks** — `useCurrentTenant.ts:53,61,71-74`, `find-help/page.tsx:334` use `any` for membership/provider data. **Create proper interfaces.**
-- [ ] **Missing staleTime/gcTime on queries** — `lib/hooks/useModules.ts` and others have no React Query cache config, causing unnecessary refetches. **Add reasonable staleTime.**
-- [ ] **Error response info disclosure** — Multiple routes (e.g. `app/api/invitations/route.ts:76`) return `validation.error.flatten()` exposing schema details. **Return generic messages; log details server-side.**
-- [ ] **CSRF allows `http://` origin in production** — `lib/middleware/csrf.ts:34-36` includes `http://${host}` in allowed origins. **Only allow HTTP in development.**
+All six high-severity vulnerabilities from [Audit 2026-03-02](AUDIT-2026-03-02.md) are resolved.
 
-### LOW — Backlog
+- [x] **OpenAI API calls missing error handling** — Added try/catch with 503 fallback. COMPLETED 2026-03-03
+- [x] **Hardcoded SITE_ID** — Replaced with `process.env.LINKSY_SITE_ID`. COMPLETED 2026-03-03
+- [x] **Provider API bypasses RLS** — Switched to `createClient()` + optional tenant_id. COMPLETED 2026-03-03
+- [x] **Open redirect in login form** — Added safeRedirectPath() validation. COMPLETED 2026-03-03
+- [x] **Non-admin users can set `is_private` on comments** — Server enforces site_admin only. COMPLETED 2026-03-03
+- [x] **Merge operation has no transaction/rollback** — Changed to fail-fast on first error. COMPLETED 2026-03-03
 
-- [ ] **Array index used as React key** — 15+ instances across `find-help/page.tsx:464`, `find-help-widget.tsx:339`, `search-results.tsx:52`, ticket/admin pages. Causes state bugs on reorder/filter.
-- [ ] **Silent `.catch(() => {})` swallowing errors** — `find-help-widget.tsx:213`, `provider-detail-tabs.tsx:676,685,761`, `statistics-tab.tsx:17,274`. Failures are invisible.
-- [ ] **`alert()` used for errors** — `components/providers/call-log-form.tsx:59-102` uses `alert()` instead of toast notifications.
-- [ ] **Environment variables not validated at startup** — `lib/utils/email.ts`, `lib/supabase/client.ts` use `!` non-null assertions with no runtime check. App silently breaks if vars missing.
-- [ ] **Sensitive logging in set-password page** — `app/auth/set-password/page.tsx` logs token availability to browser console. **Remove for production.**
-- [ ] **File upload paths use `Date.now()` + UUID** — `app/api/providers/[id]/notes/upload/route.ts:67-68`, `app/api/files/upload/route.ts:73-76`. The timestamp is unnecessary given UUID. No filename length limit.
-- [ ] **CSV export no error handling** — `lib/api/audit-logs.ts:60-64` `exportAuditLogsToCSV` has no try/catch.
-- [ ] **Missing null check** — `lib/hooks/useProviderPermissions.ts:34-35` assumes `provider.contacts` exists without `?.`.
+#### 0.3 RLS / Database Security Fixes
 
-## Session Snapshot (2026-03-02)
+Migration written: `20260303000002_rls_security_hardening.sql`. **Needs to be applied to Supabase.**
 
-### Completed Today
-- [x] Fixed ESLint config: removed `next/typescript` extend (Next 15-only, not available in Next 14); lint now loads cleanly
-- [x] Fixed Sentry `global-error.tsx` styling: added `globals.css` import + Tailwind classes + `reset` prop so error boundary no longer breaks all page styling
-- [x] Fixed all ~40 `react/no-unescaped-entities` lint errors across 20 files; added `"warn"` rule as CI safety net
-- [x] Fixed `jsx-a11y/alt-text` false positive in `file-upload.tsx` (renamed Lucide `Image` to `ImageIcon`)
-- [x] Fixed `handleSelect` missing `useCallback` dep in `search-bar.tsx`
-- [x] Removed 3 debug `console.log` statements from `middleware.ts` auth redirect paths
-- [x] Fixed 8 `react-hooks/exhaustive-deps` warnings: moved fetch functions inside `useEffect` or wrapped in `useCallback` (review-imports, support, dashboard, reports, survey, aging-referrals, support-tickets-tab)
-- [x] Removed 3 dead code files (160 LOC): `components/ui/accordion.tsx`, `lib/hooks/useSla.ts`, `lib/constants/routes.ts`
-- [x] Lint warnings reduced from 40+ errors → 0 errors, 10 warnings (6x `no-img-element`, 4x cascading deps)
+- [x] **HIGH: `linksy_provider_contacts` — RLS disabled entirely.** Migration re-enables RLS with provider-scoped policies. COMPLETED 2026-03-03 (migration pending apply)
+- [x] **HIGH: `linksy_provider_notes` — `is_private` not enforced at RLS level.** Migration adds separate policies for admin vs contacts. COMPLETED 2026-03-03 (migration pending apply)
+- [x] **MEDIUM: `linksy_tickets` — No client-view policy.** Migration adds email-based client view. COMPLETED 2026-03-03 (migration pending apply)
+- [x] **MEDIUM: `linksy_call_logs` — Overly permissive.** Migration scopes to provider contacts. COMPLETED 2026-03-03 (migration pending apply)
+- [x] **MEDIUM: `linksy_custom_fields` — Unscoped.** Migration scopes to provider admin. COMPLETED 2026-03-03 (migration pending apply)
+- [x] **MEDIUM: `linksy_surveys` — Unrestricted UPDATE.** Migration restricts to admin only. COMPLETED 2026-03-03 (migration pending apply)
+- [ ] **LOW: `linksy_search_sessions` — Anon update has no row filter.** One session could modify another. **Add `id = session_id` filter.**
 
-## Session Snapshot (2026-02-23)
+#### 0.4 User Migration Strategy
+- [ ] **Design auth migration plan for existing users** — ~167+ users in Supabase with `user_id` set as `linksy_provider_contacts` but no passwords. Options:
+  - **(a) Magic link / passwordless invite flow** — One-time email link → set password (leverages `/invite/[token]` + `/auth/set-password`)
+  - **(b) Bulk password-reset emails** — `resetPasswordForEmail()` via Supabase Admin API
+  - **(c) First-login password creation** — Self-service claim by email verification
+  - **Decision needed:** Which approach? Does every contact need login access, or only primary contacts?
+- [ ] Audit `linksy_provider_contacts` to confirm valid `user_id` references in `auth.users`
+- [ ] Audit email addresses for deliverability
+- [ ] Build or adapt bulk invite script
+- [ ] Test migration flow end-to-end with small batch
+- [ ] Document rollout communication plan
 
-### Completed Today
-- [x] Summary page `Needs Addressed` is now taxonomy-driven: multi-select categories + underlying needs in edit mode, grouped category/need display in view mode (providers + provider portal review)
-- [x] Needs taxonomy admin page defaults to active categories, with explicit toggle for inactive
-- [x] Legacy/duplicate inactive need categories were remapped to active AIRS categories and cleaned up via migration
-- [x] Provider notes flow stabilized: create/update compatibility fixes, author display, pin/copy/edit/delete actions, and attachment upload path fixed
-- [x] Referral status color coding standardized across referrals management and provider-level referrals views
-- [x] Provider summary expanded with contact preference controls and UI color cues for key status fields
-- [x] Support ticket entry point moved to top-right action pattern; provider-side support tab removed from provider detail navigation
+#### 0.5 Data Migration & Import (Pre-Go-Live Sync)
+- [ ] **Incremental import to sync delta from legacy system** — Initial Power Apps → Supabase migration is done; production data has continued accumulating. Need:
+  - Identify delta: new providers, updated contacts, new referrals since last import
+  - Build incremental import script (or re-run with upsert logic)
+  - Reconcile manual edits in Linksy with legacy source-of-truth
+  - Run final sync close to go-live (ideally same-day cutover)
+- [ ] Verify all provider embeddings and LLM context cards are generated
+- [ ] Verify geocoding is complete for all locations
+- [ ] Final QA pass: spot-check 10+ providers for data accuracy
 
-### Pending (Prioritized)
-- [x] Finalize `Needs` vs `Needs Addressed` final placement/labels after stakeholder review (taxonomy UI shipped, naming/placement decision still pending) — COMPLETED 2026-02-25
-- [x] Parent/child account linking model — Sprint 1 (Database + Security) COMPLETE (2026-02-24)
-- [x] Parent/child account linking model — Sprint 2 (Basic UI) COMPLETE (2026-02-24)
-- [x] Parent/child account linking model — Sprint 3 (Dashboard + Reporting) COMPLETE (2026-02-24)
-- [x] Parent/child account linking model — Sprint 4 (Polish + UX) COMPLETE (2026-02-24)
-- [x] Webhooks admin smoke validation in live/staging target (create/test endpoint, signature validation, retry/history checks) — COMPLETED 2026-02-25
-- [ ] Referral workflow e2e mailbox assertion leg (outbound email content/delivery verification)
-- [x] Tenant model refactor: move from provider-as-tenant to region tenants (Impact Works site, Impact Clay tenant, add United Way of North Florida tenant) — COMPLETED 2026-03-01
-  - Fixed remote_schema migration (20260225204403) that was dropping `tenant_id` column/FK/indexes needed by region model
-  - Fixed auth middleware `.maybeSingle()` to prefer region tenants when user has multiple memberships
-  - Webhook dispatch now resolves tenant_id from provider record (not just auth context)
-- [x] Apply migration `20260225223000_region_tenant_model.sql` — APPLIED 2026-03-02
-- [x] Run `scripts/backfill-provider-tenants.sql` — APPLIED 2026-03-02 (66/66 contacts backfilled)
-- [ ] **TEST**: Log in as a provider user and verify `/dashboard/my-tickets` shows their referrals (no longer "No referrals found")
-- [x] Verify tenant UI and webhooks scoped to Impact Clay — COMPLETED 2026-03-01
-  - Webhook UI (`useCurrentTenant`) correctly filters to `type='region'` tenants
-  - All ticket webhook dispatch routes now resolve tenant_id from `linksy_providers.tenant_id`
-- [ ] Webhook event coverage: verify `ticket.assigned`, `ticket.forwarded`, `ticket.reassigned`
-- [x] Provider user sees "No referrals found" — COMPLETED 2026-03-01
-  - Root cause: auth middleware `.maybeSingle()` silently returned null when user had multiple tenant memberships
-  - Root cause: `/api/tickets` GET had no server-side provider access validation — used service client bypassing RLS
-  - Fix: tickets API now enforces provider access for non-admin users via `linksy_provider_contacts`
-  - Fix: single-ticket GET endpoint now validates provider access via `linksy_user_can_access_provider` RPC
+#### 0.6 Template Email Data
+- [ ] **Collect and configure all email template content** — System exists but needs production-ready copy:
+  - New referral notification (to provider)
+  - Referral status update (to client)
+  - Provider invitation / welcome email
+  - User migration / account claim email (ties to 0.4)
+  - Ticket comment notification
+  - Host-specific template overrides
+- [ ] Get final copy from stakeholders (Impact Clay branding, tone, legal disclaimers)
+- [ ] Load templates into `linksy_email_templates` table
 
-## MVP Alignment (Reviewed 2026-02-23)
+#### 0.7 Email & Domain Setup (Impact Works)
+- [ ] **Choose production domain** (e.g., `impactworks.org`, `impactworks.com`, `impactworks.app`)
+- [ ] Configure DNS records (Vercel custom domain + email DNS)
+- [ ] Set up SPF/DKIM/DMARC records for Resend transactional email
+- [ ] Set up shared/alias inboxes (`support@`, `referrals@`, `noreply@`)
+- [ ] Update env vars: `ADMIN_EMAIL`, `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SITE_URL`
+- [ ] Verify Resend domain authentication
 
-### Confirmed Complete
-- [x] Database + chatbot baseline is live (AI search pipeline + provider/ticket schema in production flow)
-- [x] Accept/deny controls for new organization applications (admin review + approve/reject)
-- [x] Note date/time stamps in provider timeline and notes views
-- [x] Org Needs categories on provider Summary page (taxonomy-driven category + need selection/display)
-- [x] Duplicate referral guard for same client/provider/need window
-- [x] ZIP code + provider services matching logic in search pipeline
+---
 
-### Confirmed Requirements (Still Open)
-- [x] Merge contacts (dedup + merge workflow for provider contacts) — COMPLETED 2026-02-24
-- [x] Bulk import approval flagging: imported records should be reviewable/approvable before full activation — COMPLETED 2026-02-24
-- [x] Referral pending aging notifications: alert/escalation when pending referrals exceed configured age — COMPLETED 2026-02-24
-- [x] Bulk referral status update with automatic client/provider email notifications — COMPLETED 2026-02-24
-- [x] Auto-reroute option when provider cannot help — COMPLETED 2026-02-25
-- [x] Referral cap per client: enforce maximum of 4 referrals (replace current broader limit behavior) — COMPLETED 2026-02-24
-- [x] Provider service ZIP coverage field: allow providers/admins to define supported ZIP codes and exclude referrals outside that coverage — COMPLETED 2026-02-24
-- [x] Provider phone extension field (UI + DB schema + API support) — COMPLETED 2026-02-24
+### Phase 1 — Feature Completion & Hardening (Pre-Go-Live)
 
-### Provider Portal / Notes Enhancements (Open)
-- [x] Add call log as a provider note-type option (structured call details attached to notes flow) — COMPLETED 2026-02-24
+Core features that users and admins need on day one, plus remaining quality fixes.
 
-### Phase 2 / 3 Still Open
-- [ ] Autoupdates for description every 90 days with explicit override behavior
-- [ ] Enhanced notification workflows beyond current baseline notifications
-- [ ] Host-specific email template customization (tenant/host-level overrides for outbound referral/proposal communications)
-- [ ] Host custom form builder for pre-proposal intake (configurable extra questions before proposal/referral submission)
-- [ ] Custom provider referral redirects (external destination behavior + strategy/pricing decision)
+#### 1.1 Remaining Code Quality Fixes (from [Audit 2026-03-02](AUDIT-2026-03-02.md))
+
+10 of 11 MEDIUM audit findings resolved. 1 remaining requires infrastructure (Upstash Redis):
+
+- [x] **Crisis keyword test endpoint has no auth** — Added `requireAuth()`. COMPLETED 2026-03-03
+- [ ] **In-memory rate limiter ineffective on Vercel** — `lib/utils/rate-limit.ts` stores state per-instance. Use Upstash Redis for production.
+- [x] **Activity logging uses browser client** — Switched to server-side API call. COMPLETED 2026-03-03
+- [x] **Unsafe `any` types in hooks** — Created proper interfaces for `useCurrentTenant.ts` and `find-help/page.tsx`. COMPLETED 2026-03-03
+- [x] **Missing staleTime/gcTime on queries** — Added to 11 hooks across 8 files. COMPLETED 2026-03-03
+
+#### 1.2 Reassign Referral to Another Provider
+- [ ] **End-to-end verification of auto-reroute** — Feature completed 2026-02-25 (provider flags "unable to assist" → system offers reassignment). Need to:
+  - E2E test: create referral → provider marks unable → admin reassigns to new provider
+  - Verify new provider receives notification email
+  - Verify ticket history/comments reflect reassignment
+  - Verify `ticket.reassigned` webhook fires correctly
+  - Test from provider portal view (not just admin)
+
+#### 1.3 Events Visibility for End Users
+- [ ] **Decide where events appear for public users** — Options:
+  - **(a) In chatbot results** — Show relevant events alongside providers
+  - **(b) Dedicated `/events` public page** — Standalone calendar/list
+  - **(c) On public provider directory** — Events on provider profiles
+  - **(d) Combination** — Chatbot results AND dedicated page
+  - **Decision needed:** Which approach? Does this vary by host?
+- [ ] Implement chosen approach
+- [ ] Ensure only `published` events shown publicly
+
+#### 1.4 AI Search Includes Events
+- [ ] **Extend AI search pipeline to include event listings** — Currently searches only provider services/needs. Need to:
+  - Include upcoming published events in vector search or as supplemental results
+  - Add event data to LLM context (name, date, time, location, description, provider)
+  - Generate embeddings for events (or match via `linksy_provider_needs`)
+  - LLM mentions relevant events naturally
+  - Filter to future events only
+- [ ] Update search API response to include event cards
+- [ ] Widget UI: display event result cards
+
+#### 1.5 Host Danger Word Filtering
+- [ ] **Verify crisis detection in host-embedded widgets** — System has global `linksy_crisis_keywords` with detection + emergency banners. Verify:
+  - Crisis detection works in host-embedded widgets
+  - Crisis keywords are comprehensive (review with stakeholders)
+  - Test: type crisis keyword in host widget → banner appears
+  - Determine if hosts need per-host keyword customization
+  - Document safety system for hosts
+
+#### 1.6 Reporting Features
+- [ ] **Evaluate reporting gaps** — Analytics dashboard has search, provider, crisis, widget, and ticket tabs. Assess needs for:
+  - Exportable reports (CSV/PDF) for board meetings and funders
+  - Scheduled report emails (weekly/monthly digest)
+  - Provider-facing reports (own referral stats, response times)
+  - Host-facing reports (widget usage, search volume, top needs)
+  - Funder/grant reporting (aggregate impact metrics)
+- [ ] Prioritize which reports needed for go-live vs. post-launch
+- [ ] Build priority reports
+
+---
+
+### Phase 2 — Business Operations & Polish (Go-Live Adjacent)
+
+Needed for sustainability but not blocking initial launch if timeline is tight.
+
+#### 2.1 LOW Code Quality Fixes (from [Audit 2026-03-02](AUDIT-2026-03-02.md)) — ALL RESOLVED
+
+All 8 LOW findings resolved.
+
+- [x] **Array index used as React key** — Replaced with stable keys across 4 components. COMPLETED 2026-03-03
+- [x] **Silent `.catch(() => {})` swallowing errors** — Added intent comments to all silent catches. COMPLETED 2026-03-03
+- [x] **Environment variables not validated at startup** — Added runtime validation to Supabase client/server. COMPLETED 2026-03-03
+- [x] **File upload paths use `Date.now()` + UUID** — Simplified to UUID-only, added filename length limit. COMPLETED 2026-03-03
+- [x] **CSV export no error handling** — Added empty guard, try/finally for URL cleanup, user-facing toast on failure. COMPLETED 2026-03-03
+- [x] **`alert()` used for errors** — Replaced with `useToast()`. COMPLETED 2026-03-03
+- [x] **Sensitive logging in set-password page** — Removed all console.log/error. COMPLETED 2026-03-03
+- [x] **Missing null check** — Added optional chaining to `provider.contacts`. COMPLETED 2026-03-03
+
+#### 2.2 Public-Facing Impact Works Website
+- [ ] **Decide approach:** Separate marketing site (WordPress/Webflow) vs. enhanced Linksy landing page at `/`
+- [ ] Design: brand guidelines, logo, color palette for Impact Works
+- [ ] Content: mission, about, for providers, for communities, pricing, contact
+- [ ] SEO: meta tags, Open Graph, sitemap
+- [ ] Analytics (Google Analytics / Plausible)
+
+#### 2.3 Stripe Integration — Monthly Recurring Billing
+- [ ] **Set up Stripe account and API keys**
+- [ ] Define pricing tiers (per-host? per-tenant? flat fee + usage?)
+- [ ] Implement Stripe Checkout + Customer Portal
+- [ ] Webhook handler (`invoice.paid`, `invoice.payment_failed`, `subscription.updated`, `subscription.deleted`)
+- [ ] Link subscription status to host/tenant `is_active`
+- [ ] Grace period logic for failed payments
+- [ ] Admin UI: subscription status, revenue dashboard
+- [ ] Test full lifecycle (subscribe → invoice → pay → cancel)
+
+#### 2.4 QuickBooks Integration
+- [ ] **Evaluate approach:** QuickBooks Online API vs. third-party connector (Zapier, Make)
+- [ ] Sync Stripe invoices/payments → QuickBooks income entries
+- [ ] Map customers to QuickBooks records
+- [ ] Implement chosen approach
+
+---
+
+### Phase 3 — Compliance & Scale (Post-Launch Priority)
+
+#### 3.1 HIPAA-Level Capacity
+- [ ] Audit current PHI flows (client names, contact info, health-related needs, referral details)
+- [ ] Supabase: HIPAA-eligible plan + BAA
+- [ ] Vercel: HIPAA compliance posture (may need Enterprise)
+- [ ] OpenAI: BAA (Enterprise tier); evaluate PHI in LLM queries
+- [ ] Resend/Email: BAA for transactional email
+- [ ] Encryption audit (at rest + in transit)
+- [ ] PHI access audit logging
+- [ ] Data retention policies
+- [ ] Staff training documentation
+- [ ] Compliance consultant if needed
+
+---
+
+### Phase 4 — Deferred / Post-Launch
+
+- [ ] Voice input (Whisper) in widget (`/api/linksy/transcribe` + mic UX)
+- [ ] Spanish (es) language support / multi-language i18n
+- [ ] Two-factor authentication (2FA) for admins
+- [ ] SSO integration (SAML)
+- [ ] Autoupdates for provider description every 90 days
+- [ ] Enhanced notification workflows beyond baseline
+- [ ] Host-specific email template customization (tenant/host-level overrides)
+- [ ] Host custom form builder for pre-proposal intake
+- [ ] Custom provider referral redirects (external destination behavior)
 - [ ] Host filtering by needs/category in admin hosts workflow
 - [ ] Chatbot card view support for non-referral providers
 - [ ] Advanced workflow verification engine
-- [ ] Stronger anti-spam logic for client-to-provider interactions beyond current rate/duplicate guards
-- [ ] Microphone input for chatbot
-- [ ] Multilingual support
+- [ ] Stronger anti-spam logic beyond current rate/duplicate guards
 
-## Active
+---
 
-### Data Management
-- [x] Merge contact function — ability to merge duplicate contacts into a single record (dedup provider contacts) — COMPLETED 2026-02-24
-- [x] Merge provider function — ability to merge duplicate providers with comprehensive data transfer — COMPLETED 2026-02-24
-- [x] Purge provider function — ability to permanently delete a provider and all associated records (locations, contacts, needs, tickets, notes, events) — COMPLETED 2026-02-24
-- [x] Finalize `Needs` vs `Needs Addressed` placement — review the Summary page + Notes/Referrals context and lock final field locations/labels so data entry flow is unambiguous — COMPLETED 2026-02-25
+## Manual Verification Needed
 
-### Parent/Child Linking Model
-- [x] Sprint 1: Database + Security (COMPLETED 2026-02-24)
-  - ✅ Migration with parent_provider_id, audit columns, indexes, constraints
-  - ✅ Database helper functions: linksy_get_child_provider_ids(), linksy_user_can_access_provider()
-  - ✅ TypeScript types: ProviderHierarchy, ParentOrgStats, ProviderAccessInfo, ProviderAccessLevel
-  - ✅ Updated /api/provider-access to include children in accessibleProviderIds
-  - ✅ Access control in provider detail/locations/notes endpoints via RPC function
-  - ✅ API endpoints: POST /api/admin/providers/[id]/set-parent, GET /api/providers/[id]/children, GET /api/providers/[id]/hierarchy
-  - ✅ React Query hooks: useProviderHierarchy, useProviderChildren, useSetParentProvider
-- [x] Sprint 2: Basic UI (COMPLETED 2026-02-24)
-  - ✅ ParentChildManager component with link/unlink dialogs (search parent, confirm unlink)
-  - ✅ Integrated into provider Summary tab (visible to all, admin controls for site_admin only)
-  - ✅ Displays parent organization with link to parent detail page
-  - ✅ Displays child locations list with status badges and location counts
-  - ✅ Organization type filter in providers list (all/parent/child/standalone)
-  - ✅ Child location badge indicator in providers table
-  - ✅ API support for organization_type filtering with post-query parent/standalone detection
-- [x] Sprint 3: Dashboard + Reporting (COMPLETED 2026-02-24)
-  - ✅ API endpoint GET /api/providers/[id]/parent-stats with date range filtering
-  - ✅ Aggregated metrics across parent + all children (referrals, interactions, events, notes, locations)
-  - ✅ ParentOrgDashboard component with summary cards, engagement breakdown, and performance table
-  - ✅ Per-child breakdown table with drill-down links to each location
-  - ✅ Date range filters (from/to) with apply/clear controls and auto-refresh
-  - ✅ Dedicated "Organization Dashboard" tab in provider detail (only visible for parent orgs)
-  - ✅ useParentOrgStats hook with query invalidation support
-  - ✅ Parent stats row + totals row in breakdown table for complete visibility
-- [x] Sprint 4: Polish + UX (COMPLETED 2026-02-24)
-  - ✅ Bulk operations for child sites from Organization Dashboard table
-    - ✅ Checkbox selection with "Select All" toggle
-    - ✅ Bulk activate/deactivate/pause actions
-    - ✅ Parallel API calls with Promise.all()
-    - ✅ Auto-refresh and query invalidation after bulk operations
-  - ✅ Navigation improvements
-    - ✅ ProviderBreadcrumbs component showing parent > child hierarchy
-    - ✅ ProviderQuickSwitcher dropdown to jump between parent and all children
-    - ✅ Integrated into provider detail page header
-  - ✅ Documentation
-    - ✅ Comprehensive user guide (docs/GUIDES/parent-child-organizations.md)
-    - ✅ FEATURES_CHECKLIST.md updated with all parent/child features marked complete
-    - ✅ Sections: Overview, For Site Admins, For Parent Admins, For Provider Staff, Best Practices, Troubleshooting
+Items that need hands-on testing in a live or staging environment:
 
-## Backlog
+- [ ] **Apply RLS migration** — Run `20260303000002_rls_security_hardening.sql` on Supabase
+- [ ] **Apply ticket numbering migration** — Run sequence + RPC migration on Supabase
+- [ ] **Provider user referrals** — Log in as provider user; verify `/dashboard/my-tickets` shows their referrals
+- [ ] **Webhook event coverage** — Verify `ticket.assigned`, `ticket.forwarded`, `ticket.reassigned` fire correctly
+- [ ] **Referral workflow e2e (email leg)** — Outbound email content/delivery verification (needs mailbox capture strategy: MailHog/test inbox)
+
+---
+
+## Backlog (Future)
 
 ### Testing
-- [ ] Referral workflow e2e (mailbox assertion leg) — outbound email delivery/content assertions still need mailbox capture strategy (MailHog/test inbox); status-update trigger path is now covered in Playwright
-- [x] Webhooks admin UI smoke validation — create webhook in `/dashboard/admin/webhooks`, run `Test`, verify signed headers/payload at receiver, confirm delivery history filters/pagination and secret reveal/copy/rotate behavior — COMPLETED 2026-02-25
+- [ ] E2E mailbox assertion for referral emails (MailHog/test inbox strategy)
 
-### Widget / Embed
-- [x] Fix iframe cross-origin embedding — `/find-help/*` now overrides `X-Frame-Options` and sets `frame-ancestors *` CSP; all other routes keep `SAMEORIGIN`
-- [x] `host_allowed_domains` enforcement — `linksy_resolve_host` RPC updated to return `allowed_domains`; checked in `find-help/[slug]/page.tsx` against `Referer` header; direct navigation always allowed
-- [x] JavaScript embed snippet — `public/widget.js`; reads `data-slug`, derives base URL from script `src`, injects responsive iframe with `allow="geolocation"`
+### README Roadmap (unchecked items)
+- Multi-language support (i18n) → Phase 4
+- Billing and subscription management → Phase 2.3
+- Two-factor authentication (2FA) → Phase 4
+- SSO integration (SAML) → Phase 4
 
-### Authentication
-- [x] Finalize Microsoft OAuth — verify Azure AD app registration, test login flow end-to-end, confirm callback handling and role assignment
-- [x] Finalize Google OAuth — verify Google Cloud Console setup, test login flow end-to-end, confirm callback handling and role assignment
-
-### Provider Portal (Phase 2)
-
-### Infrastructure
-- [x] ESLint config fix + JSX entity cleanup + dead code removal — COMPLETED 2026-03-02
-- [x] Sentry `global-error.tsx` styling fix — COMPLETED 2026-03-02
-- [x] `useEffect` exhaustive-deps cleanup (8 warnings) — COMPLETED 2026-03-02
-- [x] Middleware debug log removal — COMPLETED 2026-03-02
-
-## Phase 2 (Deferred)
-
-- [ ] Voice input (Whisper) in widget (`/api/linksy/transcribe` + widget mic UX)
-- [ ] Microphone input for chatbot
-- [ ] Spanish (es) language support (duplicates README “Multi-language support (i18n)” item)
-- [ ] Multi-language support (i18n) — README roadmap item (covers Spanish language support)
-- [ ] Two-factor authentication (2FA) — README roadmap item (covers admin TOTP)
-- [ ] Billing and subscription management (README roadmap item)
-- [ ] SSO integration (SAML) (README roadmap item)
+---
 
 ## Done
 
-- [x] Parent/child provider linking - Sprint 4 (Polish + UX) (2026-02-24) — Production-ready polish for multi-location organizations: bulk operations in Organization Dashboard table with checkbox selection (select all toggle), bulk activate/deactivate/pause actions using parallel API calls, auto-refresh after operations; ProviderBreadcrumbs component showing "Parent Org > Child Name" hierarchy with links; ProviderQuickSwitcher dropdown menu in provider detail header for instant navigation between all locations (parent + children) with current location highlighting; comprehensive user guide (docs/GUIDES/parent-child-organizations.md) covering admin workflows, parent admin features, staff access, best practices, troubleshooting, and technical notes; FEATURES_CHECKLIST.md fully updated with all parent/child features marked complete in Provider Management section
-- [x] Parent/child provider linking - Sprint 3 (Dashboard + Reporting) (2026-02-24) — Aggregated reporting for parent organizations: API endpoint GET /api/providers/[id]/parent-stats with date range filtering (date_from, date_to); aggregates referrals, interactions (profile views, phone/website/directions clicks), events, notes, locations across parent + all children; ParentOrgDashboard component with summary cards (locations, referrals, interactions, events), engagement breakdown (4 interaction types with icons), additional metrics (notes, physical locations), and performance breakdown table showing parent + each child + totals row; date range filter UI with apply/clear/refresh controls; dedicated "Organization Dashboard" tab in provider detail (only visible for parent orgs with children); useParentOrgStats React Query hook; drill-down links from each row to provider detail pages
-- [x] Parent/child provider linking - Sprint 2 (Basic UI) (2026-02-24) — Complete UI for managing parent/child relationships: ParentChildManager component with search parent dialog, unlink confirmation, parent info display with link, children list with status badges + location counts; integrated into provider Summary tab (visible to all users, admin controls for site_admin); organization_type filter in providers list (all/parent/child/standalone) with API support for post-query parent detection based on children count; child location badge indicator in providers table; organization_type field added to ProviderFilters TypeScript type
-- [x] Parent/child provider linking - Sprint 1 (Database + Security) (2026-02-24) — Complete foundation for multi-location organizations: migration with parent_provider_id + audit columns + indexes + constraints; database helper functions for child IDs and access checking; TypeScript types (ProviderHierarchy, ParentOrgStats, ProviderAccessInfo); updated provider-access endpoint to include children in accessibleProviderIds; access control integrated into provider detail/locations/notes APIs via linksy_user_can_access_provider() RPC; admin API endpoints for set-parent, get-children, get-hierarchy; React Query hooks (useProviderHierarchy, useProviderChildren, useSetParentProvider); parent admins automatically inherit access to all child sites
-- [x] Provider phone extension field (2026-02-24) — Added `phone_extension VARCHAR(20)` to `linksy_providers`; editable from Summary tab; included in LLM context cards (format: "Phone: (555) 123-4567 ext. 123"); updated API, UI, and TypeScript types
-- [x] Provider service ZIP coverage (2026-02-24) — Added `service_zip_codes TEXT[]` to `linksy_providers`; default null/empty = serves all areas; editable from Summary tab with comma-separated input; search API filters providers by client ZIP; excluded providers returned in `excludedByZip` field; LLM context cards show "Service Area: ZIP codes X, Y, Z" or "Service Area: All areas"; GIN index for performance
-- [x] Referral cap per client (4 max) (2026-02-24) — Enforced maximum 4 active/pending referrals per client (identified by email or phone); validation in both `/api/tickets` and `/api/linksy/tickets`; returns 429 error with helpful message and existing ticket info when cap exceeded; only counts pending tickets (not resolved)
-- [x] Automated test framework — Vitest + @testing-library/react; `vitest.config.ts`, `vitest.setup.ts`; 31 unit tests across `csv.ts` and `error-handler.ts`; `npm run test:run` added to CI; `npm run test` (watch), `npm run test:coverage` available
-- [x] Host usage controls and no-key rate limiting — `POST /api/linksy/search` enforces host budget + per-host/IP search limits; `POST /api/linksy/tickets` supports host-context ticket limits and `search_session_id`; host access remains slug/domain based (no customer API keys)
-- [x] Host usage reporting uplift — `/dashboard/admin/hosts` now includes avg tokens/search, budget health summary, and per-host utilization %
-- [x] Playwright baseline setup — added `@playwright/test`, `playwright.config.ts`, `e2e/smoke.spec.ts`, npm scripts (`test:e2e`, `test:e2e:ui`, `test:e2e:headed`)
-- [x] Referral workflow e2e (public leg) — `e2e/referral-workflow.spec.ts` covers `/find-help` crisis check, AI search results, provider selection, interaction tracking, and referral ticket submission payload/confirmation
-- [x] Referral workflow e2e (authenticated status-update leg) — env-gated admin login helper (`e2e/helpers/auth.ts`) + dashboard ticket status update flow in `e2e/referral-workflow.spec.ts`; verifies ticket has `client_email` and PATCH status update to exercise email trigger path in `app/api/tickets/[id]/route.ts`
-- [x] Vitest discovery scope fix — `vitest.config.ts` now restricts `include` to `__tests__/**/*.test.{ts,tsx}` and excludes `node_modules`, `e2e`, `.next`; `npm run test:run` back to project-only tests (31 passing)
-- [x] Sentry error tracking — `@sentry/nextjs` installed; instrumentation pattern (`instrumentation.ts` + `instrumentation-client.ts`); `global-error.tsx` with CSS import and Tailwind styling; `next.config.js` wrapped with `withSentryConfig`; set `NEXT_PUBLIC_SENTRY_DSN` / `SENTRY_DSN` env vars to enable
-- [x] Limited field editing for provider staff — `PATCH /api/providers/[id]` now allows active provider contacts to update description, phone, email, website, hours, social links, referral instructions; Edit Profile card on My Organization page with inline form
-- [x] Provider Management bulk actions — checkboxes + bulk activate/deactivate bar + export selected on providers list; `PATCH /api/admin/providers/bulk`
-- [x] LLM Context Card preview — shown in Details tab of provider detail page; `pre` block with mono font; "not generated" fallback
-- [x] Search quality metrics — Details tab shows total interactions, profile views, CTR (clicks/views), referral conversion rate (tickets/views), per-type breakdown
-- [x] Private/Secure Notes — `is_private` column on `linksy_provider_notes`; server-side visibility filter in GET provider detail; toggle switch + amber lock badge in UI; site_admin can edit any note
-- [x] GitHub Actions CI — `.github/workflows/ci.yml` runs `type-check` + `lint` on push/PR to main
-- [x] Provider-scoped analytics — `GET /api/providers/[id]/analytics`, `useProviderAnalytics` hook, engagement cards (profile views, phone/website/directions clicks last 30 days + all time) on My Organization page
-- [x] Event approval queue — admin events page at `/dashboard/admin/events` with Pending/Approved/Rejected tabs + count badges; approve/reject actions
-- [x] Calendar view for events — List/Calendar toggle on admin events page and provider detail EventsTab; month grid with prev/next navigation and today highlight
-- [x] Recurrence rule support (iCal RRULE) — `recurrence_rule` column on `linksy_provider_events`; select in event form (Daily/Weekly/Bi-weekly/Monthly/Annually); blue badge in list view; ↻ icon in calendar cells
-- [x] Public hero/landing page — marketing page at `/` with features, how-it-works, and CTA sections; redirects logged-in users to `/dashboard`
-- [x] Provider onboarding page — `app/join/provider/page.tsx`; public form → `POST /api/onboarding/provider`; emails admin on submit
-- [x] Multi-step provider application wizard — rewrote `/join/provider` as 5-step form (basic info, locations, services/needs, contact, review); structured JSONB columns on `linksy_provider_applications`; public need-categories API; approval flow now provisions all locations, need associations, and contacts from structured data
-- [x] Host onboarding page — `app/join/host/page.tsx`; public form with embed code preview → `POST /api/onboarding/host`; emails admin on submit
-- [x] Search-to-referral funnel visualization — 3-stage funnel (searches → engaged → converted) with rates; in Search & AI tab of reports dashboard; data from `services_clicked` and `created_ticket` on `linksy_search_sessions`
-- [x] Geographic distribution of searches — top zip codes bar chart in Search & AI tab; sourced from `zip_code_searched` on `linksy_search_sessions`
-- [x] Average time-to-resolution for tickets — avg days card + per-status breakdown bar chart in Referrals tab; computed from `created_at`/`updated_at` on resolved `linksy_tickets`
-- [x] Email notifications — new ticket assigned (to default referral handler) + ticket status update (to client); fire-and-forget via `lib/utils/email.ts` hooked into `POST /api/tickets` and `PATCH /api/tickets/[id]`
-- [x] Email template customization — `linksy_email_templates` override table, admin APIs (`/api/admin/email-templates`), admin UI (`/dashboard/admin/email-templates`), and runtime placeholder rendering in `lib/utils/email.ts`
-- [x] Google + Microsoft OAuth login — buttons in `components/auth/login-form.tsx`, callback handler at `app/auth/callback/route.ts`
-- [x] Search session + interaction tracking — `linksy_search_sessions`, `linksy_interactions` tables; `POST /api/linksy/interactions` endpoint; sessionId returned from search and passed back on subsequent messages
-- [x] LLM Context Cards — auto-generated markdown per provider stored in `llm_context_card`; fed to `gpt-4o-mini` for conversational search responses; batch endpoint `POST /api/admin/linksy/context-cards`
-- [x] Widget customization UI enhancement (secondary color, header bg, font family, live preview, logo upload)
-- [x] Search & AI Analytics tab in reports dashboard (`/api/stats/search-analytics`)
-- [x] Crisis detection system with emergency resource banners
-- [x] Provider portal via `/dashboard/my-organization`
-- [x] Host widget embedding via `/find-help/[slug]`
-- [x] Provider event management (CRUD + approval status)
-- [x] Contact management with invitation workflow
-- [x] Referral ticket management with status tracking
-- [x] Needs taxonomy management
-- [x] CSV export for providers and referrals
+Items completed across all sessions, newest first.
+
+### 2026-03-03
+
+- [x] **9 remaining audit fixes** — Resolved 4 MEDIUM + 5 LOW findings:
+  - MEDIUM: Crisis keyword auth, activity logging client→server, unsafe `any` types, query staleTime/gcTime
+  - LOW: Array index keys, silent catches, env var validation, file upload paths, CSV export error handling
+- [x] **Reports page crash fix** — Fixed "Failed to fetch reports" caused by references to dropped columns (`assigned_to`, `need_category`, `imported_at`) and `is_crisis` → `crisis_detected`
+- [x] **Documentation sync** — Updated TASKS.md, FEATURES_CHECKLIST.md, AUDIT doc, and RELEASES.md to match actual codebase state
+- [x] **20 security and quality fixes** — Resolved all 4 CRITICAL + 6 HIGH + 7 MEDIUM + 3 LOW audit findings in a single session:
+  - CRITICAL: XSS sanitization (DOMPurify), missing invitations/accept endpoint, open redirect in callback + login, ticket numbering race condition
+  - HIGH: OpenAI error handling, hardcoded SITE_ID, provider API RLS bypass, is_private enforcement, merge fail-fast
+  - MEDIUM: setTimeout cleanup, AbortController on search bar, notification user_id scoping, parseInt NaN handling, error response disclosure, CSRF http:// gating
+  - LOW: alert() → toast, sensitive logging removal, null check with optional chaining
+- [x] **RLS security hardening migration** — Wrote `20260303000002_rls_security_hardening.sql` covering 6 tables (provider_contacts, provider_notes, tickets, call_logs, custom_fields, surveys)
+
+### 2026-03-02
+
+- [x] Fixed dashboard stall on login (stale React Query cache invalidation)
+- [x] Combined platform audit document (`docs/AUDIT-2026-03-02.md`)
+- [x] Created phased go-live roadmap with 4 phases
+- [x] ESLint config fix (removed Next 15-only `next/typescript` extend)
+- [x] Sentry `global-error.tsx` styling fix
+- [x] Fixed ~40 `react/no-unescaped-entities` lint errors
+- [x] Fixed `handleSelect` missing `useCallback` dep in search-bar
+- [x] Fixed 8 `react-hooks/exhaustive-deps` warnings
+- [x] Removed 3 dead code files (160 LOC)
+- [x] Lint: 40+ errors → 0 errors, 20 → 10 warnings
+
+### 2026-03-01
+
+- [x] Region tenant model refactor (Impact Works site, Impact Clay tenant)
+- [x] Fixed auth middleware multi-tenant membership handling
+- [x] Fixed provider user "No referrals found" (tickets API + RLS)
+- [x] Webhook dispatch now resolves tenant_id from provider record
+
+### 2026-02-25
+
+- [x] Auto-reroute option when provider cannot help
+- [x] Webhooks admin smoke validation
+- [x] Finalized Needs vs Needs Addressed placement/labels
+- [x] OAuth callback routing fix + redirect logging
+- [x] Unified ticket number format `R-<sequence>-<suffix>` starting at 2000
+- [x] Webhook events: `ticket.created`, `ticket.status_changed`, `ticket.assigned`, `ticket.forwarded`, `ticket.reassigned`
+
+### 2026-02-24
+
+- [x] Parent/child provider linking (all 4 sprints: DB + security, basic UI, dashboard + reporting, polish + UX)
+- [x] Merge contacts + merge providers + purge provider functions
+- [x] Bulk import approval flagging
+- [x] Referral pending aging notifications
+- [x] Bulk referral status update with email notifications
+- [x] Referral cap per client (4 max)
+- [x] Provider service ZIP coverage
+- [x] Provider phone extension field
+- [x] Call log as provider note-type option
+
+### 2026-02-23
+
+- [x] Needs Addressed taxonomy-driven UI (category + need multi-select)
+- [x] Provider notes flow stabilization
+- [x] Referral status color standardization
+- [x] Provider summary contact preference controls
+
+### Earlier (see git history)
+
+- [x] AI search pipeline (embedding → vector → LLM)
+- [x] Provider/ticket/needs schema + management
+- [x] Crisis detection system
+- [x] Host widget embedding + customization
+- [x] Provider portal + limited field editing
+- [x] Event management + approval queue + calendar + recurrence
+- [x] Email notifications + template customization
+- [x] Google + Microsoft OAuth
+- [x] Search session + interaction tracking
+- [x] LLM Context Cards + batch generation
+- [x] Reports dashboard (search, provider, crisis, widget, ticket analytics)
+- [x] Sentry error tracking
+- [x] Vitest + Playwright test framework
+- [x] GitHub Actions CI
+- [x] Provider onboarding wizard (5-step) + host onboarding
+- [x] Public hero/landing page
+
+---
 
 ## Conventions
 

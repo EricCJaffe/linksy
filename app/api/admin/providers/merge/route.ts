@@ -77,7 +77,10 @@ export async function POST(request: Request) {
       .eq('provider_id', mergeProviderId)
 
     if (locationsError) {
-      console.error('Error moving locations:', locationsError)
+      return NextResponse.json(
+        { error: `Merge aborted — failed to move locations: ${locationsError.message}` },
+        { status: 500 }
+      )
     }
 
     // 2b. Move contacts (but check for duplicates by user_id)
@@ -125,7 +128,10 @@ export async function POST(request: Request) {
       .eq('provider_id', mergeProviderId)
 
     if (notesError) {
-      console.error('Error moving notes:', notesError)
+      return NextResponse.json(
+        { error: `Merge aborted — failed to move notes: ${notesError.message}` },
+        { status: 500 }
+      )
     }
 
     // 2d. Move tickets
@@ -135,7 +141,10 @@ export async function POST(request: Request) {
       .eq('provider_id', mergeProviderId)
 
     if (ticketsError) {
-      console.error('Error moving tickets:', ticketsError)
+      return NextResponse.json(
+        { error: `Merge aborted — failed to move tickets: ${ticketsError.message}` },
+        { status: 500 }
+      )
     }
 
     // 2e. Move events
@@ -145,7 +154,10 @@ export async function POST(request: Request) {
       .eq('provider_id', mergeProviderId)
 
     if (eventsError) {
-      console.error('Error moving events:', eventsError)
+      return NextResponse.json(
+        { error: `Merge aborted — failed to move events: ${eventsError.message}` },
+        { status: 500 }
+      )
     }
 
     // 2f. Merge provider needs (dedup by need_id)
@@ -192,7 +204,10 @@ export async function POST(request: Request) {
       .eq('provider_id', mergeProviderId)
 
     if (interactionsError) {
-      console.error('Error moving interactions:', interactionsError)
+      return NextResponse.json(
+        { error: `Merge aborted — failed to move interactions: ${interactionsError.message}` },
+        { status: 500 }
+      )
     }
 
     // 2h. Update search session service_clicked references

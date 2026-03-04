@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     }
 
     const supabase = await createServiceClient()
-    const SITE_ID = '86bd8d01-0dc5-4479-beff-666712654104'
+    const SITE_ID = process.env.LINKSY_SITE_ID || '86bd8d01-0dc5-4479-beff-666712654104'
 
     // Optional host-context controls for public ticket creation
     if (host_provider_id) {
@@ -108,14 +108,21 @@ export async function POST(request: Request) {
       }, { status: 429 })
     }
 
-    // Generate ticket number (format: R-2000-XX)
-    const { count } = await supabase
-      .from('linksy_tickets')
-      .select('*', { count: 'exact', head: true })
+    // Generate ticket number atomically via PostgreSQL sequence (prevents race conditions)
+    const { data: seqResult, error: seqError } = await supabase.rpc(
+      'linksy_next_ticket_number' as any
+    )
 
-    const sequenceNumber = 2000 + (count || 0) + 1
-    const suffix = String(Math.floor(Math.random() * 100)).padStart(2, '0')
-    const ticketNumber = `R-${sequenceNumber}-${suffix}`
+    let ticketNumber: string
+    if (seqError || seqResult == null) {
+      // Fallback if sequence RPC not yet deployed
+      console.warn('Ticket sequence unavailable, using timestamp fallback:', seqError?.message)
+      const fallbackSeq = Date.now() % 1000000
+      const suffix = String(Math.floor(Math.random() * 100)).padStart(2, '0')
+      ticketNumber = `R-${fallbackSeq}-${suffix}`
+    } else {
+      ticketNumber = seqResult as string
+    }
 
     // Create the ticket
     const { data: ticket, error: insertError } = await supabase

@@ -28,11 +28,14 @@ export function validateCSRF(request: NextRequest): NextResponse | null {
     ? `https://${process.env.VERCEL_URL}`
     : null
 
+  const isDevelopment = process.env.NODE_ENV === 'development'
+
   const allowedOrigins = [
     siteUrl,
     vercelUrl,
     host ? `https://${host}` : null,
-    host ? `http://${host}` : null, // Allow http for local development
+    // Only allow plain http in development (localhost)
+    isDevelopment && host ? `http://${host}` : null,
   ].filter(Boolean) as string[]
 
   // Check Origin header (most reliable)

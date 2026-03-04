@@ -64,8 +64,8 @@ export async function POST(
     return NextResponse.json({ error: 'File size must be less than 10MB' }, { status: 400 })
   }
 
-  const sanitized = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-  const path = `note-attachments/${providerId}/${Date.now()}-${crypto.randomUUID()}-${sanitized}`
+  const sanitized = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 100)
+  const path = `note-attachments/${providerId}/${crypto.randomUUID()}-${sanitized}`
 
   const { data, error } = await supabase.storage
     .from('tenant-uploads')

@@ -44,5 +44,7 @@ export function useMyProviderStats() {
       if (!res.ok) throw new Error('Failed to fetch provider stats')
       return res.json()
     },
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    gcTime: 10 * 60 * 1000,
   })
 }

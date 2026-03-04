@@ -50,25 +50,42 @@ export function useNotifications(tenantId?: string) {
     enabled: true,
   })
 
-  // Real-time subscription
+  // Real-time subscription scoped to the current user
   useEffect(() => {
-    const channel = supabase
-      .channel('notifications')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-        },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['notifications'] })
-        }
-      )
-      .subscribe()
+    let mounted = true
+
+    const setupChannel = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user || !mounted) return
+
+      const channel = supabase
+        .channel(`notifications:${user.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`,
+          },
+          () => {
+            queryClient.invalidateQueries({ queryKey: ['notifications'] })
+          }
+        )
+        .subscribe()
+
+      return channel
+    }
+
+    let channelRef: ReturnType<typeof supabase.channel> | undefined
+
+    setupChannel().then((ch) => {
+      channelRef = ch
+    })
 
     return () => {
-      supabase.removeChannel(channel)
+      mounted = false
+      if (channelRef) supabase.removeChannel(channelRef)
     }
   }, [supabase, queryClient])
 

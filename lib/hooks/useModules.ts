@@ -22,6 +22,8 @@ export function useModules() {
 
       return data as Module[]
     },
+    staleTime: 10 * 60 * 1000, // 10 minutes — modules rarely change
+    gcTime: 30 * 60 * 1000,
   })
 }
 
@@ -49,6 +51,8 @@ export function useTenantModules(tenantId?: string) {
       return data as TenantModule[]
     },
     enabled: !!tenantId,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   })
 }
 
