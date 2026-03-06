@@ -24,6 +24,7 @@ import {
   Mail,
   Merge,
   ClipboardCheck,
+  Users,
 } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
@@ -41,6 +42,11 @@ const mainNavItems = [
     title: 'Providers',
     href: '/dashboard/providers',
     icon: Building2,
+  },
+  {
+    title: 'Contacts',
+    href: '/dashboard/contacts',
+    icon: Users,
   },
   {
     title: 'Needs',
@@ -139,6 +145,10 @@ export function Sidebar() {
   const filteredMainNav = mainNavItems.filter((item) => {
     // Hide Providers tab if NOT a site admin
     if (item.href === '/dashboard/providers' && !isSiteAdmin) {
+      return false
+    }
+    // Hide Contacts tab if NOT a site admin
+    if (item.href === '/dashboard/contacts' && !isSiteAdmin) {
       return false
     }
     // Hide Needs tab if NOT a site admin

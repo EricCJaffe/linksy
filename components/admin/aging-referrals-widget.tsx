@@ -38,20 +38,26 @@ export function AgingReferralsWidget() {
   const router = useRouter()
   const [stats, setStats] = useState<AgingStats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
   const [thresholdHours, setThresholdHours] = useState(48)
   const [lastNotified, setLastNotified] = useState<Date | null>(null)
 
   const fetchStats = useCallback(async () => {
     setLoading(true)
+    setError(null)
     try {
       const res = await fetch(`/api/admin/tickets/aging?threshold_hours=${thresholdHours}`)
       if (res.ok) {
         const data = await res.json()
         setStats(data)
+      } else {
+        const errBody = await res.json().catch(() => null)
+        setError(errBody?.error || `Failed to load (${res.status})`)
       }
-    } catch (error) {
-      console.error('Error fetching aging stats:', error)
+    } catch (err) {
+      console.error('Error fetching aging stats:', err)
+      setError('Network error — could not reach server')
     } finally {
       setLoading(false)
     }
@@ -138,6 +144,18 @@ export function AgingReferralsWidget() {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="flex items-center justify-between">
+              <span>{error}</span>
+              <Button size="sm" variant="ghost" onClick={fetchStats} className="ml-2 h-6 px-2">
+                Retry
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Threshold selector */}
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">Threshold:</span>

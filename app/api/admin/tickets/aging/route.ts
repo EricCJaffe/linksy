@@ -38,8 +38,8 @@ export async function GET(request: Request) {
       created_at,
       provider_id,
       need_id,
-      linksy_providers!left(name, email),
-      linksy_needs!left(name)
+      linksy_providers!provider_id(name, email),
+      linksy_needs!need_id(name)
     `)
     .eq('status', 'pending')
     .lt('created_at', cutoffTime.toISOString())
