@@ -11,6 +11,7 @@ import { ProviderQuickSwitcher } from '@/components/providers/provider-quick-swi
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { formatPhone, phoneToTel } from '@/lib/utils/phone'
 
 const sectorLabels: Record<string, string> = {
   nonprofit: 'Nonprofit',
@@ -125,10 +126,10 @@ export default function ProviderDetailPage({
 
       <div className="flex flex-wrap gap-6 text-sm text-muted-foreground">
         {provider.phone && (
-          <span className="inline-flex items-center gap-1">
+          <a href={`tel:${phoneToTel(provider.phone)}`} className="inline-flex items-center gap-1 hover:text-foreground">
             <Phone className="h-4 w-4" />
-            {provider.phone}
-          </span>
+            {formatPhone(provider.phone)}
+          </a>
         )}
         {provider.email && (
           <span className="inline-flex items-center gap-1">

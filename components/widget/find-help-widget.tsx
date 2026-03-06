@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Loader2, MapPin, Phone, Globe, Send, AlertTriangle, X, Navigation } from 'lucide-react'
 import type { HostWidgetConfig } from '@/lib/types/linksy'
 import { RichTextDisplay } from '@/components/ui/rich-text-display'
+import { formatPhone, phoneToTel } from '@/lib/utils/phone'
 
 interface SearchResult {
   id: string
@@ -258,11 +259,11 @@ export function FindHelpWidget({ hostProviderId, hostProviderName, widgetConfig 
               {crisisBanner.emergency_resources.map((r) => (
                 <a
                   key={`${r.name}-${r.phone}`}
-                  href={`tel:${r.phone.replace(/\D/g, '')}`}
+                  href={`tel:${phoneToTel(r.phone)}`}
                   className="inline-flex items-center gap-1 bg-white text-red-700 rounded px-2 py-1 text-xs font-semibold hover:bg-red-50"
                 >
                   <Phone className="h-3 w-3" />
-                  {r.name}: {r.phone}
+                  {r.name}: {formatPhone(r.phone)}
                 </a>
               ))}
             </div>
@@ -381,13 +382,13 @@ export function FindHelpWidget({ hostProviderId, hostProviderName, widgetConfig 
                           <div className="flex flex-col gap-1 flex-shrink-0">
                             {provider.phone && (
                               <a
-                                href={`tel:${provider.phone.replace(/\D/g, '')}`}
+                                href={`tel:${phoneToTel(provider.phone)}`}
                                 onClick={() => trackInteraction(provider.id, 'phone_click')}
                                 className={`inline-flex items-center gap-1 text-xs hover:underline ${secondaryColor ? '' : 'text-primary'}`}
                                 style={secondaryColor ? { color: secondaryColor } : undefined}
                               >
                                 <Phone className="h-3 w-3" />
-                                {provider.phone}
+                                {formatPhone(provider.phone)}
                               </a>
                             )}
                             {provider.website && (

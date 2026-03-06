@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Phone, Clock, User, Mail, Calendar, AlertCircle } from 'lucide-react'
 import type { CallLogData, CallOutcome } from '@/lib/types/linksy'
+import { formatPhone, phoneToTel } from '@/lib/utils/phone'
 
 interface CallLogDisplayProps {
   callLogData: CallLogData
@@ -68,8 +69,8 @@ export function CallLogDisplay({ callLogData, content, createdAt }: CallLogDispl
             {callLogData.caller_phone && (
               <div className="flex items-center gap-2 text-sm">
                 <Phone className="h-3 w-3 text-slate-500" />
-                <a href={`tel:${callLogData.caller_phone}`} className="hover:underline">
-                  {callLogData.caller_phone}
+                <a href={`tel:${phoneToTel(callLogData.caller_phone)}`} className="hover:underline">
+                  {formatPhone(callLogData.caller_phone)}
                 </a>
               </div>
             )}

@@ -10,6 +10,7 @@ import { useMyProviderStats } from '@/lib/hooks/useMyProviderStats'
 import { AgingReferralsWidget } from '@/components/admin/aging-referrals-widget'
 import { PendingImportsWidget } from '@/components/admin/pending-imports-widget'
 import { Building2, FileText, LifeBuoy, CheckCircle, AlertCircle, History, TrendingUp, MapPin, Phone, Mail, Globe } from 'lucide-react'
+import { formatPhone, phoneToTel } from '@/lib/utils/phone'
 
 interface OverviewStats {
   providers: { total: number }
@@ -198,8 +199,8 @@ export default function DashboardPage() {
                   {providerStats.provider.phone && (
                     <div className="flex items-center gap-2">
                       <Phone className="h-4 w-4 text-muted-foreground" />
-                      <a href={`tel:${providerStats.provider.phone}`} className="hover:underline">
-                        {providerStats.provider.phone}
+                      <a href={`tel:${phoneToTel(providerStats.provider.phone)}`} className="hover:underline">
+                        {formatPhone(providerStats.provider.phone)}
                       </a>
                     </div>
                   )}

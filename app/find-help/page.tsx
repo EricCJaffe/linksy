@@ -31,6 +31,7 @@ import {
 import { CreateTicketDialog } from '@/components/tickets/create-ticket-dialog'
 import { RichTextDisplay } from '@/components/ui/rich-text-display'
 import type { LucideIcon } from 'lucide-react'
+import { formatPhone, phoneToTel } from '@/lib/utils/phone'
 
 interface SearchResult {
   id: string
@@ -443,11 +444,11 @@ export default function FindHelpPage() {
                 {crisisBanner.emergency_resources.map((r) => (
                   <a
                     key={`${r.name}-${r.phone}`}
-                    href={`tel:${r.phone.replace(/\D/g, '')}`}
+                    href={`tel:${phoneToTel(r.phone)}`}
                     className="inline-flex items-center gap-1 bg-white text-red-700 rounded px-2 py-1 text-sm font-semibold hover:bg-red-50"
                   >
                     <Phone className="h-3 w-3" />
-                    {r.name}: {r.phone}
+                    {r.name}: {formatPhone(r.phone)}
                   </a>
                 ))}
               </div>
@@ -743,12 +744,12 @@ function ProviderCard({ provider, sessionId }: { provider: SearchResult; session
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
           {provider.phone && (
             <a
-              href={`tel:${provider.phone}`}
+              href={`tel:${phoneToTel(provider.phone)}`}
               onClick={() => trackInteraction('phone_click')}
               className="flex items-center gap-2 text-blue-600 hover:text-blue-800"
             >
               <Phone className="h-4 w-4" />
-              {provider.phone}
+              {formatPhone(provider.phone)}
             </a>
           )}
           {provider.website && (

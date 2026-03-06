@@ -237,9 +237,34 @@ export function TicketDetailPanel({ ticket }: TicketDetailPanelProps) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Add comment form — at top for quick access */}
+          <div className="space-y-3">
+            <RichTextEditor
+              value={commentText}
+              onChange={setCommentText}
+              placeholder="Add a comment..."
+            />
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <Checkbox
+                  checked={isPrivate}
+                  onCheckedChange={(checked) => setIsPrivate(checked === true)}
+                />
+                <Lock className="h-3 w-3" /> Private comment (site admins only)
+              </label>
+              <Button
+                size="sm"
+                onClick={handleAddComment}
+                disabled={!commentText.trim() || createComment.isPending}
+              >
+                {createComment.isPending ? 'Adding...' : 'Add Comment'}
+              </Button>
+            </div>
+          </div>
+
           {ticket.comments && ticket.comments.length > 0 ? (
-            <div className="space-y-3">
-              {ticket.comments.map((comment) => (
+            <div className="space-y-3 border-t pt-4">
+              {[...ticket.comments].reverse().map((comment) => (
                 <div
                   key={comment.id}
                   className={`rounded-md border p-3 text-sm ${
@@ -271,33 +296,8 @@ export function TicketDetailPanel({ ticket }: TicketDetailPanelProps) {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">No comments yet.</p>
+            <p className="text-sm text-muted-foreground border-t pt-4">No comments yet.</p>
           )}
-
-          {/* Add comment form */}
-          <div className="space-y-3 border-t pt-4">
-            <RichTextEditor
-              value={commentText}
-              onChange={setCommentText}
-              placeholder="Add a comment..."
-            />
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <Checkbox
-                  checked={isPrivate}
-                  onCheckedChange={(checked) => setIsPrivate(checked === true)}
-                />
-                <Lock className="h-3 w-3" /> Private comment (site admins only)
-              </label>
-              <Button
-                size="sm"
-                onClick={handleAddComment}
-                disabled={!commentText.trim() || createComment.isPending}
-              >
-                {createComment.isPending ? 'Adding...' : 'Add Comment'}
-              </Button>
-            </div>
-          </div>
         </CardContent>
       </Card>
 
