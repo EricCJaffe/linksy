@@ -166,18 +166,18 @@ Core features that users and admins need on day one, plus remaining quality fixe
 - [ ] **[TASK-026] Referral transfer workflow** — On transfer: auto-set original to "Transferred Another Provider". Modal: select new provider, transfer notes, editable email templates (client + new provider). New provider sees "Transferred Pending". Append suffix -T1/-T2 to referral number. Max 2 transfers → admin override. Both providers see transfer history. *(Extends existing 1.2 reassignment feature.)*
 - [ ] **[TASK-029] Duplicate referral detection** — Same client+provider+service+day = block. Same client+5 providers+same service+same day = allow but flag. Consecutive day same client+provider = warning. Admin "Potential Duplicates" report. Test referrals exempt.
 - [x] **[TASK-018] Test referral flagging** — `is_test` column + migration, auto-flag "Mega Coolmint", TEST badge in list/detail, excluded from reports/overview/stats analytics. COMPLETED 2026-03-06. *(Remaining: admin toggle to include test referrals in analytics.)*
-- [ ] **[TASK-017] "Send Test Referral" button** — On Provider detail screen. Auto-populates: Mega Coolmint, Linksy@impactworks.org, 1-904-330-1848. Flagged as test. Confirmation dialog.
+- [x] **[TASK-017] "Send Test Referral" button** — AlertDialog on provider detail page header (site admin only). Pre-populates Mega Coolmint, Linksy@impactworks.org, 1-904-330-1848. Auto-flagged is_test. Test referrals bypass duplicate detection, rate limiting, and referral cap. COMPLETED 2026-03-06.
 
 #### 1.9 UI Bugs & Quick Fixes (Program Review)
 - [x] **[TASK-007] Fix misspellings on Features tab** — Audited: no misspellings found, "via email" already present. VERIFIED 2026-03-06.
 - [ ] **[TASK-016] Fix Aging Referrals not loading** — Dashboard shows pending count but click-through shows no results. Debug query/filter logic. Add column filters and sort.
-- [ ] **[TASK-039] Fix text color tool bug in notes editor** — Color picker sometimes requires right-click + double-click. Fix to single left-click. Test cross-browser.
+- [x] **[TASK-039] Fix text color tool bug in notes editor** — Replaced CSS group-hover with click-based React state + click-outside dismiss. COMPLETED 2026-03-06.
 - [x] **[TASK-012] Restore record counts at bottom of lists** — Updated DataTable base component, audit logs, review imports, and support tickets pages. Providers/Referrals/Contacts already had counts. COMPLETED 2026-03-06.
 - [x] **[TASK-024] Services list default to expanded** — Already defaults expanded with Expand All/Collapse All toggle (needs/page.tsx lines 135, 141-147). VERIFIED 2026-03-06.
 
 #### 1.10 Notes & Comments Improvements (Program Review)
 - [x] **[TASK-027] Notes ordering + edit capability** — Comment form moved to top, newest-first display. COMPLETED 2026-03-06 (ordering). *(Remaining: edit button per note with original+edit timestamps, history preservation. Apply to all notes sections.)*
-- [ ] **[TASK-028] Private/public note toggle** — Each note gets a private toggle (on/off). Private = visible only to creating org. Can toggle anytime (author or admin). Lock icon indicator. Include privacy state in exports. *(Partially exists: `is_private` field on `linksy_provider_notes` and `linksy_ticket_comments`.)*
+- [x] **[TASK-028] Private/public note toggle** — Inline lock/globe toggle button on provider notes (timeline + Notes tab) and ticket comments. Amber background on private items. PATCH endpoint for comment privacy (admin only). Create/edit forms already had Switch toggle. COMPLETED 2026-03-06. *(Remaining: include privacy state in exports; restrict visibility of private notes to creating org only.)*
 
 #### 1.11 Provider & Contact Enhancements (Program Review)
 - [ ] **[TASK-023] Services access control (admin only for add/edit)** — Only admins add/edit service categories. Providers can view and remove from own profile. Permission error on Provider attempts. Synonyms also admin-only.
