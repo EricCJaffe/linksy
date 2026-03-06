@@ -429,33 +429,41 @@ export default function TicketsPage() {
         </Table>
       </div>
 
-      {data && totalPages > 1 && (
+      {data && data.pagination.total > 0 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Page {currentPage} of {totalPages}
+            Showing {(filters.offset || 0) + 1}–{Math.min((filters.offset || 0) + LIMIT, data.pagination.total)} of {data.pagination.total} referral{data.pagination.total !== 1 ? 's' : ''}
+            {selectedIds.size > 0 && ` · ${selectedIds.size} selected`}
           </p>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!filters.offset}
-              onClick={() =>
-                handlePageChange(Math.max(0, (filters.offset || 0) - LIMIT))
-              }
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!data.pagination.hasMore}
-              onClick={() =>
-                handlePageChange((filters.offset || 0) + LIMIT)
-              }
-            >
-              Next
-            </Button>
-          </div>
+          {totalPages > 1 && (
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages}
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!filters.offset}
+                  onClick={() =>
+                    handlePageChange(Math.max(0, (filters.offset || 0) - LIMIT))
+                  }
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!data.pagination.hasMore}
+                  onClick={() =>
+                    handlePageChange((filters.offset || 0) + LIMIT)
+                  }
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

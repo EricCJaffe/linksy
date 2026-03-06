@@ -222,7 +222,7 @@ All 8 LOW findings resolved.
 - [ ] **[TASK-025] Export services/needs categories** — Export button on Services admin screen. Excel: Category, Service Name, Synonyms, Provider count. Full hierarchy.
 - [ ] **[TASK-036] Contacts as standalone tab** — Top-level "Contacts" nav. List: Name, Org, Phone, Email, Role, Date Added. Filterable/sortable. Search by name without knowing org. Export CSV/Excel.
 - [ ] **[TASK-003] Column filters on all data tables** — Every table gets filterable column headers. Filters: date ranges, zip, name search, phone, email, referral number. Persist in session. URL params. "Clear All Filters" button.
-- [ ] **[TASK-038] Referral number scale check** — Verify R-XXXX-XX handles 10K–100K volume. Current PG sequence has no practical limit. Add -T1/-T2 transfer suffix support (ties to TASK-026). *(Current sequence starts at 2000, no upper bound — likely already sufficient.)*
+- [x] **[TASK-038] Referral number scale check** — VERIFIED 2026-03-06: PG BIGINT sequence (max 9.2×10¹⁸), `ticket_number` is TEXT (no length cap). Format R-{seq}-{suffix} scales to any volume. Transfer suffix -T1/-T2 support deferred to TASK-026.
 
 #### 2.3 Public-Facing Impact Works Website
 - [ ] **Decide approach:** Separate marketing site (WordPress/Webflow) vs. enhanced Linksy landing page at `/`

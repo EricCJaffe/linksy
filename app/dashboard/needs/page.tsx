@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useNeedCategories } from '@/lib/hooks/useProviders'
 import {
   useCreateCategory,
@@ -31,7 +31,7 @@ export default function NeedsPage() {
   const createNeed = useCreateNeed()
   const updateNeed = useUpdateNeed()
 
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
+  const [expandedCategories, setExpandedCategories] = useState<Set<string> | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogMode, setDialogMode] = useState<'category' | 'need'>('category')
   const [editItem, setEditItem] = useState<any>(null)
@@ -39,7 +39,8 @@ export default function NeedsPage() {
 
   function toggleCategory(id: string) {
     setExpandedCategories((prev) => {
-      const next = new Set(prev)
+      const base = prev ?? new Set(allCategories.map((c) => c.id))
+      const next = new Set(base)
       if (next.has(id)) next.delete(id)
       else next.add(id)
       return next
@@ -128,6 +129,23 @@ export default function NeedsPage() {
     : allCategories.filter((c) => c.is_active)
   const sorted = [...visibleCategories].sort((a, b) => a.sort_order - b.sort_order)
 
+  // Default to all expanded on first load
+  const effectiveExpanded = useMemo(() => {
+    if (expandedCategories !== null) return expandedCategories
+    return new Set(allCategories.map((c) => c.id))
+  }, [expandedCategories, allCategories])
+
+  const allExpanded = sorted.length > 0 && sorted.every((c) => effectiveExpanded.has(c.id))
+  const allCollapsed = sorted.length > 0 && sorted.every((c) => !effectiveExpanded.has(c.id))
+
+  function toggleAll() {
+    if (allExpanded) {
+      setExpandedCategories(new Set())
+    } else {
+      setExpandedCategories(new Set(sorted.map((c) => c.id)))
+    }
+  }
+
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
@@ -144,6 +162,9 @@ export default function NeedsPage() {
               Show inactive
             </Label>
           </div>
+          <Button variant="outline" size="sm" onClick={toggleAll}>
+            {allExpanded ? 'Collapse All' : 'Expand All'}
+          </Button>
           <Button variant="outline" onClick={openAddCategory}>
             <Plus className="mr-2 h-4 w-4" />
             Add Category
@@ -163,7 +184,7 @@ export default function NeedsPage() {
 
       <div className="space-y-3">
         {sorted.map((cat, idx) => {
-          const isExpanded = expandedCategories.has(cat.id)
+          const isExpanded = effectiveExpanded.has(cat.id)
           const needs = cat.needs || []
           const activeNeeds = needs.filter((n) => n.is_active)
           const inactiveNeeds = needs.filter((n) => !n.is_active)
