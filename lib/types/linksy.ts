@@ -258,6 +258,7 @@ export interface Ticket {
   client_perception: string | null
   follow_up_sent: boolean | null
   is_test: boolean
+  duplicate_flag_type: 'case_a' | 'case_b' | 'case_c' | null
   source: string | null
   search_session_id: string | null
   sla_due_at: string | null

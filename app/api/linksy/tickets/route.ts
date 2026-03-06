@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { checkRateLimit } from '@/lib/utils/rate-limit'
 import { sendWebhookEvent } from '@/lib/utils/webhooks'
+import { checkDuplicateReferral } from '@/lib/utils/duplicate-detection'
 
 /** Auto-detect test referrals by client name */
 function isTestReferral(clientName?: string | null): boolean {
@@ -114,6 +115,29 @@ export async function POST(request: Request) {
       }, { status: 429 })
     }
 
+    // Duplicate referral detection (TASK-029)
+    // Test referrals bypass duplicate detection
+    let duplicateFlagType: string | null = null
+    if (!isTestReferral(client_name)) {
+      const dupCheck = await checkDuplicateReferral(supabase, {
+        client_email,
+        client_phone,
+        provider_id,
+        need_id,
+      })
+
+      if (dupCheck.blocked) {
+        return NextResponse.json({
+          error: 'Duplicate referral detected',
+          message: dupCheck.message,
+          flagType: dupCheck.flagType,
+          relatedTickets: dupCheck.relatedTickets,
+        }, { status: 409 })
+      }
+      // Case A and C are flagged but allowed — store flag on the ticket
+      duplicateFlagType = dupCheck.flagType
+    }
+
     // Generate ticket number atomically via PostgreSQL sequence (prevents race conditions)
     const { data: seqResult, error: seqError } = await supabase.rpc(
       'linksy_next_ticket_number' as any
@@ -143,6 +167,7 @@ export async function POST(request: Request) {
         client_email: client_email || null,
         description_of_need: description_of_need || null,
         is_test: isTestReferral(client_name),
+        duplicate_flag_type: duplicateFlagType,
         status: 'pending',
         source: 'public_search',
         search_session_id: search_session_id || null,

@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { getTenantId, requireAuth, requireTenantAdmin } from '@/lib/middleware/auth'
 import { sendNewTicketNotification } from '@/lib/utils/email'
 import { sendWebhookEvent } from '@/lib/utils/webhooks'
+import { checkDuplicateReferral } from '@/lib/utils/duplicate-detection'
 
 /** Auto-detect test referrals by client name or explicit flag */
 function isTestReferral(body: { client_name?: string | null; is_test?: boolean }): boolean {
@@ -147,29 +148,26 @@ export async function POST(request: Request) {
   // Test referrals skip duplicate detection, rate limiting, and referral cap
   const isTest = isTestReferral(body)
 
-  // Duplicate referral detection: same client_email + provider_id + need_id within 7 days
-  if (body.client_email && body.provider_id && !body.force && !isTest) {
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
-    let dupQuery = supabase
-      .from('linksy_tickets')
-      .select('id, ticket_number, created_at')
-      .eq('client_email', body.client_email)
-      .eq('provider_id', body.provider_id)
-      .gte('created_at', sevenDaysAgo)
-      .eq('status', 'pending')
+  // Duplicate referral detection (TASK-029): same-day blocking, multi-provider flagging, consecutive-day warning
+  let duplicateFlagType: string | null = null
+  if (body.provider_id && !body.force && !isTest) {
+    const dupCheck = await checkDuplicateReferral(supabase, {
+      client_email: body.client_email,
+      client_phone: body.client_phone,
+      provider_id: body.provider_id,
+      need_id: body.need_id,
+    })
 
-    if (body.need_id) {
-      dupQuery = dupQuery.eq('need_id', body.need_id)
-    }
-
-    const { data: duplicates } = await dupQuery.limit(1)
-    if (duplicates && duplicates.length > 0) {
+    if (dupCheck.blocked) {
       return NextResponse.json({
         error: 'Duplicate referral detected',
-        duplicate: duplicates[0],
-        message: `A pending referral for this client and provider already exists (ticket #${duplicates[0].ticket_number}). Set force: true to create anyway.`,
+        duplicate: dupCheck.relatedTickets[0],
+        message: dupCheck.message,
+        flagType: dupCheck.flagType,
       }, { status: 409 })
     }
+    // Case A and C are flagged but allowed — store flag on the ticket
+    duplicateFlagType = dupCheck.flagType
   }
 
   // Rate limiting: max 5 tickets per email per hour
@@ -196,7 +194,7 @@ export async function POST(request: Request) {
     let capQuery = supabase
       .from('linksy_tickets')
       .select('id, ticket_number, provider_id, created_at', { count: 'exact', head: false })
-      .in('status', ['pending'])  // Only count pending/active tickets
+      .in('status', ['pending', 'in_process'])  // Count pending and in-process tickets
 
     // Match by email OR phone (whichever is provided)
     const orConditions: string[] = []
@@ -263,6 +261,7 @@ export async function POST(request: Request) {
       client_email: body.client_email || null,
       description_of_need: body.description_of_need || null,
       is_test: isTest,
+      duplicate_flag_type: duplicateFlagType,
       status: body.status || 'pending',
       source: body.source || null,
       client_user_id: defaultHandlerUserId,
