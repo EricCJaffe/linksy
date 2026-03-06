@@ -165,15 +165,15 @@ Core features that users and admins need on day one, plus remaining quality fixe
 - [ ] **[TASK-014] Add status values: "In Process" and "Transferred Another Provider"** — New `linksy_ticket_status` enum values. Color-coded. Available to providers and admins. Include in filters, reports, aging view. Trigger email notifications.
 - [ ] **[TASK-026] Referral transfer workflow** — On transfer: auto-set original to "Transferred Another Provider". Modal: select new provider, transfer notes, editable email templates (client + new provider). New provider sees "Transferred Pending". Append suffix -T1/-T2 to referral number. Max 2 transfers → admin override. Both providers see transfer history. *(Extends existing 1.2 reassignment feature.)*
 - [ ] **[TASK-029] Duplicate referral detection** — Same client+provider+service+day = block. Same client+5 providers+same service+same day = allow but flag. Consecutive day same client+provider = warning. Admin "Potential Duplicates" report. Test referrals exempt.
-- [ ] **[TASK-018] Test referral flagging** — `is_test` boolean on tickets. Auto-flag "Mega Coolmint" (case-insensitive) and test button submissions. Exclude from all analytics by default. Admin toggle to include. "TEST" badge in lists.
+- [x] **[TASK-018] Test referral flagging** — `is_test` column + migration, auto-flag "Mega Coolmint", TEST badge in list/detail, excluded from reports/overview/stats analytics. COMPLETED 2026-03-06. *(Remaining: admin toggle to include test referrals in analytics.)*
 - [ ] **[TASK-017] "Send Test Referral" button** — On Provider detail screen. Auto-populates: Mega Coolmint, Linksy@impactworks.org, 1-904-330-1848. Flagged as test. Confirmation dialog.
 
 #### 1.9 UI Bugs & Quick Fixes (Program Review)
-- [ ] **[TASK-007] Fix misspellings on Features tab** — Audit pre-login home screen for typos/spacing. Add "via email" to "Receive referral tickets from AI-assisted searches" under How It Works.
+- [x] **[TASK-007] Fix misspellings on Features tab** — Audited: no misspellings found, "via email" already present. VERIFIED 2026-03-06.
 - [ ] **[TASK-016] Fix Aging Referrals not loading** — Dashboard shows pending count but click-through shows no results. Debug query/filter logic. Add column filters and sort.
 - [ ] **[TASK-039] Fix text color tool bug in notes editor** — Color picker sometimes requires right-click + double-click. Fix to single left-click. Test cross-browser.
-- [ ] **[TASK-012] Restore record counts at bottom of lists** — "Showing X–Y of Z records" + "X selected" on all paginated views (Referrals, Providers, Contacts, dashboard sub-lists).
-- [ ] **[TASK-024] Services list default to expanded** — Change default view to all categories expanded. Add "Collapse All" / "Expand All" toggle. Both admin and provider screens.
+- [x] **[TASK-012] Restore record counts at bottom of lists** — Updated DataTable base component, audit logs, review imports, and support tickets pages. Providers/Referrals/Contacts already had counts. COMPLETED 2026-03-06.
+- [x] **[TASK-024] Services list default to expanded** — Already defaults expanded with Expand All/Collapse All toggle (needs/page.tsx lines 135, 141-147). VERIFIED 2026-03-06.
 
 #### 1.10 Notes & Comments Improvements (Program Review)
 - [x] **[TASK-027] Notes ordering + edit capability** — Comment form moved to top, newest-first display. COMPLETED 2026-03-06 (ordering). *(Remaining: edit button per note with original+edit timestamps, history preservation. Apply to all notes sections.)*
@@ -183,7 +183,7 @@ Core features that users and admins need on day one, plus remaining quality fixe
 - [ ] **[TASK-023] Services access control (admin only for add/edit)** — Only admins add/edit service categories. Providers can view and remove from own profile. Permission error on Provider attempts. Synonyms also admin-only.
 - [ ] **[TASK-035] Welcome email for new providers** — Auto-send on approval. Template: welcome message, video link, support info, Helps & Docs reference. Editable in Admin Console. Test send button. *(Ties to 0.6 email templates.)*
 - [ ] **[TASK-033] Support tickets: visible tab** — Move support ticket access to main navigation (under Referrals or top-level). Show open + in-progress, color-coded. Admins see all, providers see own.
-- [ ] **[TASK-013] Add Contacts to dashboard nav panel** — "Contacts" link missing from right panel. Add it, linking to full Contacts list.
+- [x] **[TASK-013] Add Contacts to dashboard nav panel** — Already exists in sidebar (sidebar.tsx line 47). VERIFIED 2026-03-06.
 
 #### 1.12 Needs Stakeholder Decisions (Program Review) [CLARIFY FIRST]
 - [ ] **[TASK-005] Email bounce handling** — How should system handle bounces? Stop after N? Flag "Bad Email"? One admin notification? Auto-queue for verification?

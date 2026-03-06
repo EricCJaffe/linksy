@@ -4,6 +4,13 @@ import { getTenantId, requireAuth, requireTenantAdmin } from '@/lib/middleware/a
 import { sendNewTicketNotification } from '@/lib/utils/email'
 import { sendWebhookEvent } from '@/lib/utils/webhooks'
 
+/** Auto-detect test referrals by client name or explicit flag */
+function isTestReferral(body: { client_name?: string | null; is_test?: boolean }): boolean {
+  if (body.is_test) return true
+  if (!body.client_name) return false
+  return body.client_name.trim().toLowerCase() === 'mega coolmint'
+}
+
 export async function GET(request: Request) {
   const { data: auth, error } = await requireAuth()
   if (error) return error
@@ -107,6 +114,7 @@ export async function GET(request: Request) {
     client_email: t.client_email,
     description_of_need: t.description_of_need,
     status: t.status,
+    is_test: t.is_test ?? false,
     client_perception: t.client_perception,
     follow_up_sent: t.follow_up_sent,
     source: t.source,
@@ -251,6 +259,7 @@ export async function POST(request: Request) {
       client_phone: body.client_phone || null,
       client_email: body.client_email || null,
       description_of_need: body.description_of_need || null,
+      is_test: isTestReferral(body),
       status: body.status || 'pending',
       source: body.source || null,
       client_user_id: defaultHandlerUserId,

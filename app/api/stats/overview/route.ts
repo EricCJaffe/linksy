@@ -15,11 +15,12 @@ export async function GET(request: Request) {
 
   const supabase = await createServiceClient()
 
-  // Build ticket query with optional legacy filter
+  // Build ticket query with optional legacy filter, excluding test referrals
   let ticketsQuery = supabase.from('linksy_tickets').select('status', { count: 'exact' })
   if (!includeLegacy) {
     ticketsQuery = ticketsQuery.is('legacy_id', null)
   }
+  ticketsQuery = ticketsQuery.or('is_test.is.null,is_test.eq.false')
 
   // Fetch all stats in parallel
   const [

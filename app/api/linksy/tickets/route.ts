@@ -3,6 +3,12 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { checkRateLimit } from '@/lib/utils/rate-limit'
 import { sendWebhookEvent } from '@/lib/utils/webhooks'
 
+/** Auto-detect test referrals by client name */
+function isTestReferral(clientName?: string | null): boolean {
+  if (!clientName) return false
+  return clientName.trim().toLowerCase() === 'mega coolmint'
+}
+
 /**
  * POST /api/linksy/tickets
  * Public endpoint for creating referral tickets from search interface
@@ -136,6 +142,7 @@ export async function POST(request: Request) {
         client_phone: client_phone || null,
         client_email: client_email || null,
         description_of_need: description_of_need || null,
+        is_test: isTestReferral(client_name),
         status: 'pending',
         source: 'public_search',
         search_session_id: search_session_id || null,

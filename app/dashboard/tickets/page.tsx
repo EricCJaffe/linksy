@@ -363,6 +363,9 @@ export default function TicketsPage() {
                         <Globe className="h-4 w-4 text-primary" />
                       )}
                       {ticket.ticket_number}
+                      {ticket.is_test && (
+                        <Badge variant="outline" className="text-xs bg-orange-50 text-orange-700 border-orange-300">TEST</Badge>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell

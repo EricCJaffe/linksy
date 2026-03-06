@@ -87,7 +87,7 @@ export default function AuditLogsPage() {
               {data && data.pagination.pages > 1 && (
                 <div className="mt-4 flex items-center justify-between">
                   <p className="text-sm text-muted-foreground">
-                    Page {data.pagination.page} of {data.pagination.pages}
+                    Showing {(data.pagination.page - 1) * 50 + 1}–{Math.min(data.pagination.page * 50, data.pagination.total)} of {data.pagination.total} record{data.pagination.total !== 1 ? 's' : ''}
                   </p>
                   <div className="flex gap-2">
                     <Button

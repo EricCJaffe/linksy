@@ -133,6 +133,9 @@ async function handleReferralsReport(
     ticketsQuery = ticketsQuery.is('legacy_id', null)
   }
 
+  // Exclude test referrals from analytics by default
+  ticketsQuery = ticketsQuery.or('is_test.is.null,is_test.eq.false')
+
   const { data: tickets, error } = await ticketsQuery
 
   if (error) {

@@ -98,6 +98,9 @@ export function TicketDetailPanel({ ticket }: TicketDetailPanelProps) {
         <div className="flex items-center gap-3">
           <h2 className="text-xl font-semibold">#{ticket.ticket_number}</h2>
           <StatusBadge status={ticket.status} />
+          {ticket.is_test && (
+            <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-300">TEST</Badge>
+          )}
           {ticket.source === 'public_search' && (
             <Badge variant="outline" className="border-blue-500 text-blue-700 bg-blue-50">
               <Globe className="h-3 w-3 mr-1" />

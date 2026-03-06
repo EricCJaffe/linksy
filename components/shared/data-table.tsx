@@ -120,8 +120,7 @@ export function DataTable<TData, TValue>({
       </div>
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Page {table.getState().pagination.pageIndex + 1} of{' '}
-          {table.getPageCount()}
+          Showing {table.getState().pagination.pageIndex * pageSize + 1}–{Math.min((table.getState().pagination.pageIndex + 1) * pageSize, data.length)} of {data.length} record{data.length !== 1 ? 's' : ''}
         </p>
         <div className="flex gap-2">
           <Button

@@ -292,7 +292,7 @@ export default function ReviewImportsPage() {
           {total > LIMIT && (
             <div className="flex items-center justify-between mt-4">
               <p className="text-sm text-muted-foreground">
-                Showing {offset + 1} - {Math.min(offset + LIMIT, total)} of {total}
+                Showing {offset + 1}–{Math.min(offset + LIMIT, total)} of {total} record{total !== 1 ? 's' : ''}
               </p>
               <div className="flex gap-2">
                 <Button

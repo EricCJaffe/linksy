@@ -255,6 +255,7 @@ export interface Ticket {
   status: TicketStatus
   client_perception: string | null
   follow_up_sent: boolean | null
+  is_test: boolean
   source: string | null
   search_session_id: string | null
   sla_due_at: string | null
