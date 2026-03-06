@@ -1,6 +1,7 @@
 # Tasks
 
-> Last updated: 2026-03-03. See `FEATURES_CHECKLIST.md` for the full feature inventory.
+> Last updated: 2026-03-06. See `FEATURES_CHECKLIST.md` for the full feature inventory.
+> Program review tasks (TASK-001–039) from [Heather Johnston review 2026-03-03](PROGRAM-REVIEW-2026-03-03.md).
 
 ## Go-Live Roadmap
 
@@ -82,6 +83,10 @@ Migration written: `20260303000002_rls_security_hardening.sql`. **Needs to be ap
 - [ ] Set up shared/alias inboxes (`support@`, `referrals@`, `noreply@`)
 - [ ] Update env vars: `ADMIN_EMAIL`, `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SITE_URL`
 - [ ] Verify Resend domain authentication
+- [ ] **[TASK-034] Migrate From email address** — Current: Linksy@impactclay.org → Linksy@impact-works.org (confirm with IT Assist: rename mailbox or create new + forward). Update all templates, From/Reply-To fields, provider-facing contact info.
+
+#### 0.8 Impact Clay Archival [CLARIFY]
+- [ ] **[TASK-037] Remove "Impact Clay" as active option while preserving history** — Decisions needed: (a) Archive as read-only or delete from active dropdowns? (b) Keep historical referrals attributed to Impact Clay or migrate to Impact Works?
 
 ---
 
@@ -144,6 +149,46 @@ Core features that users and admins need on day one, plus remaining quality fixe
   - Funder/grant reporting (aggregate impact metrics)
 - [ ] Prioritize which reports needed for go-live vs. post-launch
 - [ ] Build priority reports
+- [ ] **[TASK-031] Required analytics reports** — 10 specific reports requested: total referrals, deduplicated by service/client, by date range, top services, top categories, clients with multiple referrals for same need, clients with most total referrals, status breakdown by provider, zip code breakdown with map, returning client flag. All exclude test referrals by default.
+- [ ] **[TASK-030] Referral counting logic** — Date range filter on all analytics (presets: week/month/quarter/year/custom). Count unique client+service combos (deduplicate within same category, e.g., housing). "True Unique Clients" metric. Admin toggles to exclude test/blank-service referrals. Default alphabetical, sortable.
+
+#### 1.7 UI Terminology Replace (Program Review) [TASK-001]
+- [ ] **System-wide label replacements** — Global find-and-replace across all UI strings, email templates, exports, dropdowns:
+  - "Customer" → "Client"
+  - "Needs" → "Services"
+  - "Actions" → "Status" / "Statuses"
+  - "Tickets" → "Referrals"
+  - "Needs Addressed" → "Services Provided"
+- [ ] Applies to: frontend labels, email templates, exported reports, dropdown text. **Not** database column names.
+
+#### 1.8 Referral Workflow Enhancements (Program Review)
+- [ ] **[TASK-014] Add status values: "In Process" and "Transferred Another Provider"** — New `linksy_ticket_status` enum values. Color-coded. Available to providers and admins. Include in filters, reports, aging view. Trigger email notifications.
+- [ ] **[TASK-026] Referral transfer workflow** — On transfer: auto-set original to "Transferred Another Provider". Modal: select new provider, transfer notes, editable email templates (client + new provider). New provider sees "Transferred Pending". Append suffix -T1/-T2 to referral number. Max 2 transfers → admin override. Both providers see transfer history. *(Extends existing 1.2 reassignment feature.)*
+- [ ] **[TASK-029] Duplicate referral detection** — Same client+provider+service+day = block. Same client+5 providers+same service+same day = allow but flag. Consecutive day same client+provider = warning. Admin "Potential Duplicates" report. Test referrals exempt.
+- [ ] **[TASK-018] Test referral flagging** — `is_test` boolean on tickets. Auto-flag "Mega Coolmint" (case-insensitive) and test button submissions. Exclude from all analytics by default. Admin toggle to include. "TEST" badge in lists.
+- [ ] **[TASK-017] "Send Test Referral" button** — On Provider detail screen. Auto-populates: Mega Coolmint, Linksy@impactworks.org, 1-904-330-1848. Flagged as test. Confirmation dialog.
+
+#### 1.9 UI Bugs & Quick Fixes (Program Review)
+- [ ] **[TASK-007] Fix misspellings on Features tab** — Audit pre-login home screen for typos/spacing. Add "via email" to "Receive referral tickets from AI-assisted searches" under How It Works.
+- [ ] **[TASK-016] Fix Aging Referrals not loading** — Dashboard shows pending count but click-through shows no results. Debug query/filter logic. Add column filters and sort.
+- [ ] **[TASK-039] Fix text color tool bug in notes editor** — Color picker sometimes requires right-click + double-click. Fix to single left-click. Test cross-browser.
+- [ ] **[TASK-012] Restore record counts at bottom of lists** — "Showing X–Y of Z records" + "X selected" on all paginated views (Referrals, Providers, Contacts, dashboard sub-lists).
+- [ ] **[TASK-024] Services list default to expanded** — Change default view to all categories expanded. Add "Collapse All" / "Expand All" toggle. Both admin and provider screens.
+
+#### 1.10 Notes & Comments Improvements (Program Review)
+- [ ] **[TASK-027] Notes ordering + edit capability** — Move "Add Comment" box to TOP (above existing comments). Newest first. Add edit button per note (shows original + edit timestamps, preserves history). Apply to all notes sections.
+- [ ] **[TASK-028] Private/public note toggle** — Each note gets a private toggle (on/off). Private = visible only to creating org. Can toggle anytime (author or admin). Lock icon indicator. Include privacy state in exports. *(Partially exists: `is_private` field on `linksy_provider_notes` and `linksy_ticket_comments`.)*
+
+#### 1.11 Provider & Contact Enhancements (Program Review)
+- [ ] **[TASK-023] Services access control (admin only for add/edit)** — Only admins add/edit service categories. Providers can view and remove from own profile. Permission error on Provider attempts. Synonyms also admin-only.
+- [ ] **[TASK-035] Welcome email for new providers** — Auto-send on approval. Template: welcome message, video link, support info, Helps & Docs reference. Editable in Admin Console. Test send button. *(Ties to 0.6 email templates.)*
+- [ ] **[TASK-033] Support tickets: visible tab** — Move support ticket access to main navigation (under Referrals or top-level). Show open + in-progress, color-coded. Admins see all, providers see own.
+- [ ] **[TASK-013] Add Contacts to dashboard nav panel** — "Contacts" link missing from right panel. Add it, linking to full Contacts list.
+
+#### 1.12 Needs Stakeholder Decisions (Program Review) [CLARIFY FIRST]
+- [ ] **[TASK-005] Email bounce handling** — How should system handle bounces? Stop after N? Flag "Bad Email"? One admin notification? Auto-queue for verification?
+- [ ] **[TASK-009] Provider self-registration form** — Is form identical to internal page? Who edits structure? Auto-approve from UW? Allow referral/non-referral selection?
+- [ ] **[TASK-010] Provider approval workflow** — Where is approval screen? Does UW import bypass approval? Dedicated "Pending Approval" queue tab?
 
 ---
 
@@ -164,14 +209,29 @@ All 8 LOW findings resolved.
 - [x] **Sensitive logging in set-password page** — Removed all console.log/error. COMPLETED 2026-03-03
 - [x] **Missing null check** — Added optional chaining to `provider.contacts`. COMPLETED 2026-03-03
 
-#### 2.2 Public-Facing Impact Works Website
+#### 2.2 Program Review — UX Enhancements
+
+- [ ] **[TASK-004] Phone number format standardization** — Enforce 1-(XXX)-XXX-XXXX format on all phone inputs. Add "Ext." field next to every phone field. Update list views, exports, email templates. *(Extension field already exists on providers.)*
+- [ ] **[TASK-006] Global search enhancement** — Dropdown showing recent results while typing. Search across: client name, phone, email, referral number. Last 10 recent searches. Color-coded results with record type. Click navigates to record.
+- [ ] **[TASK-008] Provider source tagging** — Add "Source" field to providers (dropdown: CC, UW, IW, Self-Registered, Other + free text). Filterable column. Include in exports and analytics.
+- [ ] **[TASK-011] Provider export by Source / Zip** — Export button on Providers list (CSV + Excel). Include: Name, Contact, Email, Phone, Zip, Source, Date Added, Status. Filter before export. Show count.
+- [ ] **[TASK-015] Dashboard chart enhancement** — Rename to "Top Providers by Referral Volume." Clickable bars → top 3 services. Toggle: volume-only vs. volume+services. Date range filter.
+- [ ] **[TASK-019] Provider freeze/hold** — Freeze button with reason dropdown + optional return date. Frozen = no new referrals. Self-freeze only if Pending cleared. Admin can override. "Frozen" badge + filter. Freeze history in audit log.
+- [ ] **[TASK-020] Call log + notes on Provider Contact page** — Currently only on Referrals. Add to Provider Contact page with same note types, privacy toggle, timestamps, edit capability. *(Provider notes already exist via `linksy_provider_notes`; this extends to per-contact level.)*
+- [ ] **[TASK-022] Voicemail reminder popup** — On referral submit: "Check your voicemail — IS IT WORKING? IS IT FULL?" Once per session only.
+- [ ] **[TASK-025] Export services/needs categories** — Export button on Services admin screen. Excel: Category, Service Name, Synonyms, Provider count. Full hierarchy.
+- [ ] **[TASK-036] Contacts as standalone tab** — Top-level "Contacts" nav. List: Name, Org, Phone, Email, Role, Date Added. Filterable/sortable. Search by name without knowing org. Export CSV/Excel.
+- [ ] **[TASK-003] Column filters on all data tables** — Every table gets filterable column headers. Filters: date ranges, zip, name search, phone, email, referral number. Persist in session. URL params. "Clear All Filters" button.
+- [ ] **[TASK-038] Referral number scale check** — Verify R-XXXX-XX handles 10K–100K volume. Current PG sequence has no practical limit. Add -T1/-T2 transfer suffix support (ties to TASK-026). *(Current sequence starts at 2000, no upper bound — likely already sufficient.)*
+
+#### 2.3 Public-Facing Impact Works Website
 - [ ] **Decide approach:** Separate marketing site (WordPress/Webflow) vs. enhanced Linksy landing page at `/`
 - [ ] Design: brand guidelines, logo, color palette for Impact Works
 - [ ] Content: mission, about, for providers, for communities, pricing, contact
 - [ ] SEO: meta tags, Open Graph, sitemap
 - [ ] Analytics (Google Analytics / Plausible)
 
-#### 2.3 Stripe Integration — Monthly Recurring Billing
+#### 2.4 Stripe Integration — Monthly Recurring Billing
 - [ ] **Set up Stripe account and API keys**
 - [ ] Define pricing tiers (per-host? per-tenant? flat fee + usage?)
 - [ ] Implement Stripe Checkout + Customer Portal
@@ -181,7 +241,7 @@ All 8 LOW findings resolved.
 - [ ] Admin UI: subscription status, revenue dashboard
 - [ ] Test full lifecycle (subscribe → invoice → pay → cancel)
 
-#### 2.4 QuickBooks Integration
+#### 2.5 QuickBooks Integration
 - [ ] **Evaluate approach:** QuickBooks Online API vs. third-party connector (Zapier, Make)
 - [ ] Sync Stripe invoices/payments → QuickBooks income entries
 - [ ] Map customers to QuickBooks records
@@ -207,6 +267,7 @@ All 8 LOW findings resolved.
 
 ### Phase 4 — Deferred / Post-Launch
 
+#### Existing Backlog
 - [ ] Voice input (Whisper) in widget (`/api/linksy/transcribe` + mic UX)
 - [ ] Spanish (es) language support / multi-language i18n
 - [ ] Two-factor authentication (2FA) for admins
@@ -220,6 +281,29 @@ All 8 LOW findings resolved.
 - [ ] Chatbot card view support for non-referral providers
 - [ ] Advanced workflow verification engine
 - [ ] Stronger anti-spam logic beyond current rate/duplicate guards
+
+#### Program Review — Complex Features
+- [ ] **[TASK-002] Undo/redo system-wide** — Undo button (Ctrl+Z) + Redo (Ctrl+Y) on all data entry screens. Last 5 actions per session. Works for field edits, status changes, notes. Tooltip for non-undoable actions.
+- [ ] **[TASK-032] Per-provider SLA timers** — Custom resolution timeframe per provider. Auto-send reminder at due date. Provider can reset, confirm, or transfer. Client notification on transfer.
+
+#### Program Review — Wish List
+- [ ] Address label printing — Avery 8160 format, by zip/region/county/sector
+- [ ] Envelope printing — #10 envelope with IW return address
+- [ ] **[TASK-021] Admin preview of client-facing Provider listing** — Preview button on Provider screen
+- [ ] Phone system VM-to-notes integration (Teams-style voicemail transcription)
+- [ ] Provider relationship tracking — Flag providers needing in-person contact vs. video
+- [ ] Provider satisfaction survey feature
+- [ ] **[TASK-008/WL-008] Synonyms management** — Admin-only, for services taxonomy
+- [ ] Zip-code gap analysis map — Visual service desert identification
+- [ ] CoPilot / AI query assistant — Non-technical admin analytics queries
+
+#### Heather Review — Sections Pending Review
+- [ ] Reports tab — full review pending
+- [ ] Notifications tab — full review pending
+- [ ] Help & Docs tab — full review pending
+- [ ] Admin Console — full review pending
+- [ ] Provider Portal Preview — full review pending
+- [ ] Public Search Preview — full review pending
 
 ---
 
