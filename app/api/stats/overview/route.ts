@@ -52,10 +52,11 @@ export async function GET(request: Request) {
 
   // Process ticket stats
   const totalTickets = ticketsStats.data?.length || 0
-  const openTickets = ticketsStats.data?.filter(t => t.status === 'pending').length || 0
+  const openTickets = ticketsStats.data?.filter(t => ['pending', 'in_process'].includes(t.status)).length || 0
   const closedTickets = ticketsStats.data?.filter(t =>
     ['customer_need_addressed', 'unable_to_assist', 'client_unresponsive',
-     'wrong_organization_referred', 'outside_of_scope', 'client_not_eligible'].includes(t.status)
+     'wrong_organization_referred', 'outside_of_scope', 'client_not_eligible',
+     'transferred_another_provider'].includes(t.status)
   ).length || 0
 
   // Process support ticket stats

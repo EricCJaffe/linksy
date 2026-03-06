@@ -153,16 +153,19 @@ Core features that users and admins need on day one, plus remaining quality fixe
 - [ ] **[TASK-030] Referral counting logic** — Date range filter on all analytics (presets: week/month/quarter/year/custom). Count unique client+service combos (deduplicate within same category, e.g., housing). "True Unique Clients" metric. Admin toggles to exclude test/blank-service referrals. Default alphabetical, sortable.
 
 #### 1.7 UI Terminology Replace (Program Review) [TASK-001]
-- [ ] **System-wide label replacements** — Global find-and-replace across all UI strings, email templates, exports, dropdowns:
-  - "Customer" → "Client"
-  - "Needs" → "Services"
-  - "Actions" → "Status" / "Statuses"
-  - "Tickets" → "Referrals"
-  - "Needs Addressed" → "Services Provided"
-- [ ] Applies to: frontend labels, email templates, exported reports, dropdown text. **Not** database column names.
+- [x] **System-wide label replacements** — COMPLETED 2026-03-06. Updated across all UI strings:
+  - "Customer" → "Client" (contact type dropdown)
+  - "Needs" → "Services" (sidebar nav, page heading)
+  - "Tickets" → "Referrals" (bulk actions, error messages, dialogs, aria labels)
+  - "Need Addressed" → "Service Provided" (all 6 status label maps + report charts)
+  - "Needs Addressed" → "Services Provided" (provider detail card title)
+  - "Forward Ticket" → "Forward Referral", "Reassign Ticket" → "Reassign Referral"
+  - "Ticket Actions/Info" → "Referral Actions/Info"
+  - Landing page: "referral tickets" → "referrals"
+- [x] Applies to: frontend labels, exported reports, dropdown text. **Not** database column names. *(Remaining: email templates still use old terms — ties to 0.6.)*
 
 #### 1.8 Referral Workflow Enhancements (Program Review)
-- [ ] **[TASK-014] Add status values: "In Process" and "Transferred Another Provider"** — New `linksy_ticket_status` enum values. Color-coded. Available to providers and admins. Include in filters, reports, aging view. Trigger email notifications.
+- [x] **[TASK-014] Add status values: "In Process" and "Transferred Another Provider"** — COMPLETED 2026-03-06. Added `in_process` (yellow) and `transferred_another_provider` (gray) to enum type, all 6 UI status label/color maps, bulk update validation, export groupings (open includes in_process, closed includes transferred), stats overview, referral cap (in_process counts toward cap), and database migration. *(Remaining: email notification templates for new statuses, auto-set transferred on forward action — ties to TASK-026.)*
 - [ ] **[TASK-026] Referral transfer workflow** — On transfer: auto-set original to "Transferred Another Provider". Modal: select new provider, transfer notes, editable email templates (client + new provider). New provider sees "Transferred Pending". Append suffix -T1/-T2 to referral number. Max 2 transfers → admin override. Both providers see transfer history. *(Extends existing 1.2 reassignment feature.)*
 - [ ] **[TASK-029] Duplicate referral detection** — Same client+provider+service+day = block. Same client+5 providers+same service+same day = allow but flag. Consecutive day same client+provider = warning. Admin "Potential Duplicates" report. Test referrals exempt.
 - [x] **[TASK-018] Test referral flagging** — `is_test` column + migration, auto-flag "Mega Coolmint", TEST badge in list/detail, excluded from reports/overview/stats analytics. COMPLETED 2026-03-06. *(Remaining: admin toggle to include test referrals in analytics.)*
@@ -170,7 +173,7 @@ Core features that users and admins need on day one, plus remaining quality fixe
 
 #### 1.9 UI Bugs & Quick Fixes (Program Review)
 - [x] **[TASK-007] Fix misspellings on Features tab** — Audited: no misspellings found, "via email" already present. VERIFIED 2026-03-06.
-- [ ] **[TASK-016] Fix Aging Referrals not loading** — Dashboard shows pending count but click-through shows no results. Debug query/filter logic. Add column filters and sort.
+- [x] **[TASK-016] Fix Aging Referrals not loading** — COMPLETED 2026-03-06. Part 1: Widget data loading fixed (Supabase join hints, commit 0cf3141). Part 2: Tickets page now reads `?status=pending` URL param via `useSearchParams()` so "View All Pending" navigation works. *(Remaining: column filters and sort on aging view — ties to TASK-003.)*
 - [x] **[TASK-039] Fix text color tool bug in notes editor** — Replaced CSS group-hover with click-based React state + click-outside dismiss. COMPLETED 2026-03-06.
 - [x] **[TASK-012] Restore record counts at bottom of lists** — Updated DataTable base component, audit logs, review imports, and support tickets pages. Providers/Referrals/Contacts already had counts. COMPLETED 2026-03-06.
 - [x] **[TASK-024] Services list default to expanded** — Already defaults expanded with Expand All/Collapse All toggle (needs/page.tsx lines 135, 141-147). VERIFIED 2026-03-06.

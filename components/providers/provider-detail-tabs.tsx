@@ -88,22 +88,26 @@ const toAllowChoice = (value: boolean | null | undefined): 'allow' | 'do_not_all
 
 const ticketStatusLabels: Record<TicketStatus, string> = {
   pending: 'Pending',
-  customer_need_addressed: 'Need Addressed',
+  in_process: 'In Process',
+  customer_need_addressed: 'Service Provided',
   wrong_organization_referred: 'Wrong Org',
   outside_of_scope: 'Out of Scope',
   client_not_eligible: 'Not Eligible',
   unable_to_assist: 'Unable to Assist',
   client_unresponsive: 'Unresponsive',
+  transferred_another_provider: 'Transferred',
 }
 
 const ticketStatusBadgeClass: Record<TicketStatus, string> = {
   pending: 'border-blue-200 bg-blue-50 text-blue-700',
+  in_process: 'border-yellow-200 bg-yellow-50 text-yellow-700',
   customer_need_addressed: 'border-green-200 bg-green-50 text-green-700',
   wrong_organization_referred: 'border-orange-200 bg-orange-50 text-orange-700',
   outside_of_scope: 'border-slate-200 bg-slate-100 text-slate-700',
   client_not_eligible: 'border-amber-200 bg-amber-50 text-amber-800',
   unable_to_assist: 'border-red-200 bg-red-50 text-red-700',
   client_unresponsive: 'border-violet-200 bg-violet-50 text-violet-700',
+  transferred_another_provider: 'border-gray-200 bg-gray-50 text-gray-700',
 }
 
 const emptyLocationForm = {
@@ -1205,7 +1209,7 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
         <div className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Needs Addressed</CardTitle>
+              <CardTitle className="text-base">Services Provided</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {isEditing && (

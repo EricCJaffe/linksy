@@ -13,12 +13,14 @@ import type { Ticket, TicketStatus } from '@/lib/types/linksy'
 
 const ticketStatusLabels: Record<TicketStatus, string> = {
   pending: 'Pending',
-  customer_need_addressed: 'Need Addressed',
+  in_process: 'In Process',
+  customer_need_addressed: 'Service Provided',
   wrong_organization_referred: 'Wrong Org',
   outside_of_scope: 'Out of Scope',
   client_not_eligible: 'Not Eligible',
   unable_to_assist: 'Unable to Assist',
   client_unresponsive: 'Unresponsive',
+  transferred_another_provider: 'Transferred',
 }
 
 export default function MyTicketsPage() {

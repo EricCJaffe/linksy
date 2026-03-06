@@ -40,7 +40,7 @@ export async function GET(request: Request) {
 
   if (status && status !== 'all') {
     if (status === 'open') {
-      query = query.eq('status', 'pending')
+      query = query.in('status', ['pending', 'in_process'])
     } else if (status === 'closed') {
       query = query.in('status', [
         'customer_need_addressed',
@@ -48,7 +48,8 @@ export async function GET(request: Request) {
         'client_unresponsive',
         'wrong_organization_referred',
         'outside_of_scope',
-        'client_not_eligible'
+        'client_not_eligible',
+        'transferred_another_provider'
       ])
     }
   }

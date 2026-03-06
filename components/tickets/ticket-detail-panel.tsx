@@ -31,27 +31,33 @@ interface TicketDetailPanelProps {
 
 const ticketStatusLabels: Record<TicketStatus, string> = {
   pending: 'Pending',
-  customer_need_addressed: 'Need Addressed',
+  in_process: 'In Process',
+  customer_need_addressed: 'Service Provided',
   wrong_organization_referred: 'Wrong Org Referred',
   outside_of_scope: 'Out of Scope',
   client_not_eligible: 'Not Eligible',
   unable_to_assist: 'Unable to Assist',
   client_unresponsive: 'Unresponsive',
+  transferred_another_provider: 'Transferred',
 }
 
 const ticketStatusVariant: Record<TicketStatus, string> = {
   pending: 'default',
+  in_process: 'outline',
   customer_need_addressed: 'outline',
   wrong_organization_referred: 'outline',
   outside_of_scope: 'secondary',
   client_not_eligible: 'secondary',
   unable_to_assist: 'destructive',
   client_unresponsive: 'secondary',
+  transferred_another_provider: 'secondary',
 }
 
 const ticketStatusClass: Record<string, string> = {
+  in_process: 'border-yellow-500 text-yellow-700 bg-yellow-50',
   customer_need_addressed: 'border-green-500 text-green-700 bg-green-50',
   wrong_organization_referred: 'border-orange-500 text-orange-700 bg-orange-50',
+  transferred_another_provider: 'border-gray-500 text-gray-700 bg-gray-50',
 }
 
 function StatusBadge({ status }: { status: TicketStatus }) {
@@ -127,7 +133,7 @@ export function TicketDetailPanel({ ticket }: TicketDetailPanelProps) {
       {/* Ticket Actions */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Ticket Actions</CardTitle>
+          <CardTitle className="text-base">Referral Actions</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2">
@@ -140,7 +146,7 @@ export function TicketDetailPanel({ ticket }: TicketDetailPanelProps) {
                 className="flex items-center gap-2"
               >
                 <ArrowRight className="h-4 w-4" />
-                Forward Ticket
+                Forward Referral
               </Button>
             )}
 
@@ -195,7 +201,7 @@ export function TicketDetailPanel({ ticket }: TicketDetailPanelProps) {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Ticket Info</CardTitle>
+            <CardTitle className="text-base">Referral Info</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <div className="flex justify-between">

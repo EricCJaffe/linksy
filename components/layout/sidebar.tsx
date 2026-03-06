@@ -49,7 +49,7 @@ const mainNavItems = [
     icon: Users,
   },
   {
-    title: 'Needs',
+    title: 'Services',
     href: '/dashboard/needs',
     icon: Tags,
   },

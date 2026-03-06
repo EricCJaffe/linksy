@@ -184,7 +184,7 @@ export function ContactManagementDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="provider_employee">Provider Employee</SelectItem>
-                  <SelectItem value="customer">Customer</SelectItem>
+                  <SelectItem value="customer">Client</SelectItem>
                 </SelectContent>
               </Select>
             </div>

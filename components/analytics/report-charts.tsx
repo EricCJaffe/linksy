@@ -59,12 +59,14 @@ export function CategoryBreakdownChart({ data }: { data: { name: string; count: 
 export function StatusPieChart({ data }: { data: { status: string; count: number }[] }) {
   const statusLabels: Record<string, string> = {
     pending: 'Pending',
-    customer_need_addressed: 'Addressed',
+    in_process: 'In Process',
+    customer_need_addressed: 'Service Provided',
     wrong_organization_referred: 'Wrong Org',
     outside_of_scope: 'Out of Scope',
     client_not_eligible: 'Not Eligible',
     unable_to_assist: 'Unable to Assist',
     client_unresponsive: 'Unresponsive',
+    transferred_another_provider: 'Transferred',
   }
 
   const chartData = data.map((d) => ({

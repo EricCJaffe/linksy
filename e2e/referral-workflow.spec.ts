@@ -288,12 +288,12 @@ test.describe('Referral Workflow', () => {
     )
 
     await page.locator('[role=\"combobox\"]').first().click()
-    await page.getByRole('option', { name: 'Need Addressed' }).click()
+    await page.getByRole('option', { name: 'Service Provided' }).click()
 
     const statusPatchResponse = await statusPatchPromise
     const patched = await statusPatchResponse.json()
     expect(patched.status).toBe('customer_need_addressed')
 
-    await expect(page.getByText('Need Addressed').first()).toBeVisible()
+    await expect(page.getByText('Service Provided').first()).toBeVisible()
   })
 })

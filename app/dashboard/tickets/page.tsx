@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useTickets, useUpdateTicket } from '@/lib/hooks/useTickets'
 import { useProviders } from '@/lib/hooks/useProviders'
 import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
@@ -34,22 +34,26 @@ const LIMIT = 50
 
 const ticketStatusLabels: Record<TicketStatus, string> = {
   pending: 'Pending',
-  customer_need_addressed: 'Need Addressed',
+  in_process: 'In Process',
+  customer_need_addressed: 'Service Provided',
   wrong_organization_referred: 'Wrong Org Referred',
   outside_of_scope: 'Out of Scope',
   client_not_eligible: 'Not Eligible',
   unable_to_assist: 'Unable to Assist',
   client_unresponsive: 'Unresponsive',
+  transferred_another_provider: 'Transferred',
 }
 
 const ticketStatusClass: Record<TicketStatus, string> = {
   pending: 'border-blue-200 bg-blue-50 text-blue-700',
+  in_process: 'border-yellow-200 bg-yellow-50 text-yellow-700',
   customer_need_addressed: 'border-green-200 bg-green-50 text-green-700',
   wrong_organization_referred: 'border-orange-200 bg-orange-50 text-orange-700',
   outside_of_scope: 'border-slate-200 bg-slate-100 text-slate-700',
   client_not_eligible: 'border-amber-200 bg-amber-50 text-amber-800',
   unable_to_assist: 'border-red-200 bg-red-50 text-red-700',
   client_unresponsive: 'border-violet-200 bg-violet-50 text-violet-700',
+  transferred_another_provider: 'border-gray-200 bg-gray-50 text-gray-700',
 }
 
 function StatusBadge({ status }: { status: TicketStatus }) {
@@ -62,12 +66,20 @@ function StatusBadge({ status }: { status: TicketStatus }) {
 
 export default function TicketsPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { data: user } = useCurrentUser()
   const updateTicket = useUpdateTicket()
-  const [filters, setFilters] = useState<TicketFilters>({
-    status: 'all',
-    limit: LIMIT,
-    offset: 0,
+  const [filters, setFilters] = useState<TicketFilters>(() => {
+    const statusParam = searchParams.get('status')
+    const qParam = searchParams.get('q')
+    const providerIdParam = searchParams.get('provider_id')
+    return {
+      status: (statusParam as TicketStatus | 'all') || 'all',
+      q: qParam || undefined,
+      provider_id: providerIdParam || undefined,
+      limit: LIMIT,
+      offset: 0,
+    }
   })
   const [publicReferralStats, setPublicReferralStats] = useState({ total: 0, pending: 0 })
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -137,7 +149,7 @@ export default function TicketsPage() {
     if (selectedIds.size === 0) return
 
     const count = selectedIds.size
-    if (!confirm(`Update ${count} ticket${count !== 1 ? 's' : ''} to "${ticketStatusLabels[newStatus]}"?\n\nEmail notifications will be sent to clients with email addresses.`)) {
+    if (!confirm(`Update ${count} referral${count !== 1 ? 's' : ''} to "${ticketStatusLabels[newStatus]}"?\n\nEmail notifications will be sent to clients with email addresses.`)) {
       return
     }
 
@@ -154,12 +166,12 @@ export default function TicketsPage() {
       setSelectedIds(new Set())
 
       // Show success message with email count
-      alert(`Successfully updated ${result.updated} ticket${result.updated !== 1 ? 's' : ''}.\n${result.emailsSent > 0 ? `Email notifications sent to ${result.emailsSent} client${result.emailsSent !== 1 ? 's' : ''}.` : 'No email notifications sent (no client emails on file).'}`)
+      alert(`Successfully updated ${result.updated} referral${result.updated !== 1 ? 's' : ''}.\n${result.emailsSent > 0 ? `Email notifications sent to ${result.emailsSent} client${result.emailsSent !== 1 ? 's' : ''}.` : 'No email notifications sent (no client emails on file).'}`)
 
       // Force refetch
       handleFilterChange({})
     } catch (err) {
-      alert('Failed to update tickets: ' + (err instanceof Error ? err.message : 'Unknown error'))
+      alert('Failed to update referrals: ' + (err instanceof Error ? err.message : 'Unknown error'))
     } finally {
       setIsBulkUpdating(false)
     }
@@ -296,7 +308,7 @@ export default function TicketsPage() {
 
       {error && (
         <div className="rounded-md border border-destructive p-4 text-destructive">
-          Failed to load tickets. Please try again.
+          Failed to load referrals. Please try again.
         </div>
       )}
 
@@ -350,7 +362,7 @@ export default function TicketsPage() {
                       <Checkbox
                         checked={selectedIds.has(ticket.id)}
                         onCheckedChange={() => toggleSelect(ticket.id)}
-                        aria-label={`Select ticket ${ticket.ticket_number}`}
+                        aria-label={`Select referral ${ticket.ticket_number}`}
                       />
                     </TableCell>
                   )}

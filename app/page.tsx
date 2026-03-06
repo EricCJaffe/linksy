@@ -164,7 +164,7 @@ export default async function LandingPage() {
                 {[
                   'Submit your organization to be listed in the directory',
                   'Manage your profile, locations, and services offered',
-                  'Receive referral tickets from AI-assisted searches via email',
+                  'Receive referrals from AI-assisted searches via email',
                   'Track outcomes and communicate with clients',
                   'View engagement analytics for your profile',
                 ].map((item) => (

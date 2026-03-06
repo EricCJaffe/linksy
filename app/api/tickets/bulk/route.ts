@@ -6,12 +6,14 @@ import type { TicketStatus } from '@/lib/types/linksy'
 
 const validStatuses: TicketStatus[] = [
   'pending',
+  'in_process',
   'customer_need_addressed',
   'wrong_organization_referred',
   'outside_of_scope',
   'client_not_eligible',
   'unable_to_assist',
   'client_unresponsive',
+  'transferred_another_provider',
 ]
 
 /**

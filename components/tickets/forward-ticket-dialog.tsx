@@ -114,7 +114,7 @@ export function ForwardTicketDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ArrowRight className="h-5 w-5 text-orange-600" />
-            Forward Ticket #{ticketNumber}
+            Forward Referral #{ticketNumber}
           </DialogTitle>
           <DialogDescription>
             {step === 1
@@ -265,7 +265,7 @@ export function ForwardTicketDialog({
                 Back
               </Button>
               <Button onClick={handleSubmit} disabled={forwardMutation.isPending}>
-                {forwardMutation.isPending ? 'Forwarding...' : 'Forward Ticket'}
+                {forwardMutation.isPending ? 'Forwarding...' : 'Forward Referral'}
               </Button>
             </>
           )}

@@ -59,22 +59,26 @@ interface ReportsData {
 
 const statusLabels: Record<string, string> = {
   pending: 'Pending',
-  customer_need_addressed: 'Need Addressed',
+  in_process: 'In Process',
+  customer_need_addressed: 'Service Provided',
   wrong_organization_referred: 'Wrong Organization',
   outside_of_scope: 'Out of Scope',
   client_not_eligible: 'Not Eligible',
   unable_to_assist: 'Unable to Assist',
   client_unresponsive: 'Client Unresponsive',
+  transferred_another_provider: 'Transferred',
 }
 
 const statusColors: Record<string, string> = {
   pending: 'bg-blue-500',
+  in_process: 'bg-yellow-500',
   customer_need_addressed: 'bg-green-500',
   wrong_organization_referred: 'bg-orange-500',
   outside_of_scope: 'bg-gray-400',
   client_not_eligible: 'bg-gray-400',
   unable_to_assist: 'bg-red-400',
   client_unresponsive: 'bg-gray-400',
+  transferred_another_provider: 'bg-gray-500',
 }
 
 function BarChart({ items, colorClass = 'bg-primary' }: {
@@ -498,7 +502,7 @@ export default function ReportsPage() {
                 <GitMerge className="h-5 w-5" />
                 Search-to-Referral Funnel
               </CardTitle>
-              <p className="text-sm text-muted-foreground">Conversion from search session → provider engagement → referral ticket</p>
+              <p className="text-sm text-muted-foreground">Conversion from search session → provider engagement → referral</p>
             </CardHeader>
             <CardContent>
               {searchLoading ? (
@@ -938,14 +942,14 @@ export default function ReportsPage() {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Avg per Ticket</CardTitle>
+                <CardTitle className="text-sm font-medium">Avg per Referral</CardTitle>
                 <BarChart3 className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
                   {reassignmentData?.average_reassignments_per_ticket?.toFixed(2) || '0.00'}
                 </div>
-                <p className="text-xs text-muted-foreground">Reassigned tickets only</p>
+                <p className="text-xs text-muted-foreground">Reassigned referrals only</p>
               </CardContent>
             </Card>
           </div>

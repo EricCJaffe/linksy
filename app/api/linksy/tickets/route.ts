@@ -90,7 +90,7 @@ export async function POST(request: Request) {
     let capQuery = supabase
       .from('linksy_tickets')
       .select('id, ticket_number, provider_id, created_at', { count: 'exact', head: false })
-      .in('status', ['pending'])  // Only count pending/active tickets
+      .in('status', ['pending', 'in_process'])  // Count pending and in-process tickets
 
     // Match by email OR phone (whichever is provided)
     const orConditions: string[] = []

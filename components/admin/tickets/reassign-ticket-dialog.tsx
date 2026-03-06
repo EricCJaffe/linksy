@@ -118,7 +118,7 @@ export function ReassignTicketDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5 text-purple-600" />
-            Admin: Reassign Ticket #{ticketNumber}
+            Admin: Reassign Referral #{ticketNumber}
           </DialogTitle>
           <DialogDescription>
             Reassign this ticket to a different provider organization
@@ -257,7 +257,7 @@ export function ReassignTicketDialog({
             onClick={handleSubmit}
             disabled={!targetProviderId || reassignMutation.isPending}
           >
-            {reassignMutation.isPending ? 'Reassigning...' : 'Reassign Ticket'}
+            {reassignMutation.isPending ? 'Reassigning...' : 'Reassign Referral'}
           </Button>
         </DialogFooter>
       </DialogContent>
