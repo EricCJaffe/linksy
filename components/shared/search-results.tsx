@@ -1,6 +1,6 @@
 'use client'
 
-import { User, Package, Settings, Building2, Palette, Users, Bell } from 'lucide-react'
+import { User, Package, Settings, Building2, Palette, Users, Bell, Ticket, Contact } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils/cn'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 
 export interface SearchResult {
   id: string
-  type: 'user' | 'module' | 'setting' | 'file' | 'location'
+  type: 'user' | 'module' | 'setting' | 'file' | 'location' | 'ticket' | 'contact'
   title: string
   subtitle: string
   description: string
@@ -22,6 +22,8 @@ interface SearchResultsProps {
     users?: SearchResult[]
     modules?: SearchResult[]
     settings?: SearchResult[]
+    tickets?: SearchResult[]
+    contacts?: SearchResult[]
     [key: string]: SearchResult[] | undefined
   }
   query: string
@@ -38,6 +40,8 @@ const ICON_MAP = {
   palette: Palette,
   users: Users,
   bell: Bell,
+  ticket: Ticket,
+  contact: Contact,
 }
 
 function highlightMatch(text: string, query: string) {
@@ -84,6 +88,16 @@ export function SearchResults({
   if (results.settings && results.settings.length > 0) {
     allResults.push(...results.settings)
     groups.push({ label: 'Settings', results: results.settings })
+  }
+
+  if (results.tickets && results.tickets.length > 0) {
+    allResults.push(...results.tickets)
+    groups.push({ label: 'Referrals', results: results.tickets })
+  }
+
+  if (results.contacts && results.contacts.length > 0) {
+    allResults.push(...results.contacts)
+    groups.push({ label: 'Contacts', results: results.contacts })
   }
 
   const handleSelect = (result: SearchResult) => {

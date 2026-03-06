@@ -109,6 +109,8 @@ export function SearchBar({
     ...(results?.users || []),
     ...(results?.modules || []),
     ...(results?.settings || []),
+    ...(results?.tickets || []),
+    ...(results?.contacts || []),
   ]
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

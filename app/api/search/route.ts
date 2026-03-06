@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/server'
 
 export async function GET(request: Request) {
   const supabase = await createClient()
@@ -20,6 +21,8 @@ export async function GET(request: Request) {
       users: [],
       modules: [],
       settings: [],
+      tickets: [],
+      contacts: [],
       total: 0,
     })
   }
@@ -43,49 +46,94 @@ export async function GET(request: Request) {
   }
 
   const tenantId = tenantUser.tenant_id
+  const serviceSupabase = await createServiceClient()
 
-  // Search users in the tenant - SERVER-SIDE FILTERING
-  // Use ilike for case-insensitive pattern matching in the database
-  const { data: users } = await supabase
-    .from('tenant_users')
-    .select(
+  // Run all searches in parallel
+  const [usersResult, modulesResult, ticketsResult, contactsResult] = await Promise.all([
+    // Search users in the tenant
+    supabase
+      .from('tenant_users')
+      .select(
+        `
+        user_id,
+        role,
+        user:users!inner(
+          id,
+          email,
+          full_name,
+          avatar_url
+        )
       `
-      user_id,
-      role,
-      user:users!inner(
-        id,
-        email,
-        full_name,
-        avatar_url
       )
-    `
-    )
-    .eq('tenant_id', tenantId)
-    .or(`email.ilike.%${sanitizedQuery}%,full_name.ilike.%${sanitizedQuery}%`, { foreignTable: 'users' })
-    .limit(10)
+      .eq('tenant_id', tenantId)
+      .or(`email.ilike.%${sanitizedQuery}%,full_name.ilike.%${sanitizedQuery}%`, { foreignTable: 'users' })
+      .limit(10),
 
-  const filteredUsers = users || []
-
-  // Search modules enabled for the tenant - SERVER-SIDE FILTERING
-  const { data: modules } = await supabase
-    .from('tenant_modules')
-    .select(
+    // Search modules enabled for the tenant
+    supabase
+      .from('tenant_modules')
+      .select(
+        `
+        *,
+        module:modules!inner(
+          id,
+          name,
+          slug,
+          description
+        )
       `
-      *,
-      module:modules!inner(
-        id,
-        name,
-        slug,
-        description
       )
-    `
-    )
-    .eq('tenant_id', tenantId)
-    .eq('is_enabled', true)
-    .or(`name.ilike.%${sanitizedQuery}%,description.ilike.%${sanitizedQuery}%`, { foreignTable: 'modules' })
-    .limit(10)
+      .eq('tenant_id', tenantId)
+      .eq('is_enabled', true)
+      .or(`name.ilike.%${sanitizedQuery}%,description.ilike.%${sanitizedQuery}%`, { foreignTable: 'modules' })
+      .limit(10),
 
-  const filteredModules = modules || []
+    // Search tickets by client name, email, phone, or ticket number
+    serviceSupabase
+      .from('linksy_tickets')
+      .select('id, ticket_number, client_name, client_email, client_phone, status, created_at')
+      .or(
+        `client_name.ilike.%${sanitizedQuery}%,client_email.ilike.%${sanitizedQuery}%,client_phone.ilike.%${sanitizedQuery}%,ticket_number.ilike.%${sanitizedQuery}%`
+      )
+      .order('created_at', { ascending: false })
+      .limit(10),
+
+    // Search provider contacts by name, email, or phone
+    serviceSupabase
+      .from('linksy_provider_contacts')
+      .select('id, user_id, provider_id, provider_role, status, linksy_providers(name)')
+      .eq('status', 'active')
+      .limit(50),
+  ])
+
+  const filteredUsers = usersResult.data || []
+  const filteredModules = modulesResult.data || []
+  const tickets = ticketsResult.data || []
+
+  // Filter contacts in app layer since we need to join with auth users for name/email
+  // Get user details for contacts
+  const rawContacts = contactsResult.data || []
+  let filteredContacts: any[] = []
+  if (rawContacts.length > 0) {
+    const userIds = Array.from(new Set(rawContacts.map((c: any) => c.user_id)))
+    const { data: contactUsers } = await serviceSupabase
+      .from('users')
+      .select('id, email, full_name')
+      .in('id', userIds)
+      .or(`email.ilike.%${sanitizedQuery}%,full_name.ilike.%${sanitizedQuery}%`)
+      .limit(10)
+
+    const matchedUserIds = new Set((contactUsers || []).map((u: any) => u.id))
+    const userMap = new Map((contactUsers || []).map((u: any) => [u.id, u]))
+
+    filteredContacts = rawContacts
+      .filter((c: any) => matchedUserIds.has(c.user_id))
+      .slice(0, 10)
+      .map((c: any) => ({
+        ...c,
+        _user: userMap.get(c.user_id),
+      }))
+  }
 
   // Search settings/pages (static list)
   const settingsPages = [
@@ -171,10 +219,46 @@ export async function GET(request: Request) {
     metadata: {},
   }))
 
+  const formattedTickets = tickets.map((t: any) => ({
+    id: t.id,
+    type: 'ticket',
+    title: t.ticket_number,
+    subtitle: t.client_name || t.client_email || t.client_phone || '',
+    description: t.status,
+    url: `/dashboard/tickets/${t.id}`,
+    icon: 'ticket',
+    metadata: {
+      status: t.status,
+      client_name: t.client_name,
+      created_at: t.created_at,
+    },
+  }))
+
+  const formattedContacts = filteredContacts.map((c: any) => ({
+    id: c.id,
+    type: 'contact',
+    title: c._user?.full_name || c._user?.email || 'Unknown',
+    subtitle: c._user?.email || '',
+    description: (c.linksy_providers as any)?.name || '',
+    url: `/dashboard/providers`,
+    icon: 'user',
+    metadata: {
+      provider_role: c.provider_role,
+      provider_id: c.provider_id,
+    },
+  }))
+
   return NextResponse.json({
     users: formattedUsers,
     modules: formattedModules,
     settings: formattedSettings,
-    total: formattedUsers.length + formattedModules.length + formattedSettings.length,
+    tickets: formattedTickets,
+    contacts: formattedContacts,
+    total:
+      formattedUsers.length +
+      formattedModules.length +
+      formattedSettings.length +
+      formattedTickets.length +
+      formattedContacts.length,
   })
 }
