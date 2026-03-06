@@ -144,8 +144,11 @@ export async function POST(request: Request) {
   const body = await request.json()
   const supabase = await createServiceClient()
 
+  // Test referrals skip duplicate detection, rate limiting, and referral cap
+  const isTest = isTestReferral(body)
+
   // Duplicate referral detection: same client_email + provider_id + need_id within 7 days
-  if (body.client_email && body.provider_id && !body.force) {
+  if (body.client_email && body.provider_id && !body.force && !isTest) {
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
     let dupQuery = supabase
       .from('linksy_tickets')
@@ -170,7 +173,7 @@ export async function POST(request: Request) {
   }
 
   // Rate limiting: max 5 tickets per email per hour
-  if (body.client_email) {
+  if (body.client_email && !isTest) {
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
     const { count: recentCount } = await supabase
       .from('linksy_tickets')
@@ -189,7 +192,7 @@ export async function POST(request: Request) {
   // Referral cap: max 4 active referrals per client (identified by email or phone)
   // Only count tickets that are still active (not closed/resolved)
   const MAX_REFERRALS_PER_CLIENT = 4
-  if (body.client_email || body.client_phone) {
+  if ((body.client_email || body.client_phone) && !isTest) {
     let capQuery = supabase
       .from('linksy_tickets')
       .select('id, ticket_number, provider_id, created_at', { count: 'exact', head: false })
@@ -259,7 +262,7 @@ export async function POST(request: Request) {
       client_phone: body.client_phone || null,
       client_email: body.client_email || null,
       description_of_need: body.description_of_need || null,
-      is_test: isTestReferral(body),
+      is_test: isTest,
       status: body.status || 'pending',
       source: body.source || null,
       client_user_id: defaultHandlerUserId,

@@ -93,6 +93,33 @@ export function useCreateTicketComment() {
   })
 }
 
+export function useUpdateCommentPrivacy() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      ticketId,
+      commentId,
+      is_private,
+    }: {
+      ticketId: string
+      commentId: string
+      is_private: boolean
+    }) => {
+      const res = await fetch(`/api/tickets/${ticketId}/comments`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ comment_id: commentId, is_private }),
+      })
+      if (!res.ok) throw new Error('Failed to update comment privacy')
+      return res.json() as Promise<TicketComment>
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['ticket', variables.ticketId] })
+    },
+  })
+}
+
 export function useForwardTicket() {
   const queryClient = useQueryClient()
 

@@ -6,6 +6,7 @@ import { useProvider } from '@/lib/hooks/useProviders'
 import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
 import { ProviderDetailTabs } from '@/components/providers/provider-detail-tabs'
 import { PurgeProviderDialog } from '@/components/providers/purge-provider-dialog'
+import { SendTestReferralDialog } from '@/components/providers/send-test-referral-dialog'
 import { ProviderBreadcrumbs } from '@/components/providers/provider-breadcrumbs'
 import { ProviderQuickSwitcher } from '@/components/providers/provider-quick-switcher'
 import { Badge } from '@/components/ui/badge'
@@ -116,7 +117,10 @@ export default function ProviderDetailPage({
         </div>
         <div className="flex gap-2">
           {isSiteAdmin && (
-            <PurgeProviderDialog providerId={provider.id} providerName={provider.name} />
+            <>
+              <SendTestReferralDialog providerId={provider.id} providerName={provider.name} />
+              <PurgeProviderDialog providerId={provider.id} providerName={provider.name} />
+            </>
           )}
           <Button size="sm" asChild>
             <Link href="/dashboard/support">Linksy Support</Link>

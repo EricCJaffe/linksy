@@ -6,7 +6,7 @@ import { TextStyle } from '@tiptap/extension-text-style'
 import Color from '@tiptap/extension-color'
 import TextAlign from '@tiptap/extension-text-align'
 import DOMPurify from 'isomorphic-dompurify'
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Bold,
   Italic,
@@ -221,36 +221,61 @@ function Separator() {
   return <div className="mx-1 h-5 w-px bg-border" />
 }
 
-function ColorPicker({ editor }: { editor: any }) {
+function ColorPicker({ editor }: { editor: Editor }) {
+  const [open, setOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  const handleClickOutside = useCallback((e: MouseEvent) => {
+    if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      setOpen(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (open) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [open, handleClickOutside])
+
   return (
-    <div className="relative group">
+    <div className="relative" ref={containerRef}>
       <button
         type="button"
         title="Text Color"
+        onClick={() => setOpen((prev) => !prev)}
         className="inline-flex h-7 w-7 items-center justify-center rounded text-sm transition-colors hover:bg-accent text-muted-foreground"
       >
         <Palette className="h-4 w-4" />
       </button>
-      <div className="invisible group-hover:visible absolute left-0 top-full z-50 mt-1 flex gap-1 rounded-md border bg-popover p-2 shadow-md">
-        {COLOR_PRESETS.map((color) => (
+      {open && (
+        <div className="absolute left-0 top-full z-50 mt-1 flex gap-1 rounded-md border bg-popover p-2 shadow-md">
+          {COLOR_PRESETS.map((color) => (
+            <button
+              key={color}
+              type="button"
+              onClick={() => {
+                editor.chain().focus().setColor(color).run()
+                setOpen(false)
+              }}
+              className="h-5 w-5 rounded-full border border-border hover:scale-110 transition-transform"
+              style={{ backgroundColor: color }}
+              title={color}
+            />
+          ))}
           <button
-            key={color}
             type="button"
-            onClick={() => editor.chain().focus().setColor(color).run()}
-            className="h-5 w-5 rounded-full border border-border hover:scale-110 transition-transform"
-            style={{ backgroundColor: color }}
-            title={color}
-          />
-        ))}
-        <button
-          type="button"
-          onClick={() => editor.chain().focus().unsetColor().run()}
-          className="h-5 w-5 rounded-full border border-border hover:scale-110 transition-transform flex items-center justify-center text-xs text-muted-foreground"
-          title="Remove color"
-        >
-          ×
-        </button>
-      </div>
+            onClick={() => {
+              editor.chain().focus().unsetColor().run()
+              setOpen(false)
+            }}
+            className="h-5 w-5 rounded-full border border-border hover:scale-110 transition-transform flex items-center justify-center text-xs text-muted-foreground"
+            title="Remove color"
+          >
+            ×
+          </button>
+        </div>
+      )}
     </div>
   )
 }

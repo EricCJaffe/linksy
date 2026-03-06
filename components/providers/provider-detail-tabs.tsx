@@ -51,7 +51,7 @@ import { ImageUpload } from '@/components/ui/image-upload'
 import { WidgetPreview } from '@/components/widget/widget-preview'
 import { uploadWidgetLogo, uploadNoteAttachment } from '@/lib/storage/upload'
 import type { Provider, ProviderDetail, NoteType, NoteAttachment, TicketStatus, ProviderContact, ProviderEvent, ProviderContactMethod } from '@/lib/types/linksy'
-import { Plus, Copy, ExternalLink, Lock, MapPin, Pencil, Trash2, CheckCircle, Circle, BarChart2, FileText, LayoutList, CalendarDays, RefreshCw, Pin, PinOff, Phone, StickyNote, ChevronDown } from 'lucide-react'
+import { Plus, Copy, ExternalLink, Globe, Lock, MapPin, Pencil, Trash2, CheckCircle, Circle, BarChart2, FileText, LayoutList, CalendarDays, RefreshCw, Pin, PinOff, Phone, StickyNote, ChevronDown, FlaskConical } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import type { HostWidgetConfig } from '@/lib/types/linksy'
 
@@ -782,6 +782,19 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
     }
   }
 
+  const handleToggleTimelineNotePrivacy = async (note: ProviderDetail['notes'][number]) => {
+    try {
+      await updateNote.mutateAsync({
+        noteId: note.id,
+        is_private: !note.is_private,
+      })
+      router.refresh()
+    } catch (error) {
+      console.error('Failed to toggle note privacy:', error)
+      alert('Failed to update note privacy')
+    }
+  }
+
   const copyTimelineNote = async (html: string) => {
     const plainText = html
       .replace(/<[^>]+>/g, ' ')
@@ -1364,7 +1377,7 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
               ) : (
                 <div className="space-y-3">
                   {timelineNotes.map((note) => (
-                    <div key={note.id} className="rounded-md border p-3">
+                    <div key={note.id} className={`rounded-md border p-3 ${note.is_private ? 'bg-amber-50 border-amber-200' : ''}`}>
                       {editingTimelineNoteId === note.id ? (
                         <div className="space-y-3">
                           <Select
@@ -1440,6 +1453,14 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
                               <span>Added by {note.user?.full_name || note.user?.email || 'Unknown user'}</span>
                             </div>
                             <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleToggleTimelineNotePrivacy(note)}
+                                title={note.is_private ? 'Make public' : 'Make private'}
+                              >
+                                {note.is_private ? <Lock className="h-4 w-4 text-amber-600" /> : <Globe className="h-4 w-4" />}
+                              </Button>
                               <Button variant="ghost" size="icon" onClick={() => handlePinTimelineNote(note)} title={note.is_pinned ? 'Unpin note' : 'Pin note'}>
                                 {note.is_pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
                               </Button>
@@ -2531,6 +2552,19 @@ function NotesTab({ provider }: { provider: ProviderDetail }) {
     }
   }
 
+  const handleToggleNotePrivacy = async (note: ProviderDetail['notes'][number]) => {
+    try {
+      await updateNote.mutateAsync({
+        noteId: note.id,
+        is_private: !note.is_private,
+      })
+      router.refresh()
+    } catch (error) {
+      console.error('Failed to toggle note privacy:', error)
+      alert('Failed to update note privacy')
+    }
+  }
+
   const copyNoteContent = async (html: string) => {
     const plainText = html
       .replace(/<[^>]+>/g, ' ')
@@ -2646,7 +2680,7 @@ function NotesTab({ provider }: { provider: ProviderDetail }) {
         </div>
       ) : (
         provider.notes.map((note) => (
-          <Card key={note.id}>
+          <Card key={note.id} className={note.is_private ? 'border-amber-200 bg-amber-50' : ''}>
             <CardContent className="pt-4">
               {editingNoteId === note.id ? (
                 <div className="space-y-3">
@@ -2720,6 +2754,14 @@ function NotesTab({ provider }: { provider: ProviderDetail }) {
                       </span>
                     </div>
                     <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleToggleNotePrivacy(note)}
+                        title={note.is_private ? 'Make public' : 'Make private'}
+                      >
+                        {note.is_private ? <Lock className="h-4 w-4 text-amber-600" /> : <Globe className="h-4 w-4" />}
+                      </Button>
                       <Button variant="ghost" size="icon" onClick={() => handlePinNote(note)} title={note.is_pinned ? 'Unpin note' : 'Pin note'}>
                         {note.is_pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
                       </Button>

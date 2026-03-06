@@ -17,7 +17,7 @@ import {
 import { Globe, Lock, Phone, Plus, Trash2, ArrowRight, UserCheck, Clock } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useUpdateTicket, useCreateTicketComment } from '@/lib/hooks/useTickets'
+import { useUpdateTicket, useCreateTicketComment, useUpdateCommentPrivacy } from '@/lib/hooks/useTickets'
 import { useCallLogs, useCreateCallLog, useDeleteCallLog } from '@/lib/hooks/useCallLogs'
 import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
 import type { Ticket, TicketStatus } from '@/lib/types/linksy'
@@ -67,9 +67,11 @@ function StatusBadge({ status }: { status: TicketStatus }) {
 export function TicketDetailPanel({ ticket }: TicketDetailPanelProps) {
   const updateTicket = useUpdateTicket()
   const createComment = useCreateTicketComment()
+  const updateCommentPrivacy = useUpdateCommentPrivacy()
   const { data: currentUser } = useCurrentUser()
   const [commentText, setCommentText] = useState('')
   const [isPrivate, setIsPrivate] = useState(false)
+  const isSiteAdmin = !!(currentUser?.profile as any)?.is_site_admin
   const [showForwardDialog, setShowForwardDialog] = useState(false)
   const [showAssignDialog, setShowAssignDialog] = useState(false)
   const [showHistoryDialog, setShowHistoryDialog] = useState(false)
@@ -143,7 +145,7 @@ export function TicketDetailPanel({ ticket }: TicketDetailPanelProps) {
             )}
 
             {/* Assign internally - available to provider admins */}
-            {ticket.provider_id && (currentUser?.profile as any)?.is_site_admin && (
+            {ticket.provider_id && isSiteAdmin && (
               <Button
                 variant="outline"
                 size="sm"
@@ -293,6 +295,22 @@ export function TicketDetailPanel({ ticket }: TicketDetailPanelProps) {
                     <span className="text-muted-foreground">
                       {new Date(comment.created_at).toLocaleString()}
                     </span>
+                    {isSiteAdmin && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateCommentPrivacy.mutate({
+                            ticketId: ticket.id,
+                            commentId: comment.id,
+                            is_private: !comment.is_private,
+                          })
+                        }
+                        title={comment.is_private ? 'Make public' : 'Make private'}
+                        className="ml-auto inline-flex h-6 w-6 items-center justify-center rounded hover:bg-accent text-muted-foreground"
+                      >
+                        {comment.is_private ? <Lock className="h-3.5 w-3.5 text-amber-600" /> : <Globe className="h-3.5 w-3.5" />}
+                      </button>
+                    )}
                   </div>
                   <RichTextDisplay content={comment.content} />
                 </div>
