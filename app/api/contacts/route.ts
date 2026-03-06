@@ -19,6 +19,8 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const q = searchParams.get('q') || ''
   const status = searchParams.get('status') || 'active'
+  const providerId = searchParams.get('provider_id') || ''
+  const role = searchParams.get('role') || ''
   const offset = parseInt(searchParams.get('offset') || '0') || 0
   const limit = parseInt(searchParams.get('limit') || '50') || 50
 
@@ -42,6 +44,16 @@ export async function GET(request: Request) {
   // Search filter (name, email, job_title)
   if (q) {
     query = query.or(`full_name.ilike.%${q}%,email.ilike.%${q}%,job_title.ilike.%${q}%`)
+  }
+
+  // Provider filter
+  if (providerId) {
+    query = query.eq('provider_id', providerId)
+  }
+
+  // Role filter
+  if (role) {
+    query = query.eq('provider_role', role)
   }
 
   const { data: contacts, count, error: fetchError } = await query

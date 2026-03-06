@@ -59,7 +59,22 @@ export default function ContactsPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('active')
+  const [providerFilter, setProviderFilter] = useState('')
+  const [roleFilter, setRoleFilter] = useState('')
   const [offset, setOffset] = useState(0)
+  const [providers, setProviders] = useState<Array<{ id: string; name: string }>>([])
+
+  // Fetch provider list for filter
+  useEffect(() => {
+    fetch('/api/providers?limit=200')
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (data?.providers) {
+          setProviders(data.providers.map((p: any) => ({ id: p.id, name: p.name })))
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   const fetchContacts = useCallback(async () => {
     setLoading(true)
@@ -70,6 +85,8 @@ export default function ContactsPage() {
         status: statusFilter,
       })
       if (search) params.set('q', search)
+      if (providerFilter) params.set('provider_id', providerFilter)
+      if (roleFilter) params.set('role', roleFilter)
 
       const res = await fetch(`/api/contacts?${params.toString()}`)
       if (res.ok) {
@@ -80,7 +97,7 @@ export default function ContactsPage() {
     } finally {
       setLoading(false)
     }
-  }, [offset, search, statusFilter])
+  }, [offset, search, statusFilter, providerFilter, roleFilter])
 
   useEffect(() => {
     fetchContacts()
@@ -136,6 +153,41 @@ export default function ContactsPage() {
                   <SelectItem value="invited">Invited</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
                   <SelectItem value="archived">Archived</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select
+                value={providerFilter || 'all'}
+                onValueChange={(v) => {
+                  setProviderFilter(v === 'all' ? '' : v)
+                  setOffset(0)
+                }}
+              >
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="All Providers" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Providers</SelectItem>
+                  {providers.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={roleFilter || 'all'}
+                onValueChange={(v) => {
+                  setRoleFilter(v === 'all' ? '' : v)
+                  setOffset(0)
+                }}
+              >
+                <SelectTrigger className="w-[130px]">
+                  <SelectValue placeholder="All Roles" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Roles</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="user">User</SelectItem>
                 </SelectContent>
               </Select>
             </div>

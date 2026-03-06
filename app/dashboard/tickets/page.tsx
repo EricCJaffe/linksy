@@ -27,7 +27,7 @@ import {
   TableCell,
 } from '@/components/ui/table'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Globe, Search, Download, CheckSquare } from 'lucide-react'
+import { Globe, Search, Download, CheckSquare, CalendarDays, X } from 'lucide-react'
 import type { TicketFilters, TicketStatus } from '@/lib/types/linksy'
 
 const LIMIT = 50
@@ -89,6 +89,22 @@ export default function TicketsPage() {
   const queryFilters = { ...filters, q: debouncedQ }
   const { data, isLoading, error } = useTickets(queryFilters)
   const { data: providersData } = useProviders({ limit: 200 })
+  const [needs, setNeeds] = useState<Array<{ id: string; name: string }>>([])
+
+  // Fetch needs for filter dropdown
+  useEffect(() => {
+    fetch('/api/need-categories')
+      .then((res) => res.ok ? res.json() : null)
+      .then((categories) => {
+        if (Array.isArray(categories)) {
+          const flat = categories.flatMap((cat: any) =>
+            (cat.needs || []).map((n: any) => ({ id: n.id, name: n.name }))
+          )
+          setNeeds(flat)
+        }
+      })
+      .catch(() => {})
+  }, [])
   const isSiteAdmin = user?.profile?.role === 'site_admin'
 
   // Calculate public referral stats
@@ -273,6 +289,52 @@ export default function TicketsPage() {
             ))}
           </SelectContent>
         </Select>
+        <Select
+          value={filters.need_id || 'all'}
+          onValueChange={(v) => handleFilterChange({ need_id: v === 'all' ? undefined : v })}
+        >
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="All Services" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Services</SelectItem>
+            {needs.map((need) => (
+              <SelectItem key={need.id} value={need.id}>
+                {need.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Date range filters */}
+      <div className="flex flex-wrap items-center gap-3">
+        <CalendarDays className="h-4 w-4 text-muted-foreground" />
+        <Input
+          type="date"
+          value={filters.date_from || ''}
+          onChange={(e) => handleFilterChange({ date_from: e.target.value || undefined })}
+          className="w-[160px]"
+          aria-label="From date"
+        />
+        <span className="text-sm text-muted-foreground">to</span>
+        <Input
+          type="date"
+          value={filters.date_to || ''}
+          onChange={(e) => handleFilterChange({ date_to: e.target.value || undefined })}
+          className="w-[160px]"
+          aria-label="To date"
+        />
+        {(filters.date_from || filters.date_to) && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleFilterChange({ date_from: undefined, date_to: undefined })}
+          >
+            <X className="h-4 w-4 mr-1" />
+            Clear dates
+          </Button>
+        )}
       </div>
 
       {/* Bulk action bar */}
