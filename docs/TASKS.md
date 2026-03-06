@@ -176,7 +176,7 @@ Core features that users and admins need on day one, plus remaining quality fixe
 - [ ] **[TASK-024] Services list default to expanded** — Change default view to all categories expanded. Add "Collapse All" / "Expand All" toggle. Both admin and provider screens.
 
 #### 1.10 Notes & Comments Improvements (Program Review)
-- [ ] **[TASK-027] Notes ordering + edit capability** — Move "Add Comment" box to TOP (above existing comments). Newest first. Add edit button per note (shows original + edit timestamps, preserves history). Apply to all notes sections.
+- [x] **[TASK-027] Notes ordering + edit capability** — Comment form moved to top, newest-first display. COMPLETED 2026-03-06 (ordering). *(Remaining: edit button per note with original+edit timestamps, history preservation. Apply to all notes sections.)*
 - [ ] **[TASK-028] Private/public note toggle** — Each note gets a private toggle (on/off). Private = visible only to creating org. Can toggle anytime (author or admin). Lock icon indicator. Include privacy state in exports. *(Partially exists: `is_private` field on `linksy_provider_notes` and `linksy_ticket_comments`.)*
 
 #### 1.11 Provider & Contact Enhancements (Program Review)
@@ -211,7 +211,7 @@ All 8 LOW findings resolved.
 
 #### 2.2 Program Review — UX Enhancements
 
-- [ ] **[TASK-004] Phone number format standardization** — Enforce 1-(XXX)-XXX-XXXX format on all phone inputs. Add "Ext." field next to every phone field. Update list views, exports, email templates. *(Extension field already exists on providers.)*
+- [x] **[TASK-004] Phone number format standardization** — `lib/utils/phone.ts` with `formatPhone()` (1-(XXX)-XXX-XXXX) and `phoneToTel()` applied to 5 components. COMPLETED 2026-03-06. *(Remaining: "Ext." field next to every phone field; update exports/email templates.)*
 - [ ] **[TASK-006] Global search enhancement** — Dropdown showing recent results while typing. Search across: client name, phone, email, referral number. Last 10 recent searches. Color-coded results with record type. Click navigates to record.
 - [ ] **[TASK-008] Provider source tagging** — Add "Source" field to providers (dropdown: CC, UW, IW, Self-Registered, Other + free text). Filterable column. Include in exports and analytics.
 - [ ] **[TASK-011] Provider export by Source / Zip** — Export button on Providers list (CSV + Excel). Include: Name, Contact, Email, Phone, Zip, Source, Date Added, Status. Filter before export. Show count.
