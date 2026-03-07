@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Loader2, CheckCircle2 } from 'lucide-react'
+import { useVoicemailReminder, VoicemailReminderDialog } from '@/components/tickets/voicemail-reminder'
 import type { HostCustomField } from '@/lib/types/linksy'
 
 interface CreateTicketDialogProps {
@@ -59,6 +60,7 @@ export function CreateTicketDialog({
   })
 
   const [customData, setCustomData] = useState<Record<string, any>>({})
+  const { showReminder, triggerReminder, dismissReminder } = useVoicemailReminder()
 
   // Fetch custom fields when hostProviderId is available
   useEffect(() => {
@@ -114,6 +116,7 @@ export function CreateTicketDialog({
 
       setTicketNumber(data.ticket_number)
       setIsSuccess(true)
+      triggerReminder()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
@@ -273,6 +276,7 @@ export function CreateTicketDialog({
   }
 
   return (
+    <>
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[500px]">
         {isSuccess ? (
@@ -402,5 +406,7 @@ export function CreateTicketDialog({
         )}
       </DialogContent>
     </Dialog>
+    <VoicemailReminderDialog open={showReminder} onClose={dismissReminder} />
+    </>
   )
 }

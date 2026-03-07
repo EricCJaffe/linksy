@@ -21,7 +21,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Search, ChevronLeft, ChevronRight, Users, ExternalLink } from 'lucide-react'
+import { Search, ChevronLeft, ChevronRight, Users, ExternalLink, Download, ArrowUpDown } from 'lucide-react'
+import { convertToCSV, downloadCSV } from '@/lib/utils/csv'
 
 const LIMIT = 50
 
@@ -53,6 +54,9 @@ interface ContactsResponse {
   pagination: { total: number; offset: number; limit: number }
 }
 
+type SortField = 'name' | 'email' | 'organization' | 'role' | 'date_added'
+type SortDir = 'asc' | 'desc'
+
 export default function ContactsPage() {
   const router = useRouter()
   const [data, setData] = useState<ContactsResponse | null>(null)
@@ -63,6 +67,8 @@ export default function ContactsPage() {
   const [roleFilter, setRoleFilter] = useState('')
   const [offset, setOffset] = useState(0)
   const [providers, setProviders] = useState<Array<{ id: string; name: string }>>([])
+  const [sortField, setSortField] = useState<SortField>('name')
+  const [sortDir, setSortDir] = useState<SortDir>('asc')
 
   // Fetch provider list for filter
   useEffect(() => {
@@ -105,26 +111,91 @@ export default function ContactsPage() {
 
   const total = data?.pagination.total || 0
   const contacts = data?.contacts || []
+
+  // Client-side sort
+  const sortedContacts = [...contacts].sort((a, b) => {
+    const dir = sortDir === 'asc' ? 1 : -1
+    switch (sortField) {
+      case 'name': return (a.display_name || '').localeCompare(b.display_name || '') * dir
+      case 'email': return (a.display_email || '').localeCompare(b.display_email || '') * dir
+      case 'organization': return (a.provider?.name || '').localeCompare(b.provider?.name || '') * dir
+      case 'role': return (a.provider_role || '').localeCompare(b.provider_role || '') * dir
+      case 'date_added': return ((a.created_at || '').localeCompare(b.created_at || '')) * dir
+      default: return 0
+    }
+  })
+
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortDir('asc')
+    }
+  }
+
   const showingFrom = total > 0 ? offset + 1 : 0
   const showingTo = Math.min(offset + LIMIT, total)
 
+  const handleExport = () => {
+    if (contacts.length === 0) return
+    const csv = convertToCSV(contacts.map((c) => ({
+      name: c.display_name || '',
+      email: c.display_email || '',
+      phone: c.phone || '',
+      organization: c.provider?.name || '',
+      job_title: c.job_title || '',
+      role: c.provider_role || '',
+      status: c.status || '',
+      date_added: c.created_at ? new Date(c.created_at).toLocaleDateString() : '',
+    })), [
+      { key: 'name', header: 'Name' },
+      { key: 'email', header: 'Email' },
+      { key: 'phone', header: 'Phone' },
+      { key: 'organization', header: 'Organization' },
+      { key: 'job_title', header: 'Job Title' },
+      { key: 'role', header: 'Role' },
+      { key: 'status', header: 'Status' },
+      { key: 'date_added', header: 'Date Added' },
+    ])
+    downloadCSV(csv, `contacts-${new Date().toISOString().split('T')[0]}.csv`)
+  }
+
+  const SortableHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
+    <TableHead
+      className="cursor-pointer hover:text-foreground select-none"
+      onClick={() => toggleSort(field)}
+    >
+      <div className="flex items-center gap-1">
+        {children}
+        <ArrowUpDown className={`h-3 w-3 ${sortField === field ? 'text-foreground' : 'text-muted-foreground/50'}`} />
+      </div>
+    </TableHead>
+  )
+
   return (
     <div className="space-y-6 p-6">
-      <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Users className="h-6 w-6" />
-          Contacts
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          All provider contacts across organizations
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Users className="h-6 w-6" />
+            Contacts
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            All provider contacts across organizations
+          </p>
+        </div>
+        <Button variant="outline" onClick={handleExport} disabled={contacts.length === 0}>
+          <Download className="h-4 w-4 mr-2" />
+          Export CSV
+        </Button>
       </div>
 
       <Card>
         <CardHeader>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-base">{total} contact{total !== 1 ? 's' : ''}</CardTitle>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -209,23 +280,23 @@ export default function ContactsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Organization</TableHead>
+                    <SortableHeader field="name">Name</SortableHeader>
+                    <SortableHeader field="email">Email</SortableHeader>
+                    <TableHead>Phone</TableHead>
+                    <SortableHeader field="organization">Organization</SortableHeader>
                     <TableHead>Job Title</TableHead>
-                    <TableHead>Role</TableHead>
+                    <SortableHeader field="role">Role</SortableHeader>
                     <TableHead>Status</TableHead>
+                    <SortableHeader field="date_added">Date Added</SortableHeader>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {contacts.map((contact) => (
+                  {sortedContacts.map((contact) => (
                     <TableRow
                       key={contact.id}
                       className="cursor-pointer hover:bg-muted/50"
                       onClick={() => {
-                        if (contact.provider_id) {
-                          router.push(`/dashboard/providers/${contact.provider_id}?tab=contacts`)
-                        }
+                        router.push(`/dashboard/contacts/${contact.id}`)
                       }}
                     >
                       <TableCell className="font-medium">
@@ -242,6 +313,9 @@ export default function ContactsPage() {
                       <TableCell className="text-muted-foreground">
                         {contact.display_email || '—'}
                       </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {contact.phone || '—'}
+                      </TableCell>
                       <TableCell>
                         {contact.provider ? (
                           <div className="flex items-center gap-1.5">
@@ -249,7 +323,6 @@ export default function ContactsPage() {
                             {!contact.provider.is_active && (
                               <Badge variant="secondary" className="text-xs">Inactive</Badge>
                             )}
-                            <ExternalLink className="h-3 w-3 text-muted-foreground" />
                           </div>
                         ) : (
                           <span className="text-muted-foreground">—</span>
@@ -279,6 +352,9 @@ export default function ContactsPage() {
                         >
                           {contact.status}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-xs">
+                        {new Date(contact.created_at).toLocaleDateString()}
                       </TableCell>
                     </TableRow>
                   ))}

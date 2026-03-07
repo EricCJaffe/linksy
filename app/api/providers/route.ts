@@ -12,6 +12,7 @@ export async function GET(request: Request) {
   const status = searchParams.get('status') || 'active'
   const referralType = searchParams.get('referral_type') || 'all'
   const organizationType = searchParams.get('organization_type') || 'all'
+  const source = searchParams.get('source') || 'all'
   const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10), 100)
   const offset = parseInt(searchParams.get('offset') || '0', 10)
 
@@ -60,6 +61,12 @@ export async function GET(request: Request) {
     query = query.eq('provider_status', 'paused')
   } else if (status === 'inactive') {
     query = query.eq('provider_status', 'inactive')
+  } else if (status === 'frozen') {
+    query = query.eq('is_frozen', true)
+  }
+
+  if (source !== 'all') {
+    query = query.eq('source', source)
   }
 
   if (referralType !== 'all') {
@@ -126,6 +133,12 @@ export async function GET(request: Request) {
     referral_instructions: p.referral_instructions,
     project_status: p.project_status,
     allow_auto_update: p.allow_auto_update ?? p.allow_auto_update_description ?? false,
+    source: p.source,
+    source_other: p.source_other,
+    is_frozen: p.is_frozen ?? false,
+    frozen_reason: p.frozen_reason,
+    frozen_at: p.frozen_at,
+    freeze_return_date: p.freeze_return_date,
     parent_provider_id: p.parent_provider_id,
     created_at: p.created_at,
     updated_at: p.updated_at,
@@ -159,7 +172,7 @@ export async function POST(request: Request) {
   const body = await request.json()
   const { name, description, sector, phone, email, website, hours,
           project_status, referral_type, referral_instructions, is_active,
-          provider_status, accepting_referrals } = body
+          provider_status, accepting_referrals, source, source_other } = body
 
   if (!name || !sector) {
     return NextResponse.json({ error: 'name and sector are required' }, { status: 400 })
@@ -199,6 +212,8 @@ export async function POST(request: Request) {
       provider_status: provider_status || 'active',
       accepting_referrals: accepting_referrals ?? true,
       allow_auto_update: false,
+      source: source || null,
+      source_other: source === 'Other' ? (source_other || null) : null,
     })
     .select()
     .single()

@@ -21,6 +21,7 @@ import {
   Pencil,
   ArrowUp,
   ArrowDown,
+  Download,
 } from 'lucide-react'
 import type { NeedCategory, Need } from '@/lib/types/linksy'
 
@@ -164,6 +165,14 @@ export default function NeedsPage() {
           </div>
           <Button variant="outline" size="sm" onClick={toggleAll}>
             {allExpanded ? 'Collapse All' : 'Expand All'}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => window.open('/api/admin/export/services', '_blank')}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Export CSV
           </Button>
           <Button variant="outline" onClick={openAddCategory}>
             <Plus className="mr-2 h-4 w-4" />

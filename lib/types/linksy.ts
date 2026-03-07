@@ -47,6 +47,7 @@ export type TicketStatus =
   | 'client_unresponsive'
   | 'transferred_another_provider'
 export type ProviderStatusEnum = 'active' | 'paused' | 'inactive' | 'pending_approval'
+export type ProviderSource = 'CC' | 'UW' | 'IW' | 'Self-Registered' | 'Other'
 export type ApplicationStatus = 'pending' | 'approved' | 'rejected'
 export type EventStatus = 'pending' | 'approved' | 'rejected' | 'cancelled'
 export type NoteType = 'general' | 'outreach' | 'update' | 'internal' | 'call_log'
@@ -105,6 +106,14 @@ export interface Provider {
   import_source: string | null
   reviewed_by: string | null
   reviewed_at: string | null
+  source: ProviderSource | null
+  source_other: string | null
+  // Freeze/hold
+  is_frozen: boolean
+  frozen_reason: string | null
+  frozen_at: string | null
+  frozen_by: string | null
+  freeze_return_date: string | null
   parent_provider_id: string | null
   parent_linked_by: string | null
   parent_linked_at: string | null
@@ -583,9 +592,10 @@ export interface HostEmailTemplate {
 export interface ProviderFilters {
   q?: string
   sector?: Sector | 'all'
-  status?: 'active' | 'inactive' | 'paused' | 'all'
+  status?: 'active' | 'inactive' | 'paused' | 'frozen' | 'all'
   referral_type?: ReferralType | 'all'
   organization_type?: 'all' | 'parent' | 'child' | 'standalone'
+  source?: ProviderSource | 'all'
   limit?: number
   offset?: number
 }

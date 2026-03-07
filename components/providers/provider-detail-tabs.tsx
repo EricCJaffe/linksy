@@ -867,8 +867,73 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
     setIsEditing(false)
   }
 
+  const [freezeDialogOpen, setFreezeDialogOpen] = useState(false)
+  const [freezeReason, setFreezeReason] = useState('')
+  const [freezeReturnDate, setFreezeReturnDate] = useState('')
+  const [isFreezing, setIsFreezing] = useState(false)
+
+  const handleFreeze = async () => {
+    if (!freezeReason) return
+    setIsFreezing(true)
+    try {
+      const res = await fetch(`/api/providers/${provider.id}/freeze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'freeze', reason: freezeReason, return_date: freezeReturnDate || null }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        alert(data.error || 'Failed to freeze provider')
+        return
+      }
+      setFreezeDialogOpen(false)
+      setFreezeReason('')
+      setFreezeReturnDate('')
+      router.refresh()
+    } catch { /* silent */ } finally {
+      setIsFreezing(false)
+    }
+  }
+
+  const handleUnfreeze = async () => {
+    if (!confirm('Unfreeze this provider and allow referrals again?')) return
+    setIsFreezing(true)
+    try {
+      const res = await fetch(`/api/providers/${provider.id}/freeze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'unfreeze' }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        alert(data.error || 'Failed to unfreeze provider')
+        return
+      }
+      router.refresh()
+    } catch { /* silent */ } finally {
+      setIsFreezing(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
+      {/* Frozen banner */}
+      {provider.is_frozen && (
+        <div className="flex items-center gap-3 rounded-md border border-cyan-200 bg-cyan-50 px-4 py-3">
+          <Badge variant="outline" className="bg-cyan-100 text-cyan-800 border-cyan-300">Frozen</Badge>
+          <span className="text-sm text-cyan-800">
+            {provider.frozen_reason && <>Reason: {provider.frozen_reason}. </>}
+            {provider.freeze_return_date && <>Expected return: {new Date(provider.freeze_return_date).toLocaleDateString()}. </>}
+            Not accepting referrals.
+          </span>
+          {canEdit && (
+            <Button size="sm" variant="outline" className="ml-auto" onClick={handleUnfreeze} disabled={isFreezing}>
+              Unfreeze
+            </Button>
+          )}
+        </div>
+      )}
+
       <div className="flex justify-between items-start">
         {!canEdit && userContact && (
           <p className="text-sm text-muted-foreground">
@@ -878,9 +943,16 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
         <div className={!canEdit && userContact ? '' : 'ml-auto'}>
           {canEdit && (
             !isEditing ? (
-              <Button onClick={() => setIsEditing(true)} size="sm">
-                Edit Provider
-              </Button>
+              <div className="flex gap-2">
+                {!provider.is_frozen && (
+                  <Button variant="outline" size="sm" onClick={() => setFreezeDialogOpen(true)}>
+                    Freeze
+                  </Button>
+                )}
+                <Button onClick={() => setIsEditing(true)} size="sm">
+                  Edit Provider
+                </Button>
+              </div>
             ) : (
               <div className="flex gap-2">
                 <Button
@@ -1734,6 +1806,48 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
           )}
         </CardContent>
       </Card>
+
+      {/* Freeze Dialog */}
+      {freezeDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-background rounded-lg shadow-lg p-6 w-full max-w-md space-y-4">
+            <h3 className="text-lg font-semibold">Freeze Provider</h3>
+            <p className="text-sm text-muted-foreground">
+              Frozen providers will not receive new referrals.
+            </p>
+            <div className="space-y-2">
+              <Label>Reason *</Label>
+              <Select value={freezeReason} onValueChange={setFreezeReason}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select reason..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Capacity full">Capacity full</SelectItem>
+                  <SelectItem value="Seasonal closure">Seasonal closure</SelectItem>
+                  <SelectItem value="Staff shortage">Staff shortage</SelectItem>
+                  <SelectItem value="Under review">Under review</SelectItem>
+                  <SelectItem value="Provider request">Provider request</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Expected Return Date (optional)</Label>
+              <Input
+                type="date"
+                value={freezeReturnDate}
+                onChange={(e) => setFreezeReturnDate(e.target.value)}
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setFreezeDialogOpen(false)}>Cancel</Button>
+              <Button onClick={handleFreeze} disabled={!freezeReason || isFreezing}>
+                {isFreezing ? 'Freezing...' : 'Freeze Provider'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -1941,6 +2055,18 @@ function ContactsTab({ provider }: { provider: ProviderDetail }) {
 
 function DetailsTab({ provider }: { provider: ProviderDetail }) {
   const { data: analytics } = useProviderAnalytics(provider.id)
+  const router = useRouter()
+  const updateProvider = useUpdateProvider()
+  const [source, setSource] = useState(provider.source || '')
+  const [sourceOther, setSourceOther] = useState(provider.source_other || '')
+  const [sourceSaved, setSourceSaved] = useState(false)
+
+  const handleSaveSource = async () => {
+    updateProvider.mutate(
+      { id: provider.id, source: (source || null) as any, source_other: source === 'Other' ? sourceOther : null },
+      { onSuccess: () => { setSourceSaved(true); setTimeout(() => setSourceSaved(false), 2000) } }
+    )
+  }
 
   const profileViews = analytics?.allTime.profile_view ?? 0
   const totalClicks = (analytics?.allTime.phone_click ?? 0)
@@ -1953,6 +2079,41 @@ function DetailsTab({ provider }: { provider: ProviderDetail }) {
 
   return (
     <div className="space-y-4">
+      {/* Source Tagging */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Provider Source</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center gap-3">
+            <Select value={source || 'none'} onValueChange={(v) => setSource(v === 'none' ? '' : v)}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Select source" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No source</SelectItem>
+                <SelectItem value="CC">Clay County</SelectItem>
+                <SelectItem value="UW">United Way</SelectItem>
+                <SelectItem value="IW">Impact Works</SelectItem>
+                <SelectItem value="Self-Registered">Self-Registered</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+            {source === 'Other' && (
+              <Input
+                placeholder="Specify source..."
+                value={sourceOther}
+                onChange={(e) => setSourceOther(e.target.value)}
+                className="w-48"
+              />
+            )}
+            <Button size="sm" onClick={handleSaveSource} disabled={updateProvider.isPending}>
+              {sourceSaved ? 'Saved!' : 'Save'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Reporting Dashboard</CardTitle>

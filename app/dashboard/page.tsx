@@ -9,6 +9,7 @@ import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
 import { useMyProviderStats } from '@/lib/hooks/useMyProviderStats'
 import { AgingReferralsWidget } from '@/components/admin/aging-referrals-widget'
 import { PendingImportsWidget } from '@/components/admin/pending-imports-widget'
+import { TopProvidersChart } from '@/components/admin/top-providers-chart'
 import { Building2, FileText, LifeBuoy, CheckCircle, AlertCircle, History, TrendingUp, MapPin, Phone, Mail, Globe } from 'lucide-react'
 import { formatPhone, phoneToTel } from '@/lib/utils/phone'
 
@@ -337,19 +338,22 @@ export default function DashboardPage() {
       )}
 
       {isSiteAdmin ? (
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card className="border-primary/20">
-            <CardHeader>
-              <CardTitle>Recent Activity</CardTitle>
-              <CardDescription>Your recent actions and updates</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">No recent activity</p>
-            </CardContent>
-          </Card>
-          <AgingReferralsWidget />
-          <PendingImportsWidget />
-        </div>
+        <>
+          <TopProvidersChart />
+          <div className="grid gap-4 md:grid-cols-3">
+            <Card className="border-primary/20">
+              <CardHeader>
+                <CardTitle>Recent Activity</CardTitle>
+                <CardDescription>Your recent actions and updates</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">No recent activity</p>
+              </CardContent>
+            </Card>
+            <AgingReferralsWidget />
+            <PendingImportsWidget />
+          </div>
+        </>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           <Card className="border-primary/20">

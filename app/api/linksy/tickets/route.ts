@@ -85,6 +85,21 @@ export async function POST(request: Request) {
       }
     }
 
+    // Check if provider is frozen
+    if (!isTestReferral(client_name)) {
+      const { data: providerCheck } = await supabase
+        .from('linksy_providers')
+        .select('is_frozen')
+        .eq('id', provider_id)
+        .single()
+      if (providerCheck?.is_frozen) {
+        return NextResponse.json(
+          { error: 'This provider is currently not accepting referrals.' },
+          { status: 400 }
+        )
+      }
+    }
+
     // Referral cap: max 4 active referrals per client (identified by email or phone)
     // Only count tickets that are still active (not closed/resolved)
     const MAX_REFERRALS_PER_CLIENT = 4
