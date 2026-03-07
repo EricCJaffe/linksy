@@ -300,6 +300,17 @@ export async function POST(request: Request) {
       })
     }
 
+    // Step 4b: Fetch upcoming events from matched providers
+    const matchedProviderIds = resultsWithDistance.map((p: any) => p.id)
+    let upcomingEvents: any[] = []
+    if (matchedProviderIds.length > 0) {
+      const { data: events } = await supabase.rpc('linksy_search_events_by_providers', {
+        p_provider_ids: matchedProviderIds,
+        p_limit: 5,
+      })
+      upcomingEvents = events || []
+    }
+
     // Step 5: Generate conversational response
     const topProviders = resultsWithDistance.slice(0, 5)
     const conversationalResponse = await generateConversationalResponse(
@@ -307,7 +318,8 @@ export async function POST(request: Request) {
       matchingNeeds,
       topProviders,
       resolvedLocation !== null,
-      searchRadiusMiles
+      searchRadiusMiles,
+      upcomingEvents
     )
 
     // Strip llm_context_card from provider objects before sending to client
@@ -316,6 +328,7 @@ export async function POST(request: Request) {
     // Step 6: Session tracking (fire-and-forget)
     const tokensUsed = embeddingResponse.usage?.total_tokens ?? 0
     let activeSessionId: string | null = sessionId ?? null
+    let activeSessionToken: string | null = null
 
     const SITE_ID = process.env.LINKSY_SITE_ID || '86bd8d01-0dc5-4479-beff-666712654104'
 
@@ -340,9 +353,10 @@ export async function POST(request: Request) {
       const { data: newSession } = await supabase
         .from('linksy_search_sessions')
         .insert(sessionInsert)
-        .select('id')
+        .select('id, session_token')
         .single()
       activeSessionId = newSession?.id ?? null
+      activeSessionToken = newSession?.session_token ?? null
     } else {
       // Increment message count and token usage atomically
       void supabase.rpc('linksy_increment_session_usage', {
@@ -370,9 +384,11 @@ export async function POST(request: Request) {
       query,
       needs: matchingNeeds,
       providers: topProvidersForClient,
+      events: upcomingEvents.length > 0 ? upcomingEvents : undefined,
       message: conversationalResponse,
       searchRadiusMiles,
       sessionId: activeSessionId,
+      sessionToken: activeSessionToken || undefined,
       excludedByZip: excludedByZip.length > 0 ? excludedByZip : undefined,
       clientZipCode: zipCode || undefined,
     })
@@ -410,7 +426,8 @@ async function generateConversationalResponse(
   needs: any[],
   providers: any[],
   hasLocation: boolean,
-  searchRadiusMiles: number | null
+  searchRadiusMiles: number | null,
+  events: any[] = []
 ): Promise<string> {
   if (providers.length === 0) {
     if (hasLocation) {
@@ -433,17 +450,34 @@ async function generateConversationalResponse(
         ? ' Location not provided — results are not sorted by distance.'
         : ''
 
+      // Build events context for LLM
+      let eventsContext = ''
+      if (events.length > 0) {
+        const eventLines = events.map((e: any) => {
+          const date = new Date(e.event_date).toLocaleDateString('en-US', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+          })
+          return `- "${e.title}" by ${e.provider_name} on ${date}${e.location ? ` at ${e.location}` : ''}`
+        })
+        eventsContext = `\n\nUpcoming related events:\n${eventLines.join('\n')}`
+      }
+
+      const systemPrompt = events.length > 0
+        ? 'You are a helpful community resource navigator. Based on the user\'s query and the available providers and upcoming events shown below, write a brief, warm conversational response (2-3 sentences max). Do NOT list the providers or events — they are shown in cards below your message. Focus on acknowledging what the user needs and noting what types of help are available. If relevant events exist, briefly mention that upcoming events are available.'
+        : 'You are a helpful community resource navigator. Based on the user\'s query and the available providers shown below, write a brief, warm conversational response (2-3 sentences max). Do NOT list the providers — they are shown in cards below your message. Focus on acknowledging what the user needs and noting what types of help are available.'
+
       const completion = await getOpenAI().chat.completions.create({
         model: 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
-            content:
-              'You are a helpful community resource navigator. Based on the user\'s query and the available providers shown below, write a brief, warm conversational response (2-3 sentences max). Do NOT list the providers — they are shown in cards below your message. Focus on acknowledging what the user needs and noting what types of help are available.',
+            content: systemPrompt,
           },
           {
             role: 'user',
-            content: `User query: "${query}"\n\nAvailable providers:\n\n${contextCards}\n\n${locationNote}`,
+            content: `User query: "${query}"\n\nAvailable providers:\n\n${contextCards}${eventsContext}\n\n${locationNote}`,
           },
         ],
         max_tokens: 150,

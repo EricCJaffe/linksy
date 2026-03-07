@@ -516,10 +516,10 @@
 
 ## 13. AI SEARCH — EVENTS INTEGRATION
 
-- [ ] Events included in AI search pipeline (vector search or supplemental results)
-- [ ] Event data in LLM context cards (name, date, time, location, registration)
-- [ ] Event result cards in widget UI
-- [ ] Filter to future published events only
+- [x] Events included in AI search pipeline (matched via provider needs)
+- [x] Event data in LLM context (name, date, time, location, provider)
+- [x] Event result cards in widget UI
+- [x] Filter to future published events only
 
 ---
 

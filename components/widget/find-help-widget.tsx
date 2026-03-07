@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import { Loader2, MapPin, Phone, Globe, Send, AlertTriangle, X, Navigation } from 'lucide-react'
+import { Loader2, MapPin, Phone, Globe, Send, AlertTriangle, X, Navigation, Calendar, Clock, Repeat } from 'lucide-react'
 import type { HostWidgetConfig } from '@/lib/types/linksy'
 import { RichTextDisplay } from '@/components/ui/rich-text-display'
 import { formatPhone, phoneToTel } from '@/lib/utils/phone'
@@ -31,10 +31,22 @@ interface SearchResult {
   provider_needs: Array<{ need: { id: string; name: string } }>
 }
 
+interface EventResult {
+  id: string
+  title: string
+  description: string | null
+  event_date: string
+  location: string | null
+  recurrence_rule: string | null
+  provider_id: string
+  provider_name: string
+}
+
 interface Message {
   role: 'user' | 'assistant'
   content: string
   providers?: SearchResult[]
+  events?: EventResult[]
   isCrisis?: boolean
 }
 
@@ -188,6 +200,7 @@ export function FindHelpWidget({ hostProviderId, hostProviderName, widgetConfig 
         role: 'assistant',
         content: data.message,
         providers: data.providers,
+        events: data.events,
         isCrisis: !!crisisResult,
       }
 
@@ -419,6 +432,62 @@ export function FindHelpWidget({ hostProviderId, hostProviderName, widgetConfig 
                       </CardContent>
                     </Card>
                   ))}
+                </div>
+              )}
+
+              {/* Event Cards */}
+              {msg.events && msg.events.length > 0 && (
+                <div className="mt-3">
+                  <p className="text-xs font-semibold flex items-center gap-1 mb-1.5">
+                    <Calendar className="h-3 w-3" />
+                    Upcoming Events
+                  </p>
+                  <div className="space-y-1.5">
+                    {msg.events.map((event) => {
+                      const eventDate = new Date(event.event_date)
+                      const dateStr = eventDate.toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric',
+                      })
+                      const timeStr = eventDate.toLocaleTimeString('en-US', {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })
+                      return (
+                        <Card key={event.id} className="bg-background border border-emerald-200">
+                          <CardContent className="p-2.5">
+                            <p className="font-semibold text-xs">{event.title}</p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                              by {event.provider_name}
+                            </p>
+                            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                              <span className="flex items-center gap-0.5">
+                                <Calendar className="h-3 w-3" />
+                                {dateStr}
+                              </span>
+                              <span className="flex items-center gap-0.5">
+                                <Clock className="h-3 w-3" />
+                                {timeStr}
+                              </span>
+                              {event.location && (
+                                <span className="flex items-center gap-0.5">
+                                  <MapPin className="h-3 w-3" />
+                                  {event.location}
+                                </span>
+                              )}
+                              {event.recurrence_rule && (
+                                <span className="flex items-center gap-0.5">
+                                  <Repeat className="h-3 w-3" />
+                                  Recurring
+                                </span>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )
+                    })}
+                  </div>
                 </div>
               )}
             </div>

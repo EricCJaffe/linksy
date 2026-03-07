@@ -27,6 +27,9 @@ import {
   Baby,
   Users,
   Sparkles,
+  Calendar,
+  Clock,
+  Repeat,
 } from 'lucide-react'
 import { CreateTicketDialog } from '@/components/tickets/create-ticket-dialog'
 import { RichTextDisplay } from '@/components/ui/rich-text-display'
@@ -63,10 +66,22 @@ interface SearchResult {
   }>
 }
 
+interface EventResult {
+  id: string
+  title: string
+  description: string | null
+  event_date: string
+  location: string | null
+  recurrence_rule: string | null
+  provider_id: string
+  provider_name: string
+}
+
 interface Message {
   role: 'user' | 'assistant'
   content: string
   providers?: SearchResult[]
+  events?: EventResult[]
 }
 
 interface NeedCategory {
@@ -293,6 +308,7 @@ export default function FindHelpPage() {
         role: 'assistant',
         content: data.message,
         providers: data.providers,
+        events: data.events,
       }
 
       setMessages((prev) => [...prev, assistantMessage])
@@ -494,6 +510,21 @@ export default function FindHelpPage() {
                         {message.providers.map((provider) => (
                           <ProviderCard key={provider.id} provider={provider} sessionId={sessionId} />
                         ))}
+                      </div>
+                    )}
+
+                    {/* Event results */}
+                    {message.events && message.events.length > 0 && (
+                      <div className="mt-4">
+                        <p className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1.5">
+                          <Calendar className="h-4 w-4" />
+                          Upcoming Events
+                        </p>
+                        <div className="space-y-2">
+                          {message.events.map((event) => (
+                            <EventCard key={event.id} event={event} />
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -832,5 +863,71 @@ function ProviderCard({ provider, sessionId }: { provider: SearchResult; session
       searchSessionId={sessionId ?? undefined}
     />
     </div>
+  )
+}
+
+function formatRecurrenceLabel(rule: string): string {
+  if (!rule) return ''
+  const freq = rule.match(/FREQ=(\w+)/)?.[1]
+  const interval = parseInt(rule.match(/INTERVAL=(\d+)/)?.[1] || '1', 10)
+  switch (freq) {
+    case 'DAILY': return interval === 1 ? 'Daily' : `Every ${interval} days`
+    case 'WEEKLY': return interval === 1 ? 'Weekly' : interval === 2 ? 'Bi-weekly' : `Every ${interval} weeks`
+    case 'MONTHLY': return interval === 1 ? 'Monthly' : `Every ${interval} months`
+    case 'YEARLY': return interval === 1 ? 'Annually' : `Every ${interval} years`
+    default: return 'Recurring'
+  }
+}
+
+function EventCard({ event }: { event: EventResult }) {
+  const eventDate = new Date(event.event_date)
+  const dateStr = eventDate.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  })
+  const timeStr = eventDate.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+
+  return (
+    <Card className="border-l-4 border-l-emerald-500">
+      <CardContent className="py-3 px-4">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold text-sm">{event.title}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              by {event.provider_name}
+            </p>
+          </div>
+          <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100 flex-shrink-0">
+            <Calendar className="h-3 w-3 mr-1" />
+            {dateStr}
+          </Badge>
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            {timeStr}
+          </span>
+          {event.location && (
+            <span className="flex items-center gap-1">
+              <MapPin className="h-3 w-3" />
+              {event.location}
+            </span>
+          )}
+          {event.recurrence_rule && (
+            <span className="flex items-center gap-1">
+              <Repeat className="h-3 w-3" />
+              {formatRecurrenceLabel(event.recurrence_rule)}
+            </span>
+          )}
+        </div>
+        {event.description && (
+          <p className="mt-2 text-xs text-gray-600 line-clamp-2">{event.description}</p>
+        )}
+      </CardContent>
+    </Card>
   )
 }
