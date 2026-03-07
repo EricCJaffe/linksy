@@ -27,8 +27,11 @@ import {
   TableCell,
 } from '@/components/ui/table'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Globe, Search, Download, CheckSquare, CalendarDays, X } from 'lucide-react'
+import { Globe, Search, Download, CheckSquare, CalendarDays, X, ArrowUpDown } from 'lucide-react'
 import type { TicketFilters, TicketStatus } from '@/lib/types/linksy'
+
+type SortField = 'ticket_number' | 'client' | 'provider' | 'status' | 'date'
+type SortDir = 'asc' | 'desc'
 
 const LIMIT = 50
 
@@ -73,10 +76,16 @@ export default function TicketsPage() {
     const statusParam = searchParams.get('status')
     const qParam = searchParams.get('q')
     const providerIdParam = searchParams.get('provider_id')
+    const needIdParam = searchParams.get('need_id')
+    const dateFromParam = searchParams.get('date_from')
+    const dateToParam = searchParams.get('date_to')
     return {
       status: (statusParam as TicketStatus | 'all') || 'all',
       q: qParam || undefined,
       provider_id: providerIdParam || undefined,
+      need_id: needIdParam || undefined,
+      date_from: dateFromParam || undefined,
+      date_to: dateToParam || undefined,
       limit: LIMIT,
       offset: 0,
     }
@@ -84,6 +93,8 @@ export default function TicketsPage() {
   const [publicReferralStats, setPublicReferralStats] = useState({ total: 0, pending: 0 })
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [isBulkUpdating, setIsBulkUpdating] = useState(false)
+  const [sortField, setSortField] = useState<SortField>('date')
+  const [sortDir, setSortDir] = useState<SortDir>('desc')
 
   const debouncedQ = useDebounce(filters.q, 300)
   const queryFilters = { ...filters, q: debouncedQ }
@@ -129,7 +140,20 @@ export default function TicketsPage() {
   }, [data])
 
   const handleFilterChange = (updates: Partial<TicketFilters>) => {
-    setFilters((prev) => ({ ...prev, ...updates, offset: 0 }))
+    setFilters((prev) => {
+      const next = { ...prev, ...updates, offset: 0 }
+      // Persist filters to URL params
+      const params = new URLSearchParams()
+      if (next.status && next.status !== 'all') params.set('status', next.status)
+      if (next.q) params.set('q', next.q)
+      if (next.provider_id) params.set('provider_id', next.provider_id)
+      if (next.need_id) params.set('need_id', next.need_id)
+      if (next.date_from) params.set('date_from', next.date_from)
+      if (next.date_to) params.set('date_to', next.date_to)
+      const paramStr = params.toString()
+      router.replace(paramStr ? `?${paramStr}` : '/dashboard/tickets', { scroll: false })
+      return next
+    })
     setSelectedIds(new Set())
   }
 
@@ -140,6 +164,42 @@ export default function TicketsPage() {
   const currentPage = Math.floor((filters.offset || 0) / LIMIT) + 1
   const totalPages = data ? Math.ceil(data.pagination.total / LIMIT) : 0
   const tickets = data?.tickets || []
+
+  const sortedTickets = [...tickets].sort((a, b) => {
+    const dir = sortDir === 'asc' ? 1 : -1
+    switch (sortField) {
+      case 'ticket_number':
+        return dir * (a.ticket_number || '').localeCompare(b.ticket_number || '')
+      case 'client':
+        return dir * (a.client_name || '').localeCompare(b.client_name || '')
+      case 'provider':
+        return dir * (a.provider?.name || '').localeCompare(b.provider?.name || '')
+      case 'status':
+        return dir * (a.status || '').localeCompare(b.status || '')
+      case 'date':
+        return dir * (new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+      default:
+        return 0
+    }
+  })
+
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortDir(field === 'date' ? 'desc' : 'asc')
+    }
+  }
+
+  const SortableHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
+    <TableHead>
+      <button onClick={() => toggleSort(field)} className="flex items-center gap-1 hover:text-foreground">
+        {children}
+        <ArrowUpDown className={`h-3 w-3 ${sortField === field ? 'text-foreground' : 'text-muted-foreground/50'}`} />
+      </button>
+    </TableHead>
+  )
 
   const allOnPageSelected = tickets.length > 0 && tickets.every((t) => selectedIds.has(t.id))
   const someSelected = selectedIds.size > 0
@@ -387,12 +447,12 @@ export default function TicketsPage() {
                   />
                 </TableHead>
               )}
-              <TableHead>Referral #</TableHead>
-              <TableHead>Client</TableHead>
-              <TableHead>Provider</TableHead>
+              <SortableHeader field="ticket_number">Referral #</SortableHeader>
+              <SortableHeader field="client">Client</SortableHeader>
+              <SortableHeader field="provider">Provider</SortableHeader>
               <TableHead>Need</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Date</TableHead>
+              <SortableHeader field="status">Status</SortableHeader>
+              <SortableHeader field="date">Date</SortableHeader>
               <TableHead className="w-[200px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -417,7 +477,7 @@ export default function TicketsPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              tickets.map((ticket) => (
+              sortedTickets.map((ticket) => (
                 <TableRow key={ticket.id} className={selectedIds.has(ticket.id) ? 'bg-muted/50' : ''}>
                   {isSiteAdmin && (
                     <TableCell onClick={(e) => { e.stopPropagation(); toggleSelect(ticket.id) }}>

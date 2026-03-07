@@ -1,6 +1,6 @@
 # Tasks
 
-> Last updated: 2026-03-06. See `FEATURES_CHECKLIST.md` for the full feature inventory.
+> Last updated: 2026-03-07. See `FEATURES_CHECKLIST.md` for the full feature inventory.
 > Program review tasks (TASK-001–039) from [Heather Johnston review 2026-03-03](PROGRAM-REVIEW-2026-03-03.md).
 
 ## Go-Live Roadmap
@@ -167,20 +167,20 @@ Core features that users and admins need on day one, plus remaining quality fixe
 #### 1.8 Referral Workflow Enhancements (Program Review)
 - [x] **[TASK-014] Add status values: "In Process" and "Transferred Another Provider"** — COMPLETED 2026-03-06. Added `in_process` (yellow) and `transferred_another_provider` (gray) to enum type, all 6 UI status label/color maps, bulk update validation, export groupings (open includes in_process, closed includes transferred), stats overview, referral cap (in_process counts toward cap), and database migration. *(Remaining: email notification templates for new statuses, auto-set transferred on forward action — ties to TASK-026.)*
 - [ ] **[TASK-026] Referral transfer workflow** — On transfer: auto-set original to "Transferred Another Provider". Modal: select new provider, transfer notes, editable email templates (client + new provider). New provider sees "Transferred Pending". Append suffix -T1/-T2 to referral number. Max 2 transfers → admin override. Both providers see transfer history. *(Extends existing 1.2 reassignment feature.)*
-- [x] **[TASK-029] Duplicate referral detection** — COMPLETED 2026-03-06. Shared `lib/utils/duplicate-detection.ts` with three cases: Case B (same client+provider+service+day → block), Case A (5+ providers same service same day → flag), Case C (consecutive day same provider → warning). Applied to both admin (`/api/tickets`) and public (`/api/linksy/tickets`) endpoints. `duplicate_flag_type` column + indexes added via migration. Test referrals exempt. *(Remaining: Admin "Potential Duplicates" report UI.)*
-- [x] **[TASK-018] Test referral flagging** — `is_test` column + migration, auto-flag "Mega Coolmint", TEST badge in list/detail, excluded from reports/overview/stats analytics. COMPLETED 2026-03-06. *(Remaining: admin toggle to include test referrals in analytics.)*
+- [x] **[TASK-029] Duplicate referral detection** — COMPLETED 2026-03-07. Detection logic with three cases (B: exact duplicate, A: high volume, C: consecutive day). Applied to both APIs. `duplicate_flag_type` column + indexes. Admin "Potential Duplicates" report page at `/dashboard/admin/duplicates` with API, summary cards, and clickable table.
+- [x] **[TASK-018] Test referral flagging** — COMPLETED 2026-03-07. `is_test` column + migration, auto-flag "Mega Coolmint", TEST badge in list/detail, excluded from analytics by default. Admin "Include Test Referrals" toggle button on Reports page. `include_test` param supported on `/api/reports`, `/api/stats/overview`, `/api/stats/reports`.
 - [x] **[TASK-017] "Send Test Referral" button** — AlertDialog on provider detail page header (site admin only). Pre-populates Mega Coolmint, Linksy@impactworks.org, 1-904-330-1848. Auto-flagged is_test. Test referrals bypass duplicate detection, rate limiting, and referral cap. COMPLETED 2026-03-06.
 
 #### 1.9 UI Bugs & Quick Fixes (Program Review)
 - [x] **[TASK-007] Fix misspellings on Features tab** — Audited: no misspellings found, "via email" already present. VERIFIED 2026-03-06.
-- [x] **[TASK-016] Fix Aging Referrals not loading** — COMPLETED 2026-03-06. Part 1: Widget data loading fixed (Supabase join hints, commit 0cf3141). Part 2: Tickets page now reads `?status=pending` URL param via `useSearchParams()` so "View All Pending" navigation works. *(Remaining: column filters and sort on aging view — ties to TASK-003.)*
+- [x] **[TASK-016] Fix Aging Referrals not loading** — COMPLETED 2026-03-07. Part 1: Widget data loading fixed. Part 2: URL param navigation works. Part 3: Sortable column headers added to tickets page (ticket#, client, provider, status, date). Column filters via TASK-003.
 - [x] **[TASK-039] Fix text color tool bug in notes editor** — Replaced CSS group-hover with click-based React state + click-outside dismiss. COMPLETED 2026-03-06.
 - [x] **[TASK-012] Restore record counts at bottom of lists** — Updated DataTable base component, audit logs, review imports, and support tickets pages. Providers/Referrals/Contacts already had counts. COMPLETED 2026-03-06.
 - [x] **[TASK-024] Services list default to expanded** — Already defaults expanded with Expand All/Collapse All toggle (needs/page.tsx lines 135, 141-147). VERIFIED 2026-03-06.
 
 #### 1.10 Notes & Comments Improvements (Program Review)
-- [x] **[TASK-027] Notes ordering + edit capability** — Comment form moved to top, newest-first display. COMPLETED 2026-03-06 (ordering). *(Remaining: edit button per note with original+edit timestamps, history preservation. Apply to all notes sections.)*
-- [x] **[TASK-028] Private/public note toggle** — Inline lock/globe toggle button on provider notes (timeline + Notes tab) and ticket comments. Amber background on private items. PATCH endpoint for comment privacy (admin only). Create/edit forms already had Switch toggle. COMPLETED 2026-03-06. *(Remaining: include privacy state in exports; restrict visibility of private notes to creating org only.)*
+- [x] **[TASK-027] Notes ordering + edit capability** — COMPLETED 2026-03-07. Comment form moved to top, newest-first display. Edit button on provider notes (timeline + Notes tab) and ticket comments. Edit shows "(edited)" timestamp. Author or site admin can edit. PATCH API extended for content updates.
+- [x] **[TASK-028] Private/public note toggle** — COMPLETED 2026-03-06. Inline lock/globe toggle button on provider notes (timeline + Notes tab) and ticket comments. Amber background on private items. PATCH endpoint for comment privacy (admin only). Server-side filtering: private notes hidden from non-admin users in provider API. *(Remaining: org-scoped private note visibility — requires org tracking on notes.)*
 
 #### 1.11 Provider & Contact Enhancements (Program Review)
 - [ ] **[TASK-023] Services access control (admin only for add/edit)** — Only admins add/edit service categories. Providers can view and remove from own profile. Permission error on Provider attempts. Synonyms also admin-only.
@@ -214,17 +214,17 @@ All 8 LOW findings resolved.
 
 #### 2.2 Program Review — UX Enhancements
 
-- [x] **[TASK-004] Phone number format standardization** — `lib/utils/phone.ts` with `formatPhone()` (1-(XXX)-XXX-XXXX) and `phoneToTel()` applied to 5 components. COMPLETED 2026-03-06. *(Remaining: "Ext." field next to every phone field; update exports/email templates.)*
-- [x] **[TASK-006] Global search enhancement** — COMPLETED 2026-03-06. Extended `/api/search` to query tickets (by client name, email, phone, ticket number) and contacts (by name, email). Results appear as "Referrals" and "Contacts" groups in the Cmd+K search dropdown with click-to-navigate. *(Remaining: recent search history, color-coded result type badges.)*
-- [ ] **[TASK-008] Provider source tagging** — Add "Source" field to providers (dropdown: CC, UW, IW, Self-Registered, Other + free text). Filterable column. Include in exports and analytics.
-- [ ] **[TASK-011] Provider export by Source / Zip** — Export button on Providers list (CSV + Excel). Include: Name, Contact, Email, Phone, Zip, Source, Date Added, Status. Filter before export. Show count.
-- [ ] **[TASK-015] Dashboard chart enhancement** — Rename to "Top Providers by Referral Volume." Clickable bars → top 3 services. Toggle: volume-only vs. volume+services. Date range filter.
-- [ ] **[TASK-019] Provider freeze/hold** — Freeze button with reason dropdown + optional return date. Frozen = no new referrals. Self-freeze only if Pending cleared. Admin can override. "Frozen" badge + filter. Freeze history in audit log.
-- [ ] **[TASK-020] Call log + notes on Provider Contact page** — Currently only on Referrals. Add to Provider Contact page with same note types, privacy toggle, timestamps, edit capability. *(Provider notes already exist via `linksy_provider_notes`; this extends to per-contact level.)*
-- [ ] **[TASK-022] Voicemail reminder popup** — On referral submit: "Check your voicemail — IS IT WORKING? IS IT FULL?" Once per session only.
-- [ ] **[TASK-025] Export services/needs categories** — Export button on Services admin screen. Excel: Category, Service Name, Synonyms, Provider count. Full hierarchy.
-- [ ] **[TASK-036] Contacts as standalone tab** — Top-level "Contacts" nav. List: Name, Org, Phone, Email, Role, Date Added. Filterable/sortable. Search by name without knowing org. Export CSV/Excel.
-- [x] **[TASK-003] Column filters on data tables** — COMPLETED 2026-03-06. Tickets page: added service (need) filter dropdown and date range (from/to) filters with clear button. Contacts page: added provider and role filter dropdowns. Contacts API: added `provider_id` and `role` query params. *(Remaining: URL param persistence, zip/phone/email column filters, filters on remaining tables.)*
+- [x] **[TASK-004] Phone number format standardization** — COMPLETED 2026-03-06. `formatPhone()` + `phoneToTel()` applied to 5 components. `phone_ext` field on providers. *(Remaining: Ext field next to all phone inputs in forms; update exports/email templates.)*
+- [x] **[TASK-006] Global search enhancement** — COMPLETED 2026-03-07. Extended `/api/search` to query tickets and contacts. Color-coded result type badges (User=blue, Referral=amber, Contact=green, Module=purple, Setting=gray). *(Remaining: recent search history.)*
+- [x] **[TASK-008] Provider source tagging** — COMPLETED 2026-03-07. Source dropdown (CC, UW, IW, Self-Registered, Other + free text) on provider details. Filterable column on providers list. Included in exports. Migration adds `source`, `source_other` columns.
+- [x] **[TASK-011] Provider export by Source / Zip** — COMPLETED 2026-03-07. Rewritten export API with 15-column CSV (Name, Contact, Email, Phone, Zip, Source, Status, etc). Filter by source and zip before export.
+- [x] **[TASK-015] Dashboard chart enhancement** — COMPLETED 2026-03-07. "Top Providers by Referral Volume" horizontal bar chart with date range filter, services toggle, clickable bars → provider detail. Recharts-based.
+- [x] **[TASK-019] Provider freeze/hold** — COMPLETED 2026-03-07. Freeze button with reason dropdown + return date. Frozen = no new referrals (enforced in ticket creation API). Self-freeze only if no pending referrals. Admin override. "Frozen" badge + filter. Audit log via provider notes. Migration adds freeze columns.
+- [x] **[TASK-020] Call log + notes on Provider Contact page** — COMPLETED 2026-03-07. Contact detail page (`/dashboard/contacts/[id]`) with notes/call log section, add note form with type selector, privacy toggle. Per-contact notes via `contact_id` column on `linksy_provider_notes`.
+- [x] **[TASK-022] Voicemail reminder popup** — COMPLETED 2026-03-07. AlertDialog on referral submit: "Check your voicemail — IS IT WORKING? IS IT FULL?" Once per session via sessionStorage.
+- [x] **[TASK-025] Export services/needs categories** — COMPLETED 2026-03-07. Export CSV button on Services admin page. CSV: Category, Service Name, Synonyms, Provider Count, Active.
+- [x] **[TASK-036] Contacts as standalone tab** — COMPLETED 2026-03-07. Phone + Date Added columns, sortable headers, Export CSV button. Row click → contact detail page.
+- [x] **[TASK-003] Column filters on data tables** — COMPLETED 2026-03-07. Tickets page: service/need filter, date range, provider filter + URL param persistence (all filter state preserved in URL). Contacts page: provider and role filter dropdowns. *(Remaining: zip/phone/email column filters, filters on remaining tables.)*
 - [x] **[TASK-038] Referral number scale check** — VERIFIED 2026-03-06: PG BIGINT sequence (max 9.2×10¹⁸), `ticket_number` is TEXT (no length cap). Format R-{seq}-{suffix} scales to any volume. Transfer suffix -T1/-T2 support deferred to TASK-026.
 
 #### 2.3 Public-Facing Impact Works Website

@@ -14,10 +14,10 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select'
-import { Globe, Lock, Phone, Plus, Trash2, ArrowRight, UserCheck, Clock } from 'lucide-react'
+import { Globe, Lock, Phone, Plus, Trash2, ArrowRight, UserCheck, Clock, Pencil, X as XIcon } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useUpdateTicket, useCreateTicketComment, useUpdateCommentPrivacy } from '@/lib/hooks/useTickets'
+import { useUpdateTicket, useCreateTicketComment, useUpdateCommentPrivacy, useUpdateComment } from '@/lib/hooks/useTickets'
 import { useCallLogs, useCreateCallLog, useDeleteCallLog } from '@/lib/hooks/useCallLogs'
 import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
 import type { Ticket, TicketStatus } from '@/lib/types/linksy'
@@ -74,9 +74,12 @@ export function TicketDetailPanel({ ticket }: TicketDetailPanelProps) {
   const updateTicket = useUpdateTicket()
   const createComment = useCreateTicketComment()
   const updateCommentPrivacy = useUpdateCommentPrivacy()
+  const updateComment = useUpdateComment()
   const { data: currentUser } = useCurrentUser()
   const [commentText, setCommentText] = useState('')
   const [isPrivate, setIsPrivate] = useState(false)
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null)
+  const [editCommentText, setEditCommentText] = useState('')
   const isSiteAdmin = !!(currentUser?.profile as any)?.is_site_admin
   const [showForwardDialog, setShowForwardDialog] = useState(false)
   const [showAssignDialog, setShowAssignDialog] = useState(false)
@@ -301,24 +304,74 @@ export function TicketDetailPanel({ ticket }: TicketDetailPanelProps) {
                     <span className="text-muted-foreground">
                       {new Date(comment.created_at).toLocaleString()}
                     </span>
-                    {isSiteAdmin && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          updateCommentPrivacy.mutate({
-                            ticketId: ticket.id,
-                            commentId: comment.id,
-                            is_private: !comment.is_private,
-                          })
-                        }
-                        title={comment.is_private ? 'Make public' : 'Make private'}
-                        className="ml-auto inline-flex h-6 w-6 items-center justify-center rounded hover:bg-accent text-muted-foreground"
-                      >
-                        {comment.is_private ? <Lock className="h-3.5 w-3.5 text-amber-600" /> : <Globe className="h-3.5 w-3.5" />}
-                      </button>
+                    {comment.updated_at && comment.updated_at !== comment.created_at && (
+                      <span className="text-xs text-muted-foreground italic">
+                        (edited {new Date(comment.updated_at).toLocaleString()})
+                      </span>
                     )}
+                    <div className="ml-auto flex items-center gap-1">
+                      {(isSiteAdmin || comment.author_id === currentUser?.id) && editingCommentId !== comment.id && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingCommentId(comment.id)
+                            setEditCommentText(comment.content)
+                          }}
+                          title="Edit comment"
+                          className="inline-flex h-6 w-6 items-center justify-center rounded hover:bg-accent text-muted-foreground"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                      {isSiteAdmin && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            updateCommentPrivacy.mutate({
+                              ticketId: ticket.id,
+                              commentId: comment.id,
+                              is_private: !comment.is_private,
+                            })
+                          }
+                          title={comment.is_private ? 'Make public' : 'Make private'}
+                          className="inline-flex h-6 w-6 items-center justify-center rounded hover:bg-accent text-muted-foreground"
+                        >
+                          {comment.is_private ? <Lock className="h-3.5 w-3.5 text-amber-600" /> : <Globe className="h-3.5 w-3.5" />}
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <RichTextDisplay content={comment.content} />
+                  {editingCommentId === comment.id ? (
+                    <div className="space-y-2 mt-2">
+                      <RichTextEditor
+                        value={editCommentText}
+                        onChange={setEditCommentText}
+                      />
+                      <div className="flex gap-2 justify-end">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setEditingCommentId(null)}
+                        >
+                          <XIcon className="h-3 w-3 mr-1" /> Cancel
+                        </Button>
+                        <Button
+                          size="sm"
+                          disabled={!editCommentText.trim() || updateComment.isPending}
+                          onClick={() => {
+                            updateComment.mutate(
+                              { ticketId: ticket.id, commentId: comment.id, content: editCommentText },
+                              { onSuccess: () => setEditingCommentId(null) }
+                            )
+                          }}
+                        >
+                          {updateComment.isPending ? 'Saving...' : 'Save'}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <RichTextDisplay content={comment.content} />
+                  )}
                 </div>
               ))}
             </div>

@@ -22,6 +22,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const reportType = searchParams.get('type') || 'referrals'
   const includeLegacy = searchParams.get('includeLegacy') === 'true'
+  const includeTest = searchParams.get('include_test') === 'true'
 
   const supabase = await createServiceClient()
 
@@ -80,7 +81,7 @@ export async function GET(request: Request) {
   // Route to appropriate report handler
   switch (reportType) {
     case 'referrals':
-      return handleReferralsReport(supabase, dataScope, providerIds, auth.user.id, includeLegacy)
+      return handleReferralsReport(supabase, dataScope, providerIds, auth.user.id, includeLegacy, includeTest)
 
     case 'search':
       return handleSearchReport(supabase, dataScope, providerIds)
@@ -102,7 +103,8 @@ async function handleReferralsReport(
   dataScope: string,
   providerIds: string[],
   userId: string,
-  includeLegacy: boolean
+  includeLegacy: boolean,
+  includeTest: boolean = false
 ) {
   // Build base query
   let ticketsQuery = supabase
@@ -133,8 +135,10 @@ async function handleReferralsReport(
     ticketsQuery = ticketsQuery.is('legacy_id', null)
   }
 
-  // Exclude test referrals from analytics by default
-  ticketsQuery = ticketsQuery.or('is_test.is.null,is_test.eq.false')
+  // Exclude test referrals from analytics by default unless toggled
+  if (!includeTest) {
+    ticketsQuery = ticketsQuery.or('is_test.is.null,is_test.eq.false')
+  }
 
   const { data: tickets, error } = await ticketsQuery
 

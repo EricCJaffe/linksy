@@ -12,8 +12,17 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url)
   const includeLegacy = searchParams.get('includeLegacy') === 'true'
+  const includeTest = searchParams.get('include_test') === 'true'
 
   const supabase = await createServiceClient()
+
+  // Helper to apply test filter
+  const applyTestFilter = (query: any) => {
+    if (!includeTest) {
+      return query.or('is_test.is.null,is_test.eq.false')
+    }
+    return query
+  }
 
   // Referrals by need category
   let needQuery = supabase
@@ -25,7 +34,7 @@ export async function GET(request: Request) {
   if (!includeLegacy) {
     needQuery = needQuery.filter('legacy_id', 'is', null)
   }
-  needQuery = needQuery.or('is_test.is.null,is_test.eq.false')
+  needQuery = applyTestFilter(needQuery)
   const { data: referralsByNeed } = await needQuery
 
   // Aggregate by category
@@ -52,7 +61,7 @@ export async function GET(request: Request) {
   if (!includeLegacy) {
     providerQuery = providerQuery.filter('legacy_id', 'is', null)
   }
-  providerQuery = providerQuery.or('is_test.is.null,is_test.eq.false')
+  providerQuery = applyTestFilter(providerQuery)
   const { data: topProviders } = await providerQuery
 
   // Aggregate by provider
@@ -83,7 +92,7 @@ export async function GET(request: Request) {
   if (!includeLegacy) {
     statusQuery = statusQuery.filter('legacy_id', 'is', null)
   }
-  statusQuery = statusQuery.or('is_test.is.null,is_test.eq.false')
+  statusQuery = applyTestFilter(statusQuery)
   const { data: ticketsByStatus } = await statusQuery
 
   const statusMap = new Map<string, number>()
@@ -104,7 +113,7 @@ export async function GET(request: Request) {
   if (!includeLegacy) {
     sourceQuery = sourceQuery.filter('legacy_id', 'is', null)
   }
-  sourceQuery = sourceQuery.or('is_test.is.null,is_test.eq.false')
+  sourceQuery = applyTestFilter(sourceQuery)
   const { data: ticketsBySource } = await sourceQuery
 
   const sourceMap = new Map<string, number>()
@@ -136,7 +145,7 @@ export async function GET(request: Request) {
   if (!includeLegacy) {
     recentQuery = recentQuery.filter('legacy_id', 'is', null)
   }
-  recentQuery = recentQuery.or('is_test.is.null,is_test.eq.false')
+  recentQuery = applyTestFilter(recentQuery)
 
   let monthlyQuery = supabase
     .from('linksy_tickets')
@@ -145,7 +154,7 @@ export async function GET(request: Request) {
   if (!includeLegacy) {
     monthlyQuery = monthlyQuery.filter('legacy_id', 'is', null)
   }
-  monthlyQuery = monthlyQuery.or('is_test.is.null,is_test.eq.false')
+  monthlyQuery = applyTestFilter(monthlyQuery)
 
   // Time-to-resolution: resolved (non-pending) tickets
   let resolutionQuery = supabase
@@ -155,7 +164,7 @@ export async function GET(request: Request) {
   if (!includeLegacy) {
     resolutionQuery = resolutionQuery.filter('legacy_id', 'is', null)
   }
-  resolutionQuery = resolutionQuery.or('is_test.is.null,is_test.eq.false')
+  resolutionQuery = applyTestFilter(resolutionQuery)
 
   const [recentTickets, monthlyTickets, resolutionTickets] = await Promise.all([
     recentQuery,

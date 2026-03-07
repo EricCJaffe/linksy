@@ -44,6 +44,22 @@ const ICON_MAP = {
   contact: Contact,
 }
 
+const TYPE_BADGE_STYLES: Record<string, string> = {
+  user: 'bg-blue-100 text-blue-800 border-blue-200',
+  module: 'bg-purple-100 text-purple-800 border-purple-200',
+  setting: 'bg-gray-100 text-gray-800 border-gray-200',
+  ticket: 'bg-amber-100 text-amber-800 border-amber-200',
+  contact: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+}
+
+const TYPE_LABELS: Record<string, string> = {
+  user: 'User',
+  module: 'Module',
+  setting: 'Setting',
+  ticket: 'Referral',
+  contact: 'Contact',
+}
+
 function highlightMatch(text: string, query: string) {
   if (!query) return text
 
@@ -168,6 +184,9 @@ export function SearchResults({
                       <p className="truncate font-medium text-sm">
                         {highlightMatch(result.title, query)}
                       </p>
+                      <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0 shrink-0', TYPE_BADGE_STYLES[result.type] || '')}>
+                        {TYPE_LABELS[result.type] || result.type}
+                      </Badge>
                       {result.metadata?.role && (
                         <Badge variant="secondary" className="text-xs">
                           {result.metadata.role}

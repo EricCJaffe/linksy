@@ -79,23 +79,45 @@ export async function PATCH(
   const { data: auth, error } = await requireAuth()
   if (error) return error
 
-  // Only site admins can toggle comment privacy
-  if (!auth.isSiteAdmin) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
-
   const body = await request.json()
-  const { comment_id, is_private } = body
+  const { comment_id, is_private, content } = body
 
-  if (!comment_id || typeof is_private !== 'boolean') {
-    return NextResponse.json({ error: 'comment_id and is_private required' }, { status: 400 })
+  if (!comment_id) {
+    return NextResponse.json({ error: 'comment_id required' }, { status: 400 })
   }
 
   const supabase = await createServiceClient()
 
+  // Build update object
+  const updates: Record<string, any> = {}
+  if (typeof is_private === 'boolean') {
+    if (!auth.isSiteAdmin) {
+      return NextResponse.json({ error: 'Only admins can change privacy' }, { status: 403 })
+    }
+    updates.is_private = is_private
+  }
+  if (typeof content === 'string' && content.trim()) {
+    // Only author or site admin can edit content
+    const { data: existing } = await supabase
+      .from('linksy_ticket_comments')
+      .select('author_id')
+      .eq('id', comment_id)
+      .single()
+
+    if (!auth.isSiteAdmin && existing?.author_id !== auth.user.id) {
+      return NextResponse.json({ error: 'Only the author or admin can edit' }, { status: 403 })
+    }
+    updates.content = content.trim()
+    updates.updated_at = new Date().toISOString()
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return NextResponse.json({ error: 'No valid updates' }, { status: 400 })
+  }
+
   const { data: comment, error: updateError } = await supabase
     .from('linksy_ticket_comments')
-    .update({ is_private })
+    .update(updates)
     .eq('id', comment_id)
     .eq('ticket_id', params.id)
     .select()

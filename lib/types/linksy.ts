@@ -294,6 +294,7 @@ export interface TicketComment {
   author_name: string | null
   author_role: string | null
   created_at: string
+  updated_at: string | null
 }
 
 // Ticket event types for reassignment audit trail

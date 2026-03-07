@@ -120,6 +120,33 @@ export function useUpdateCommentPrivacy() {
   })
 }
 
+export function useUpdateComment() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      ticketId,
+      commentId,
+      content,
+    }: {
+      ticketId: string
+      commentId: string
+      content: string
+    }) => {
+      const res = await fetch(`/api/tickets/${ticketId}/comments`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ comment_id: commentId, content }),
+      })
+      if (!res.ok) throw new Error('Failed to update comment')
+      return res.json() as Promise<TicketComment>
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['ticket', variables.ticketId] })
+    },
+  })
+}
+
 export function useForwardTicket() {
   const queryClient = useQueryClient()
 

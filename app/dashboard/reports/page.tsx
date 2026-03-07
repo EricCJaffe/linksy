@@ -155,6 +155,7 @@ export default function ReportsPage() {
   const [searchLoading, setSearchLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [includeLegacy, setIncludeLegacy] = useState(true)
+  const [includeTest, setIncludeTest] = useState(false)
 
   // Get user role and provider access for role-based filtering
   const { data: user } = useCurrentUser()
@@ -172,6 +173,7 @@ export default function ReportsPage() {
         const params = new URLSearchParams()
         params.set('type', 'referrals')
         if (includeLegacy) params.set('includeLegacy', 'true')
+        if (includeTest) params.set('include_test', 'true')
         const res = await fetch(`/api/reports?${params.toString()}`)
         if (!res.ok) throw new Error('Failed to fetch reports')
         setData(await res.json())
@@ -182,7 +184,7 @@ export default function ReportsPage() {
       }
     }
     fetchReports()
-  }, [includeLegacy])
+  }, [includeLegacy, includeTest])
 
   useEffect(() => {
     const fetchSearchAnalytics = async () => {
@@ -263,6 +265,16 @@ export default function ReportsPage() {
               <History className="h-4 w-4 mr-2" />
               All Time
             </Button>
+            {isSiteAdmin && (
+              <Button
+                variant={includeTest ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setIncludeTest(!includeTest)}
+                className={includeTest ? 'bg-orange-600 hover:bg-orange-700' : ''}
+              >
+                Include Test Referrals
+              </Button>
+            )}
           </div>
         )}
       </div>

@@ -12,15 +12,18 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url)
   const includeLegacy = searchParams.get('includeLegacy') === 'true'
+  const includeTest = searchParams.get('include_test') === 'true'
 
   const supabase = await createServiceClient()
 
-  // Build ticket query with optional legacy filter, excluding test referrals
+  // Build ticket query with optional legacy filter, excluding test referrals unless toggled
   let ticketsQuery = supabase.from('linksy_tickets').select('status', { count: 'exact' })
   if (!includeLegacy) {
     ticketsQuery = ticketsQuery.is('legacy_id', null)
   }
-  ticketsQuery = ticketsQuery.or('is_test.is.null,is_test.eq.false')
+  if (!includeTest) {
+    ticketsQuery = ticketsQuery.or('is_test.is.null,is_test.eq.false')
+  }
 
   // Fetch all stats in parallel
   const [
