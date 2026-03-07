@@ -38,7 +38,7 @@ export default function HelpPage() {
   const debouncedQ = useDebounce(searchInput, 300)
 
   const { data, isLoading } = useDocs({ q: debouncedQ || undefined })
-  const docs = data?.docs || []
+  const docs = useMemo(() => data?.docs || [], [data?.docs])
 
   // Derive category list from all docs (unfiltered by category)
   const categories = useMemo(() => {

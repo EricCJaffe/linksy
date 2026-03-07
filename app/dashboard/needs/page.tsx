@@ -38,6 +38,14 @@ export default function NeedsPage() {
   const [editItem, setEditItem] = useState<any>(null)
   const [showInactive, setShowInactive] = useState(false)
 
+  const allCategories = useMemo(() => categories || [], [categories])
+
+  // Default to all expanded on first load
+  const effectiveExpanded = useMemo(() => {
+    if (expandedCategories !== null) return expandedCategories
+    return new Set(allCategories.map((c) => c.id))
+  }, [expandedCategories, allCategories])
+
   function toggleCategory(id: string) {
     setExpandedCategories((prev) => {
       const base = prev ?? new Set(allCategories.map((c) => c.id))
@@ -122,19 +130,12 @@ export default function NeedsPage() {
     )
   }
 
-  const allCategories = categories || []
   const activeCategoryCount = allCategories.filter((c) => c.is_active).length
   const inactiveCategoryCount = allCategories.length - activeCategoryCount
   const visibleCategories = showInactive
     ? allCategories
     : allCategories.filter((c) => c.is_active)
   const sorted = [...visibleCategories].sort((a, b) => a.sort_order - b.sort_order)
-
-  // Default to all expanded on first load
-  const effectiveExpanded = useMemo(() => {
-    if (expandedCategories !== null) return expandedCategories
-    return new Set(allCategories.map((c) => c.id))
-  }, [expandedCategories, allCategories])
 
   const allExpanded = sorted.length > 0 && sorted.every((c) => effectiveExpanded.has(c.id))
   const allCollapsed = sorted.length > 0 && sorted.every((c) => !effectiveExpanded.has(c.id))
