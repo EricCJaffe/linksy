@@ -416,9 +416,14 @@ export async function sendTicketStatusNotification({
 
   const statusLabel: Record<string, string> = {
     pending: 'Pending',
-    in_progress: 'In Progress',
-    completed: 'Completed',
-    cancelled: 'Cancelled',
+    in_process: 'In Process',
+    customer_need_addressed: 'Service Provided',
+    wrong_organization_referred: 'Wrong Organization Referred',
+    outside_of_scope: 'Out of Scope',
+    client_not_eligible: 'Not Eligible',
+    unable_to_assist: 'Unable to Assist',
+    client_unresponsive: 'Unresponsive',
+    transferred_another_provider: 'Transferred to Another Provider',
   }
   const label = statusLabel[newStatus] || newStatus
 
@@ -444,8 +449,15 @@ export async function sendTicketStatusNotification({
 </body>
 </html>`.trim()
 
+  // Use status-specific template if available, falling back to generic
+  const statusTemplateKey: Record<string, string> = {
+    in_process: 'ticket_status_in_process',
+    transferred_another_provider: 'ticket_status_transferred',
+  }
+  const templateKey = statusTemplateKey[newStatus] || 'ticket_status_update'
+
   const { subject, html, text } = await resolveEmailTemplate({
-    templateKey: 'ticket_status_update',
+    templateKey: templateKey as any,
     defaultSubject: `Your referral status has been updated - ${label}`,
     defaultHtml,
     variables: {

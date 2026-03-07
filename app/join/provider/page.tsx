@@ -29,6 +29,7 @@ interface FormData {
   sector: string
   description: string
   phone: string
+  phone_extension: string
   email: string
   website: string
   hours: string
@@ -69,6 +70,7 @@ export default function ProviderOnboardingPage() {
     sector: '',
     description: '',
     phone: '',
+    phone_extension: '',
     email: '',
     website: '',
     hours: '',
@@ -166,6 +168,7 @@ export default function ProviderOnboardingPage() {
           sector: form.sector,
           description: form.description,
           phone: form.phone,
+          phone_extension: form.phone_extension,
           email: form.email,
           website: form.website,
           hours: form.hours,
@@ -315,13 +318,22 @@ export default function ProviderOnboardingPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                  <input
-                    type="tel"
-                    value={form.phone}
-                    onChange={set('phone')}
-                    placeholder="(555) 000-0000"
-                    className={INPUT}
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="tel"
+                      value={form.phone}
+                      onChange={set('phone')}
+                      placeholder="(555) 000-0000"
+                      className={`${INPUT} flex-1`}
+                    />
+                    <input
+                      type="text"
+                      value={form.phone_extension}
+                      onChange={set('phone_extension')}
+                      placeholder="Ext"
+                      className={`${INPUT} w-20`}
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
@@ -625,7 +637,7 @@ export default function ProviderOnboardingPage() {
                   {form.phone && (
                     <>
                       <dt className="text-gray-400">Phone</dt>
-                      <dd className="text-gray-900">{form.phone}</dd>
+                      <dd className="text-gray-900">{form.phone}{form.phone_extension ? ` ext. ${form.phone_extension}` : ''}</dd>
                     </>
                   )}
                   {form.website && (

@@ -13,6 +13,7 @@ export async function GET(request: Request) {
   const referralType = searchParams.get('referral_type') || 'all'
   const organizationType = searchParams.get('organization_type') || 'all'
   const source = searchParams.get('source') || 'all'
+  const zip = searchParams.get('zip') || ''
   const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10), 100)
   const offset = parseInt(searchParams.get('offset') || '0', 10)
 
@@ -84,6 +85,22 @@ export async function GET(request: Request) {
   } else if (organizationType === 'standalone') {
     // Standalone: no parent and no children (we'll filter this after the query)
     query = query.is('parent_provider_id', null)
+  }
+
+  // Zip code filter: find providers with a matching location postal_code
+  if (zip) {
+    const { data: zipLocations } = await supabase
+      .from('linksy_locations')
+      .select('provider_id')
+      .eq('postal_code', zip)
+    const zipProviderIds = (zipLocations || []).map((l: any) => l.provider_id).filter(Boolean)
+    if (zipProviderIds.length === 0) {
+      return NextResponse.json({
+        providers: [],
+        pagination: { total: 0, hasMore: false, nextOffset: null },
+      })
+    }
+    query = query.in('id', zipProviderIds)
   }
 
   if (proximityIds !== null) {

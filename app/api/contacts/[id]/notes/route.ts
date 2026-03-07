@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { requireAuth } from '@/lib/middleware/auth'
+import { requireAuth, getTenantId } from '@/lib/middleware/auth'
 
 /**
  * GET /api/contacts/[id]/notes
@@ -57,6 +57,7 @@ export async function POST(
   }
 
   const supabase = await createServiceClient()
+  const tenantId = getTenantId(auth)
 
   const { data: note, error } = await supabase
     .from('linksy_provider_notes')
@@ -68,6 +69,7 @@ export async function POST(
       content: content || '',
       is_private: is_private ?? false,
       call_log_data: call_log_data || null,
+      ...(tenantId && { created_by_tenant_id: tenantId }),
     })
     .select()
     .single()

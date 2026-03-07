@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { requireAuth } from '@/lib/middleware/auth'
+import { requireAuth, getTenantId } from '@/lib/middleware/auth'
 
 function getMissingColumnName(errorMessage: string): string | null {
   const schemaCacheMatch = errorMessage.match(/Could not find the '([^']+)' column/i)
@@ -58,6 +58,8 @@ export async function POST(
     }
   }
 
+  const tenantId = getTenantId(auth)
+
   const insertPayloads: Record<string, any>[] = [
     // Prefer author_id first (current schema), then user_id for legacy compatibility.
     {
@@ -66,6 +68,7 @@ export async function POST(
       note_type,
       content,
       is_private,
+      ...(tenantId && { created_by_tenant_id: tenantId }),
       ...(attachments !== undefined && { attachments }),
       ...(call_log_data !== undefined && { call_log_data }),
     },
@@ -75,6 +78,7 @@ export async function POST(
       note_type,
       content,
       is_private,
+      ...(tenantId && { created_by_tenant_id: tenantId }),
       ...(attachments !== undefined && { attachments }),
       ...(call_log_data !== undefined && { call_log_data }),
     },

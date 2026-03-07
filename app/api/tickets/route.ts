@@ -23,6 +23,8 @@ export async function GET(request: Request) {
   const needId = searchParams.get('need_id') || ''
   const dateFrom = searchParams.get('date_from') || ''
   const dateTo = searchParams.get('date_to') || ''
+  const clientEmail = searchParams.get('client_email') || ''
+  const clientPhone = searchParams.get('client_phone') || ''
   const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10), 100)
   const offset = parseInt(searchParams.get('offset') || '0', 10)
 
@@ -95,6 +97,14 @@ export async function GET(request: Request) {
 
   if (dateTo) {
     query = query.lte('created_at', dateTo)
+  }
+
+  if (clientEmail) {
+    query = query.ilike('client_email', `%${clientEmail}%`)
+  }
+
+  if (clientPhone) {
+    query = query.ilike('client_phone', `%${clientPhone}%`)
   }
 
   const { data: tickets, count, error: queryError } = await query

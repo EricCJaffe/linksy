@@ -116,6 +116,7 @@ export async function PATCH(
       description: application.description || null,
       sector: application.sector || 'nonprofit',
       phone: application.phone || null,
+      phone_extension: application.phone_extension || null,
       email: application.contact_email,
       website: application.website || null,
       hours: application.hours || null,

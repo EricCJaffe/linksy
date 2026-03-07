@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { requireAuth } from '@/lib/middleware/auth'
+import { requireAuth, getTenantId } from '@/lib/middleware/auth'
 
 export async function GET(
   request: Request,
@@ -139,14 +139,26 @@ export async function GET(
     ),
   ])
 
-  const isContactForThisProvider = (contactsRes.data || []).some(
-    (c) => c.user_id === auth.user.id
-  )
-  const canSeePrivate = auth.isSiteAdmin || auth.isTenantAdmin || isContactForThisProvider
+  const userTenantId = getTenantId(auth)
 
-  const filteredNotes = canSeePrivate
+  // Org-scoped private note visibility:
+  // Site admins see all notes.
+  // Other users see public notes + private notes created by their own tenant.
+  const filteredNotes = auth.isSiteAdmin
     ? notesWithUsers
-    : notesWithUsers.filter((n) => !n.is_private)
+    : notesWithUsers.filter((n) => {
+        if (!n.is_private) return true
+        // Private note: visible if user's tenant matches the creating org
+        if (userTenantId && n.created_by_tenant_id === userTenantId) return true
+        // Fallback: if no created_by_tenant_id set (legacy notes), tenant admins and contacts can see
+        if (!n.created_by_tenant_id) {
+          const isContactForThisProvider = (contactsRes.data || []).some(
+            (c: any) => c.user_id === auth.user.id
+          )
+          return auth.isTenantAdmin || isContactForThisProvider
+        }
+        return false
+      })
 
   const sortedNotes = [...filteredNotes].sort((a, b) => {
     const aPinned = a.is_pinned === true ? 1 : 0

@@ -97,6 +97,12 @@ export function ProviderFiltersBar({ filters, onChange }: ProviderFiltersBarProp
           <SelectItem value="Other">Other</SelectItem>
         </SelectContent>
       </Select>
+      <Input
+        placeholder="Filter by zip..."
+        value={filters.zip || ''}
+        onChange={(e) => onChange({ zip: e.target.value, offset: 0 })}
+        className="w-32"
+      />
     </div>
   )
 }

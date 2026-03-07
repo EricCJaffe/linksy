@@ -79,6 +79,8 @@ export default function TicketsPage() {
     const needIdParam = searchParams.get('need_id')
     const dateFromParam = searchParams.get('date_from')
     const dateToParam = searchParams.get('date_to')
+    const clientEmailParam = searchParams.get('client_email')
+    const clientPhoneParam = searchParams.get('client_phone')
     return {
       status: (statusParam as TicketStatus | 'all') || 'all',
       q: qParam || undefined,
@@ -86,6 +88,8 @@ export default function TicketsPage() {
       need_id: needIdParam || undefined,
       date_from: dateFromParam || undefined,
       date_to: dateToParam || undefined,
+      client_email: clientEmailParam || undefined,
+      client_phone: clientPhoneParam || undefined,
       limit: LIMIT,
       offset: 0,
     }
@@ -150,6 +154,8 @@ export default function TicketsPage() {
       if (next.need_id) params.set('need_id', next.need_id)
       if (next.date_from) params.set('date_from', next.date_from)
       if (next.date_to) params.set('date_to', next.date_to)
+      if (next.client_email) params.set('client_email', next.client_email)
+      if (next.client_phone) params.set('client_phone', next.client_phone)
       const paramStr = params.toString()
       router.replace(paramStr ? `?${paramStr}` : '/dashboard/tickets', { scroll: false })
       return next
@@ -367,8 +373,20 @@ export default function TicketsPage() {
         </Select>
       </div>
 
-      {/* Date range filters */}
+      {/* Email/Phone/Date filters */}
       <div className="flex flex-wrap items-center gap-3">
+        <Input
+          placeholder="Filter by email..."
+          value={filters.client_email || ''}
+          onChange={(e) => handleFilterChange({ client_email: e.target.value || undefined })}
+          className="w-[200px]"
+        />
+        <Input
+          placeholder="Filter by phone..."
+          value={filters.client_phone || ''}
+          onChange={(e) => handleFilterChange({ client_phone: e.target.value || undefined })}
+          className="w-[160px]"
+        />
         <CalendarDays className="h-4 w-4 text-muted-foreground" />
         <Input
           type="date"

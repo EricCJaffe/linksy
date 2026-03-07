@@ -357,6 +357,8 @@ export interface TicketFilters {
   need_id?: string
   date_from?: string
   date_to?: string
+  client_email?: string
+  client_phone?: string
   limit?: number
   offset?: number
 }
@@ -597,6 +599,7 @@ export interface ProviderFilters {
   referral_type?: ReferralType | 'all'
   organization_type?: 'all' | 'parent' | 'child' | 'standalone'
   source?: ProviderSource | 'all'
+  zip?: string
   limit?: number
   offset?: number
 }

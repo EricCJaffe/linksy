@@ -39,6 +39,7 @@ interface OnboardingData {
   sector: Sector
   website: string
   phone: string
+  phone_extension: string
   email: string
   project_status: ProjectStatus
   referral_type: ReferralType
@@ -74,6 +75,7 @@ export default function NewProviderPage() {
     sector: 'nonprofit',
     website: '',
     phone: '',
+    phone_extension: '',
     email: '',
     project_status: 'active',
     referral_type: 'standard',
@@ -138,6 +140,7 @@ export default function NewProviderPage() {
           sector: formData.sector,
           website: formData.website,
           phone: formData.phone,
+          phone_extension: formData.phone_extension,
           email: formData.email,
           project_status: formData.project_status,
           referral_type: formData.referral_type,
@@ -301,13 +304,24 @@ export default function NewProviderPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="phone">Phone</Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    placeholder="(555) 123-4567"
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      id="phone"
+                      type="tel"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      placeholder="(555) 123-4567"
+                      className="flex-1"
+                    />
+                    <Input
+                      id="phone_extension"
+                      type="text"
+                      value={formData.phone_extension}
+                      onChange={(e) => setFormData({ ...formData, phone_extension: e.target.value })}
+                      placeholder="Ext"
+                      className="w-20"
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -565,7 +579,7 @@ export default function NewProviderPage() {
                   <dt className="text-muted-foreground">Website:</dt>
                   <dd>{formData.website || 'N/A'}</dd>
                   <dt className="text-muted-foreground">Phone:</dt>
-                  <dd>{formData.phone || 'N/A'}</dd>
+                  <dd>{formData.phone ? `${formData.phone}${formData.phone_extension ? ` ext. ${formData.phone_extension}` : ''}` : 'N/A'}</dd>
                 </dl>
               </div>
 
