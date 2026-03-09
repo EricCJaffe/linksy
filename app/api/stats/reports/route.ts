@@ -16,222 +16,212 @@ export async function GET(request: Request) {
 
   const supabase = await createServiceClient()
 
-  // Helper to apply test filter
-  const applyTestFilter = (query: any) => {
-    if (!includeTest) {
-      return query.or('is_test.is.null,is_test.eq.false')
-    }
-    return query
-  }
-
-  // Referrals by need category
-  let needQuery = supabase
-    .from('linksy_tickets')
-    .select(`
-      need_id,
-      need:linksy_needs(name, category_id, category:linksy_need_categories(name))
-    `)
-  if (!includeLegacy) {
-    needQuery = needQuery.filter('legacy_id', 'is', null)
-  }
-  needQuery = applyTestFilter(needQuery)
-  const { data: referralsByNeed } = await needQuery
-
-  // Aggregate by category
-  const categoryMap = new Map<string, { name: string; count: number }>()
-  referralsByNeed?.forEach((ticket: any) => {
-    if (ticket.need?.category?.name) {
-      const categoryName = ticket.need.category.name
-      const existing = categoryMap.get(categoryName)
-      if (existing) {
-        existing.count++
-      } else {
-        categoryMap.set(categoryName, { name: categoryName, count: 1 })
-      }
-    }
-  })
-
-  const referralsByCategory = Array.from(categoryMap.values())
-    .sort((a, b) => b.count - a.count)
-
-  // Top providers by referral count
-  let providerQuery = supabase
-    .from('linksy_tickets')
-    .select('provider_id, provider:linksy_providers!provider_id(name)')
-  if (!includeLegacy) {
-    providerQuery = providerQuery.filter('legacy_id', 'is', null)
-  }
-  providerQuery = applyTestFilter(providerQuery)
-  const { data: topProviders } = await providerQuery
-
-  // Aggregate by provider
-  const providerMap = new Map<string, { id: string; name: string; count: number }>()
-  topProviders?.forEach((ticket: any) => {
-    if (ticket.provider_id && ticket.provider?.name) {
-      const existing = providerMap.get(ticket.provider_id)
-      if (existing) {
-        existing.count++
-      } else {
-        providerMap.set(ticket.provider_id, {
-          id: ticket.provider_id,
-          name: ticket.provider.name,
-          count: 1,
-        })
-      }
-    }
-  })
-
-  const topReferrers = Array.from(providerMap.values())
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 20)
-
-  // Referrals by status
-  let statusQuery = supabase
-    .from('linksy_tickets')
-    .select('status')
-  if (!includeLegacy) {
-    statusQuery = statusQuery.filter('legacy_id', 'is', null)
-  }
-  statusQuery = applyTestFilter(statusQuery)
-  const { data: ticketsByStatus } = await statusQuery
-
-  const statusMap = new Map<string, number>()
-  ticketsByStatus?.forEach((ticket) => {
-    const count = statusMap.get(ticket.status) || 0
-    statusMap.set(ticket.status, count + 1)
-  })
-
-  const referralsByStatus = Array.from(statusMap.entries()).map(([status, count]) => ({
-    status,
-    count,
-  }))
-
-  // Referrals by source
-  let sourceQuery = supabase
-    .from('linksy_tickets')
-    .select('source')
-  if (!includeLegacy) {
-    sourceQuery = sourceQuery.filter('legacy_id', 'is', null)
-  }
-  sourceQuery = applyTestFilter(sourceQuery)
-  const { data: ticketsBySource } = await sourceQuery
-
-  const sourceMap = new Map<string, number>()
-  ticketsBySource?.forEach((ticket) => {
-    if (ticket.source) {
-      const count = sourceMap.get(ticket.source) || 0
-      sourceMap.set(ticket.source, count + 1)
-    }
-  })
-
-  const referralsBySource = Array.from(sourceMap.entries()).map(([source, count]) => ({
-    source,
-    count,
-  }))
-
-  // Recent trends (last 30 days)
-  const thirtyDaysAgo = new Date()
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-
-  // Monthly trends (last 12 months)
-  const twelveMonthsAgo = new Date()
-  twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 11)
-  twelveMonthsAgo.setDate(1)
-
-  let recentQuery = supabase
-    .from('linksy_tickets')
-    .select('created_at')
-    .gte('created_at', thirtyDaysAgo.toISOString())
-  if (!includeLegacy) {
-    recentQuery = recentQuery.filter('legacy_id', 'is', null)
-  }
-  recentQuery = applyTestFilter(recentQuery)
-
-  let monthlyQuery = supabase
-    .from('linksy_tickets')
-    .select('created_at')
-    .gte('created_at', twelveMonthsAgo.toISOString())
-  if (!includeLegacy) {
-    monthlyQuery = monthlyQuery.filter('legacy_id', 'is', null)
-  }
-  monthlyQuery = applyTestFilter(monthlyQuery)
-
-  // Time-to-resolution: resolved (non-pending) tickets
-  let resolutionQuery = supabase
-    .from('linksy_tickets')
-    .select('status, created_at, updated_at')
-    .neq('status', 'pending')
-  if (!includeLegacy) {
-    resolutionQuery = resolutionQuery.filter('legacy_id', 'is', null)
-  }
-  resolutionQuery = applyTestFilter(resolutionQuery)
-
-  const [recentTickets, monthlyTickets, resolutionTickets] = await Promise.all([
-    recentQuery,
-    monthlyQuery,
-    resolutionQuery,
-  ])
-
-  // Aggregate monthly tickets into month buckets
-  const monthMap = new Map<string, number>()
-  // Pre-fill last 12 months so months with 0 tickets still appear
-  for (let i = 11; i >= 0; i--) {
-    const d = new Date()
-    d.setMonth(d.getMonth() - i)
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-    monthMap.set(key, 0)
-  }
-  monthlyTickets.data?.forEach((t) => {
-    const d = new Date(t.created_at)
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-    if (monthMap.has(key)) {
-      monthMap.set(key, (monthMap.get(key) || 0) + 1)
-    }
-  })
-  const monthlyTrends = Array.from(monthMap.entries()).map(([month, count]) => ({ month, count }))
-
-  // Average time-to-resolution
-  const resolved = resolutionTickets.data ?? []
-  const statusResolutionMap = new Map<string, { totalDays: number; count: number }>()
-  let totalResolutionDays = 0
-
-  resolved.forEach((t) => {
-    const days = (new Date(t.updated_at).getTime() - new Date(t.created_at).getTime()) / (1000 * 60 * 60 * 24)
-    totalResolutionDays += days
-    const entry = statusResolutionMap.get(t.status)
-    if (entry) {
-      entry.totalDays += days
-      entry.count++
-    } else {
-      statusResolutionMap.set(t.status, { totalDays: days, count: 1 })
-    }
-  })
-
-  const avgResolutionDays = resolved.length > 0
-    ? Math.round((totalResolutionDays / resolved.length) * 10) / 10
-    : null
-
-  const avgResolutionByStatus = Array.from(statusResolutionMap.entries())
-    .map(([status, { totalDays, count }]) => ({
-      status,
-      avg_days: Math.round((totalDays / count) * 10) / 10,
-      count,
-    }))
-    .sort((a, b) => b.count - a.count)
-
-  return NextResponse.json({
-    referralsByCategory,
-    topReferrers,
-    referralsByStatus,
-    referralsBySource,
-    monthlyTrends,
+  const emptyResponse = {
+    referralsByCategory: [] as { name: string; count: number }[],
+    topReferrers: [] as { id: string; name: string; count: number }[],
+    referralsByStatus: [] as { status: string; count: number }[],
+    referralsBySource: [] as { source: string; count: number }[],
+    monthlyTrends: [] as { month: string; count: number }[],
     recentActivity: {
-      last30Days: recentTickets.data?.length || 0,
+      last30Days: 0,
     },
     timeToResolution: {
-      avgDays: avgResolutionDays,
-      totalResolved: resolved.length,
-      byStatus: avgResolutionByStatus,
+      avgDays: null as number | null,
+      totalResolved: 0,
+      byStatus: [] as { status: string; avg_days: number; count: number }[],
     },
-  })
+  }
+
+  try {
+    // Use one base ticket query for all aggregates to avoid fragile nested joins.
+    let ticketsQuery = supabase
+      .from('linksy_tickets')
+      .select('provider_id, need_id, status, source, created_at, updated_at')
+
+    if (!includeLegacy) {
+      ticketsQuery = ticketsQuery.filter('legacy_id', 'is', null)
+    }
+    if (!includeTest) {
+      ticketsQuery = ticketsQuery.or('is_test.is.null,is_test.eq.false')
+    }
+
+    let { data: tickets, error: ticketsError } = await ticketsQuery
+
+    // Backward-compatibility for environments that don't have legacy_id yet.
+    if (ticketsError && !includeLegacy && ticketsError.message.includes('legacy_id')) {
+      const retry = await supabase
+        .from('linksy_tickets')
+        .select('provider_id, need_id, status, source, created_at, updated_at')
+      tickets = retry.data
+      ticketsError = retry.error
+    }
+
+    if (ticketsError) {
+      console.error('[stats/reports] failed to query tickets', ticketsError)
+      return NextResponse.json(emptyResponse)
+    }
+
+    const allTickets = tickets || []
+    const providerIds = Array.from(
+      new Set(allTickets.map((t) => t.provider_id).filter((id): id is string => !!id))
+    )
+    const needIds = Array.from(
+      new Set(allTickets.map((t) => t.need_id).filter((id): id is string => !!id))
+    )
+
+    const [providersRes, needsRes, categoriesRes] = await Promise.all([
+      providerIds.length > 0
+        ? supabase.from('linksy_providers').select('id, name').in('id', providerIds)
+        : Promise.resolve({ data: [], error: null } as any),
+      needIds.length > 0
+        ? supabase.from('linksy_needs').select('id, category_id').in('id', needIds)
+        : Promise.resolve({ data: [], error: null } as any),
+      supabase.from('linksy_need_categories').select('id, name'),
+    ])
+
+    if (providersRes.error) {
+      console.error('[stats/reports] failed to query providers', providersRes.error)
+    }
+    if (needsRes.error) {
+      console.error('[stats/reports] failed to query needs', needsRes.error)
+    }
+    if (categoriesRes.error) {
+      console.error('[stats/reports] failed to query need categories', categoriesRes.error)
+    }
+
+    const providerNameById = new Map<string, string>()
+    ;(providersRes.data || []).forEach((p: any) => providerNameById.set(p.id, p.name))
+
+    const needCategoryById = new Map<string, string | null>()
+    ;(needsRes.data || []).forEach((n: any) => needCategoryById.set(n.id, n.category_id ?? null))
+
+    const categoryNameById = new Map<string, string>()
+    ;(categoriesRes.data || []).forEach((c: any) => categoryNameById.set(c.id, c.name))
+
+    const categoryMap = new Map<string, number>()
+    const providerMap = new Map<string, { id: string; name: string; count: number }>()
+    const statusMap = new Map<string, number>()
+    const sourceMap = new Map<string, number>()
+    const statusResolutionMap = new Map<string, { totalDays: number; count: number }>()
+    let totalResolutionDays = 0
+    let totalResolved = 0
+
+    const thirtyDaysAgoMs = Date.now() - 30 * 24 * 60 * 60 * 1000
+    let last30Days = 0
+
+    // Pre-fill last 12 months so empty months still render.
+    const monthMap = new Map<string, number>()
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date()
+      d.setMonth(d.getMonth() - i)
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      monthMap.set(key, 0)
+    }
+
+    allTickets.forEach((t) => {
+      const statusKey = t.status || 'unknown'
+      statusMap.set(statusKey, (statusMap.get(statusKey) || 0) + 1)
+
+      if (t.source) {
+        sourceMap.set(t.source, (sourceMap.get(t.source) || 0) + 1)
+      }
+
+      if (t.provider_id) {
+        const existing = providerMap.get(t.provider_id)
+        if (existing) {
+          existing.count++
+        } else {
+          providerMap.set(t.provider_id, {
+            id: t.provider_id,
+            name: providerNameById.get(t.provider_id) || 'Unknown Provider',
+            count: 1,
+          })
+        }
+      }
+
+      if (t.need_id) {
+        const categoryId = needCategoryById.get(t.need_id)
+        const categoryName = categoryId ? categoryNameById.get(categoryId) : null
+        if (categoryName) {
+          categoryMap.set(categoryName, (categoryMap.get(categoryName) || 0) + 1)
+        }
+      }
+
+      const createdMs = new Date(t.created_at).getTime()
+      if (!Number.isNaN(createdMs)) {
+        if (createdMs >= thirtyDaysAgoMs) last30Days++
+        const d = new Date(createdMs)
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+        if (monthMap.has(key)) {
+          monthMap.set(key, (monthMap.get(key) || 0) + 1)
+        }
+      }
+
+      if (t.status !== 'pending') {
+        const updatedMs = new Date(t.updated_at).getTime()
+        if (!Number.isNaN(createdMs) && !Number.isNaN(updatedMs) && updatedMs >= createdMs) {
+          const days = (updatedMs - createdMs) / (1000 * 60 * 60 * 24)
+          totalResolutionDays += days
+          totalResolved++
+          const entry = statusResolutionMap.get(statusKey)
+          if (entry) {
+            entry.totalDays += days
+            entry.count++
+          } else {
+            statusResolutionMap.set(statusKey, { totalDays: days, count: 1 })
+          }
+        }
+      }
+    })
+
+    const referralsByCategory = Array.from(categoryMap.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+
+    const topReferrers = Array.from(providerMap.values())
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 20)
+
+    const referralsByStatus = Array.from(statusMap.entries())
+      .map(([status, count]) => ({ status, count }))
+      .sort((a, b) => b.count - a.count)
+
+    const referralsBySource = Array.from(sourceMap.entries())
+      .map(([source, count]) => ({ source, count }))
+      .sort((a, b) => b.count - a.count)
+
+    const monthlyTrends = Array.from(monthMap.entries())
+      .map(([month, count]) => ({ month, count }))
+
+    const avgResolutionDays = totalResolved > 0
+      ? Math.round((totalResolutionDays / totalResolved) * 10) / 10
+      : null
+
+    const avgResolutionByStatus = Array.from(statusResolutionMap.entries())
+      .map(([status, { totalDays, count }]) => ({
+        status,
+        avg_days: Math.round((totalDays / count) * 10) / 10,
+        count,
+      }))
+      .sort((a, b) => b.count - a.count)
+
+    return NextResponse.json({
+      referralsByCategory,
+      topReferrers,
+      referralsByStatus,
+      referralsBySource,
+      monthlyTrends,
+      recentActivity: {
+        last30Days,
+      },
+      timeToResolution: {
+        avgDays: avgResolutionDays,
+        totalResolved,
+        byStatus: avgResolutionByStatus,
+      },
+    })
+  } catch (error) {
+    console.error('[stats/reports] unexpected error', error)
+    return NextResponse.json(emptyResponse)
+  }
 }

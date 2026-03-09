@@ -36,7 +36,7 @@ export async function GET(request: Request) {
     supabase
       .from('linksy_providers')
       .select('id', { count: 'exact', head: true })
-      .eq('status', 'active'),
+      .eq('is_active', true),
 
     // Tickets stats
     ticketsQuery,

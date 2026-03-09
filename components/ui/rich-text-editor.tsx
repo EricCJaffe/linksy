@@ -37,9 +37,15 @@ interface RichTextEditorProps {
   onChange: (html: string) => void
   disabled?: boolean
   placeholder?: string
+  onReady?: (api: RichTextEditorApi | null) => void
 }
 
-export function RichTextEditor({ value, onChange, disabled, placeholder }: RichTextEditorProps) {
+export interface RichTextEditorApi {
+  focus: () => void
+  insertText: (text: string) => void
+}
+
+export function RichTextEditor({ value, onChange, disabled, placeholder, onReady }: RichTextEditorProps) {
   const isUpdatingRef = useRef(false)
 
   const editor = useEditor({
@@ -90,6 +96,23 @@ export function RichTextEditor({ value, onChange, disabled, placeholder }: RichT
     if (!editor) return
     editor.setEditable(!disabled)
   }, [disabled, editor])
+
+  useEffect(() => {
+    if (!onReady) return
+    if (!editor) {
+      onReady(null)
+      return
+    }
+
+    onReady({
+      focus: () => editor.chain().focus().run(),
+      insertText: (text: string) => {
+        editor.chain().focus().insertContent(text).run()
+      },
+    })
+
+    return () => onReady(null)
+  }, [editor, onReady])
 
   if (!editor) return null
 

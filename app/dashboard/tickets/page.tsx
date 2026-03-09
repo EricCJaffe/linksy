@@ -143,6 +143,15 @@ export default function TicketsPage() {
     fetchStats()
   }, [data])
 
+  // Allow deep links such as /dashboard/tickets?status=pending
+  useEffect(() => {
+    const statusParam = searchParams.get('status')
+    const nextStatus = statusParam && statusParam in ticketStatusLabels
+      ? statusParam as TicketStatus
+      : 'all'
+    setFilters((prev) => prev.status === nextStatus ? prev : { ...prev, status: nextStatus, offset: 0 })
+  }, [searchParams])
+
   const handleFilterChange = (updates: Partial<TicketFilters>) => {
     setFilters((prev) => {
       const next = { ...prev, ...updates, offset: 0 }

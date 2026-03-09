@@ -1,21 +1,22 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Mail, Pencil, X, Save } from 'lucide-react'
 import type { EmailTemplate } from '@/lib/types/linksy'
+import { RichTextEditor, type RichTextEditorApi } from '@/components/ui/rich-text-editor'
 
 export default function EmailTemplatesPage() {
   const [templates, setTemplates] = useState<EmailTemplate[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState({ name: '', subject: '', body_html: '', is_active: true })
+  const editorApiRef = useRef<RichTextEditorApi | null>(null)
 
   useEffect(() => {
     fetchTemplates()
@@ -44,6 +45,20 @@ export default function EmailTemplatesPage() {
       body_html: template.body_html,
       is_active: template.is_active,
     })
+  }
+
+  const insertVariable = (variable: string) => {
+    const token = `{{${variable}}}`
+    if (editorApiRef.current) {
+      editorApiRef.current.insertText(token)
+      return
+    }
+
+    // Fallback if editor isn't ready yet.
+    setEditForm((prev) => ({
+      ...prev,
+      body_html: `${prev.body_html}${prev.body_html ? ' ' : ''}${token}`,
+    }))
   }
 
   const handleSave = async () => {
@@ -128,12 +143,13 @@ export default function EmailTemplatesPage() {
                       />
                     </div>
                     <div>
-                      <Label>Body HTML</Label>
-                      <Textarea
+                      <Label>Email Body</Label>
+                      <RichTextEditor
                         value={editForm.body_html}
-                        onChange={(e) => setEditForm({ ...editForm, body_html: e.target.value })}
-                        rows={12}
-                        className="font-mono text-sm"
+                        onChange={(html) => setEditForm({ ...editForm, body_html: html })}
+                        onReady={(api) => {
+                          editorApiRef.current = editingId === template.id ? api : null
+                        }}
                       />
                     </div>
                     <div className="flex items-center gap-2">
@@ -147,9 +163,15 @@ export default function EmailTemplatesPage() {
                       <Label className="text-muted-foreground">Available Variables</Label>
                       <div className="flex flex-wrap gap-1 mt-1">
                         {(template.variables || []).map((v: string) => (
-                          <Badge key={v} variant="outline" className="font-mono text-xs">
+                          <button
+                            key={v}
+                            type="button"
+                            onClick={() => insertVariable(v)}
+                            className="inline-flex items-center rounded-full border px-2.5 py-0.5 font-mono text-xs hover:bg-accent"
+                            title={`Insert {{${v}}}`}
+                          >
                             {`{{${v}}}`}
-                          </Badge>
+                          </button>
                         ))}
                       </div>
                     </div>

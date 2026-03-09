@@ -7,7 +7,6 @@ import {
   Bell,
   Building2,
   LayoutDashboard,
-  Briefcase,
   Tags,
   Ticket,
   Store,
@@ -78,14 +77,6 @@ const mainNavItems = [
     title: 'Help & Docs',
     href: '/dashboard/help',
     icon: BookOpen,
-  },
-]
-
-const companyNavItems = [
-  {
-    title: 'Company Admin',
-    href: '/dashboard/company',
-    icon: Briefcase,
   },
 ]
 
@@ -234,26 +225,23 @@ export function Sidebar() {
           })}
         </div>
 
-        {(isTenantAdmin || isSiteAdmin) && (
+        {(isTenantAdmin && !isSiteAdmin) && (
           <div className="space-y-1">
             <p className="px-3 text-xs font-semibold uppercase text-muted-foreground">
               Company
             </p>
-            {companyNavItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                  pathname.startsWith(item.href)
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                )}
-              >
-                <item.icon className="h-4 w-4" />
-                {item.title}
-              </Link>
-            ))}
+            <Link
+              href="/dashboard/company"
+              className={cn(
+                'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                pathname.startsWith('/dashboard/company')
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+              )}
+            >
+              <Building2 className="h-4 w-4" />
+              Company Admin
+            </Link>
           </div>
         )}
 
