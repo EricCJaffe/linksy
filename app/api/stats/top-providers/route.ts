@@ -30,7 +30,19 @@ export async function GET(request: Request) {
     query = query.lte('created_at', dateTo)
   }
 
-  const { data: tickets, error: ticketsError } = await query
+  let { data: tickets, error: ticketsError } = await query
+
+  // Fallback if is_test column doesn't exist yet
+  if (ticketsError && ticketsError.message.includes('is_test')) {
+    let retryQuery = supabase
+      .from('linksy_tickets')
+      .select('provider_id, need_id, provider:linksy_providers!provider_id(name), need:linksy_needs!need_id(name)')
+    if (dateFrom) retryQuery = retryQuery.gte('created_at', dateFrom)
+    if (dateTo) retryQuery = retryQuery.lte('created_at', dateTo)
+    const retry = await retryQuery
+    tickets = retry.data
+    ticketsError = retry.error
+  }
 
   if (ticketsError) {
     return NextResponse.json({ error: ticketsError.message }, { status: 500 })

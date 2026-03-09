@@ -47,11 +47,15 @@ export async function GET(request: Request) {
 
     let { data: tickets, error: ticketsError } = await ticketsQuery
 
-    // Backward-compatibility for environments that don't have legacy_id yet.
-    if (ticketsError && !includeLegacy && ticketsError.message.includes('legacy_id')) {
-      const retry = await supabase
+    // Backward-compatibility for environments missing legacy_id or is_test columns.
+    if (ticketsError && (ticketsError.message.includes('legacy_id') || ticketsError.message.includes('is_test'))) {
+      let retryQuery = supabase
         .from('linksy_tickets')
         .select('provider_id, need_id, status, source, created_at, updated_at')
+      if (!includeLegacy && !ticketsError.message.includes('legacy_id')) {
+        retryQuery = retryQuery.filter('legacy_id', 'is', null)
+      }
+      const retry = await retryQuery
       tickets = retry.data
       ticketsError = retry.error
     }

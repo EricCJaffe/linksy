@@ -53,10 +53,21 @@ export async function GET(request: Request) {
       .eq('is_active', true),
   ])
 
+  // Fallback if is_test column doesn't exist yet
+  let ticketsData = ticketsStats.data
+  if (ticketsStats.error && ticketsStats.error.message.includes('is_test')) {
+    let retryQuery = supabase.from('linksy_tickets').select('status', { count: 'exact' })
+    if (!includeLegacy) {
+      retryQuery = retryQuery.is('legacy_id', null)
+    }
+    const retry = await retryQuery
+    ticketsData = retry.data
+  }
+
   // Process ticket stats
-  const totalTickets = ticketsStats.data?.length || 0
-  const openTickets = ticketsStats.data?.filter(t => ['pending', 'in_process'].includes(t.status)).length || 0
-  const closedTickets = ticketsStats.data?.filter(t =>
+  const totalTickets = ticketsData?.length || 0
+  const openTickets = ticketsData?.filter(t => ['pending', 'in_process'].includes(t.status)).length || 0
+  const closedTickets = ticketsData?.filter(t =>
     ['customer_need_addressed', 'unable_to_assist', 'client_unresponsive',
      'wrong_organization_referred', 'outside_of_scope', 'client_not_eligible',
      'transferred_another_provider'].includes(t.status)
