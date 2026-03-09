@@ -63,7 +63,7 @@ export function TopProvidersChart() {
     fetchData()
   }, [includeServices, dateFrom, dateTo])
 
-  const truncateName = (name: string, max = 20) =>
+  const truncateName = (name: string, max = 30) =>
     name.length > max ? name.slice(0, max) + '...' : name
 
   return (
@@ -123,18 +123,18 @@ export function TopProvidersChart() {
           <p className="text-sm text-muted-foreground text-center py-12">No referral data found.</p>
         ) : (
           <div className="space-y-4">
-            <div className="h-64">
+            <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={providers}
                   layout="vertical"
-                  margin={{ left: 10, right: 30, top: 5, bottom: 5 }}
+                  margin={{ left: 20, right: 30, top: 5, bottom: 5 }}
                 >
                   <XAxis type="number" />
                   <YAxis
                     dataKey="name"
                     type="category"
-                    width={150}
+                    width={200}
                     tick={{ fontSize: 12 }}
                     tickFormatter={(v) => truncateName(v)}
                   />
