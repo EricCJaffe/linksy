@@ -72,9 +72,13 @@ interface EventResult {
   description: string | null
   event_date: string
   location: string | null
+  address: string | null
   recurrence_rule: string | null
   provider_id: string
   provider_name: string
+  need_name: string | null
+  category_name: string | null
+  distance_miles: number | null
 }
 
 interface Message {
@@ -901,20 +905,32 @@ function EventCard({ event }: { event: EventResult }) {
               by {event.provider_name}
             </p>
           </div>
-          <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100 flex-shrink-0">
-            <Calendar className="h-3 w-3 mr-1" />
-            {dateStr}
-          </Badge>
+          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+            <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100">
+              <Calendar className="h-3 w-3 mr-1" />
+              {dateStr}
+            </Badge>
+            {event.distance_miles != null && (
+              <span className="text-xs text-muted-foreground">{event.distance_miles} mi</span>
+            )}
+          </div>
         </div>
+        {event.category_name && (
+          <div className="mt-1.5">
+            <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+              {event.category_name}{event.need_name ? ` — ${event.need_name}` : ''}
+            </Badge>
+          </div>
+        )}
         <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
           <span className="flex items-center gap-1">
             <Clock className="h-3 w-3" />
             {timeStr}
           </span>
-          {event.location && (
+          {(event.address || event.location) && (
             <span className="flex items-center gap-1">
               <MapPin className="h-3 w-3" />
-              {event.location}
+              {event.address || event.location}
             </span>
           )}
           {event.recurrence_rule && (

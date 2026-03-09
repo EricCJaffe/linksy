@@ -2367,6 +2367,8 @@ function EventsTab({ provider }: { provider: ProviderDetail }) {
     description: '',
     event_date: '',
     location: '',
+    address: '',
+    need_id: '',
     is_public: false,
     recurrence_rule: '' as string,
   })
@@ -2374,12 +2376,14 @@ function EventsTab({ provider }: { provider: ProviderDetail }) {
   const createEvent = useCreateProviderEvent(provider.id)
   const updateEvent = useUpdateProviderEvent(provider.id)
   const deleteEvent = useDeleteProviderEvent(provider.id)
+  const { data: needCategories } = useNeedCategories()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     const payload = {
       ...formData,
+      need_id: formData.need_id || null,
       recurrence_rule: formData.recurrence_rule || null,
     }
     if (editingEvent) {
@@ -2390,7 +2394,7 @@ function EventsTab({ provider }: { provider: ProviderDetail }) {
       setIsAdding(false)
     }
 
-    setFormData({ title: '', description: '', event_date: '', location: '', is_public: false, recurrence_rule: '' })
+    setFormData({ title: '', description: '', event_date: '', location: '', address: '', need_id: '', is_public: false, recurrence_rule: '' })
   }
 
   const handleEdit = (event: ProviderEvent) => {
@@ -2400,6 +2404,8 @@ function EventsTab({ provider }: { provider: ProviderDetail }) {
       description: event.description || '',
       event_date: event.event_date.split('T')[0],
       location: event.location || '',
+      address: event.address || '',
+      need_id: event.need_id || '',
       is_public: event.is_public,
       recurrence_rule: event.recurrence_rule || '',
     })
@@ -2479,12 +2485,44 @@ function EventsTab({ provider }: { provider: ProviderDetail }) {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="location">Location</Label>
+                <Label htmlFor="need_id">Service Category *</Label>
+                <Select
+                  value={formData.need_id || 'none'}
+                  onValueChange={(val) => setFormData({ ...formData, need_id: val === 'none' ? '' : val })}
+                >
+                  <SelectTrigger id="need_id">
+                    <SelectValue placeholder="Select a service category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none" disabled>Select a service category</SelectItem>
+                    {needCategories?.map((cat) => (
+                      cat.needs?.map((need) => (
+                        <SelectItem key={need.id} value={need.id}>
+                          {cat.name} — {need.name}
+                        </SelectItem>
+                      ))
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="address">Address *</Label>
+                <Input
+                  id="address"
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  placeholder="123 Main St, City, FL 32065"
+                  required
+                />
+                <p className="text-xs text-muted-foreground">Full address used for proximity-based search matching</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="location">Location Name</Label>
                 <Input
                   id="location"
                   value={formData.location}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  placeholder="123 Main St, City, State"
+                  placeholder="Community Center, Room 204"
                 />
               </div>
               <div className="space-y-2">
@@ -2534,7 +2572,7 @@ function EventsTab({ provider }: { provider: ProviderDetail }) {
                   onClick={() => {
                     setIsAdding(false)
                     setEditingEvent(null)
-                    setFormData({ title: '', description: '', event_date: '', location: '', is_public: false, recurrence_rule: '' })
+                    setFormData({ title: '', description: '', event_date: '', location: '', address: '', need_id: '', is_public: false, recurrence_rule: '' })
                   }}
                 >
                   Cancel
@@ -2563,6 +2601,11 @@ function EventsTab({ provider }: { provider: ProviderDetail }) {
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-semibold">{event.title}</h3>
                         <Badge className={statusColors[event.status]}>{event.status}</Badge>
+                        {event.need && (
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                            {event.need.category?.name ? `${event.need.category.name} — ` : ''}{event.need.name}
+                          </Badge>
+                        )}
                         {event.is_public && <Badge variant="outline">Public</Badge>}
                         {recurrenceLabel && (
                           <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
@@ -2579,6 +2622,9 @@ function EventsTab({ provider }: { provider: ProviderDetail }) {
                           day: 'numeric',
                         })}
                       </p>
+                      {event.address && (
+                        <p className="text-sm text-muted-foreground">{event.address}</p>
+                      )}
                       {event.location && (
                         <p className="text-sm text-muted-foreground">{event.location}</p>
                       )}

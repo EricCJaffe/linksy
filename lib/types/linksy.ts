@@ -219,6 +219,10 @@ export interface ProviderEvent {
   description: string | null
   event_date: string
   location: string | null
+  address: string | null
+  latitude: number | null
+  longitude: number | null
+  need_id: string | null
   status: EventStatus
   is_public: boolean
   recurrence_rule: string | null
@@ -230,6 +234,7 @@ export interface ProviderEvent {
   provider?: { name: string }
   creator?: { full_name: string | null; email: string }
   approver?: { full_name: string | null; email: string }
+  need?: { name: string; category: { name: string } | null }
 }
 
 export interface NeedCategory {

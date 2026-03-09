@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/middleware/auth'
+import { geocodeAddress } from '@/lib/utils/geocode'
 
 /**
  * PATCH /api/providers/[id]/events/[eventId]
@@ -16,7 +17,7 @@ export async function PATCH(
   const { eventId } = params
   const body = await request.json()
 
-  const allowedFields = ['title', 'description', 'event_date', 'location', 'is_public', 'recurrence_rule', 'status']
+  const allowedFields = ['title', 'description', 'event_date', 'location', 'address', 'need_id', 'is_public', 'recurrence_rule', 'status']
   const updates: Record<string, any> = {}
 
   for (const field of allowedFields) {
@@ -29,13 +30,28 @@ export async function PATCH(
     return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
   }
 
+  // Re-geocode if address changed
+  if ('address' in updates && updates.address) {
+    const geo = await geocodeAddress(updates.address)
+    if (geo) {
+      updates.latitude = geo.latitude
+      updates.longitude = geo.longitude
+    } else {
+      updates.latitude = null
+      updates.longitude = null
+    }
+  }
+
   const supabase = await createServiceClient()
 
   const { data: event, error: updateError } = await supabase
     .from('linksy_provider_events')
     .update(updates)
     .eq('id', eventId)
-    .select()
+    .select(`
+      *,
+      need:linksy_needs(name, category:linksy_need_categories(name))
+    `)
     .single()
 
   if (updateError) {

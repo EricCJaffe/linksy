@@ -112,25 +112,23 @@ Core features that users and admins need on day one, plus remaining quality fixe
   - Verify `ticket.reassigned` webhook fires correctly
   - Test from provider portal view (not just admin)
 
-#### 1.3 Events Visibility for End Users
-- [ ] **Decide where events appear for public users** — Options:
-  - **(a) In chatbot results** — Show relevant events alongside providers
-  - **(b) Dedicated `/events` public page** — Standalone calendar/list
-  - **(c) On public provider directory** — Events on provider profiles
-  - **(d) Combination** — Chatbot results AND dedicated page
-  - **Decision needed:** Which approach? Does this vary by host?
-- [ ] Implement chosen approach
-- [ ] Ensure only `published` events shown publicly
+#### 1.3 Events Visibility for End Users — COMPLETE
+- [x] **Decision: Events appear in chatbot search results** — Events shown alongside providers when they match the user's need and are nearby. COMPLETED 2026-03-09.
+- [x] Implemented in find-help page and host-embedded widget
+- [x] Only approved, public, future events shown publicly (enforced by `linksy_search_events_by_needs` RPC)
 
-#### 1.4 AI Search Includes Events
-- [ ] **Extend AI search pipeline to include event listings** — Currently searches only provider services/needs. Need to:
-  - Include upcoming published events in vector search or as supplemental results
-  - Add event data to LLM context (name, date, time, location, description, provider)
-  - Generate embeddings for events (or match via `linksy_provider_needs`)
-  - LLM mentions relevant events naturally
-  - Filter to future events only
-- [ ] Update search API response to include event cards
-- [ ] Widget UI: display event result cards
+#### 1.4 AI Search Includes Events — COMPLETE
+- [x] **Extended AI search pipeline to include event listings** — COMPLETED 2026-03-09. Changes:
+  - Added `need_id` (service category), `address`, `latitude`, `longitude` columns to `linksy_provider_events` (migration `20260309000001`)
+  - Service category and address are mandatory for new events
+  - Created `linksy_search_events_by_needs()` RPC: matches events by need ID + proximity (radius-based PostGIS filter)
+  - Events geocoded on creation/update via Google Maps API
+  - LLM context includes event category, address, and distance
+  - Falls back to provider-based matching for legacy untagged events
+- [x] Search API returns events with `need_name`, `category_name`, `distance_miles`
+- [x] EventCard shows service category badge and distance in find-help page + widget
+- [x] Admin events page shows service category badges
+- [x] Event creation/edit form: mandatory Service Category dropdown and Address field
 
 #### 1.5 Host Danger Word Filtering
 - [ ] **Verify crisis detection in host-embedded widgets** — System has global `linksy_crisis_keywords` with detection + emergency banners. Verify:

@@ -142,6 +142,11 @@ export default function AdminEventsPage() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-semibold">{event.title}</h3>
                         <Badge className={statusColors[event.status]}>{event.status}</Badge>
+                        {event.need && (
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                            {event.need.category?.name ? `${event.need.category.name} — ` : ''}{event.need.name}
+                          </Badge>
+                        )}
                         {event.is_public && <Badge variant="outline">Public</Badge>}
                         {recurrenceLabel && (
                           <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
@@ -161,6 +166,9 @@ export default function AdminEventsPage() {
                           day: 'numeric',
                         })}
                       </p>
+                      {event.address && (
+                        <p className="text-sm text-muted-foreground">{event.address}</p>
+                      )}
                       {event.location && (
                         <p className="text-sm text-muted-foreground">{event.location}</p>
                       )}
