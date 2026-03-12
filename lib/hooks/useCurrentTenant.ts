@@ -56,7 +56,9 @@ export function useCurrentTenant() {
         return null
       }
 
-      const validMemberships = ((memberships || []) as TenantMembershipRow[]).filter((m) => m.tenant)
+      const validMemberships = ((memberships || []) as TenantMembershipRow[]).filter(
+        (m) => m.tenant && (m.tenant as Tenant).is_active !== false
+      )
 
       if (validMemberships.length === 0) {
         logger.warn('User has no tenant memberships', { user_id: user.id })

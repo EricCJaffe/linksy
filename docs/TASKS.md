@@ -85,8 +85,8 @@ Migration written: `20260303000002_rls_security_hardening.sql`. **Needs to be ap
 - [ ] Verify Resend domain authentication
 - [ ] **[TASK-034] Migrate From email address** — Current: Linksy@impactclay.org → Linksy@impact-works.org (confirm with IT Assist: rename mailbox or create new + forward). Update all templates, From/Reply-To fields, provider-facing contact info.
 
-#### 0.8 Impact Clay Archival [CLARIFY]
-- [ ] **[TASK-037] Remove "Impact Clay" as active option while preserving history** — Decisions needed: (a) Archive as read-only or delete from active dropdowns? (b) Keep historical referrals attributed to Impact Clay or migrate to Impact Works?
+#### 0.8 Impact Clay Archival [DONE]
+- [x] **[TASK-037] Archive "Impact Clay" tenant as read-only** — Archived via `is_active` flag on tenants table. Historical referrals remain attributed to Impact Clay. Tenant hidden from active dropdowns but visible (read-only) in admin tenant list. Reversible via "Restore Tenant" in edit dialog. See ADR-0015.
 
 ---
 

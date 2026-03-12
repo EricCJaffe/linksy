@@ -14,9 +14,14 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const type = searchParams.get('type')
 
+  const includeArchived = searchParams.get('include_archived') === 'true'
+
   let query = supabase.from('tenants').select('*').order('created_at', { ascending: false })
   if (type && type !== 'all') {
     query = query.filter('settings->>type', 'eq', type)
+  }
+  if (!includeArchived) {
+    query = query.eq('is_active', true)
   }
 
   const { data: tenants, error: queryError } = await query

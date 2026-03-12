@@ -22,7 +22,7 @@ export default function TenantsPage() {
   const { data: tenants, isLoading } = useQuery<Tenant[]>({
     queryKey: ['tenants'],
     queryFn: async () => {
-      const response = await fetch('/api/tenants?type=region')
+      const response = await fetch('/api/tenants?type=region&include_archived=true')
       if (!response.ok) {
         throw new Error('Failed to fetch tenants')
       }
@@ -93,12 +93,18 @@ export default function TenantsPage() {
                           {format(new Date(tenant.created_at), 'MMM d, yyyy')}
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline">Active</Badge>
+                          {tenant.is_active === false ? (
+                            <Badge variant="secondary">Archived</Badge>
+                          ) : (
+                            <Badge variant="outline">Active</Badge>
+                          )}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
                             <TenantEditDialog tenant={tenant} />
-                            <TenantDeleteDialog tenant={tenant} />
+                            {tenant.is_active !== false && (
+                              <TenantDeleteDialog tenant={tenant} />
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>

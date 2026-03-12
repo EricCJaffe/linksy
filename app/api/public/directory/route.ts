@@ -15,6 +15,7 @@ export async function GET(request: Request) {
       .from('tenants')
       .select('id, name, slug, branding')
       .eq('slug', slug)
+      .eq('is_active', true)
       .single<{ id: string; name: string; slug: string; branding: any }>()
 
     if (error || !tenant) {
