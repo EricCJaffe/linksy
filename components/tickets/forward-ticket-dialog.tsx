@@ -21,22 +21,29 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Checkbox } from '@/components/ui/checkbox'
 import { useForwardTicket } from '@/lib/hooks/useTickets'
 import { useProviders } from '@/lib/hooks/useProviders'
 import { Input } from '@/components/ui/input'
-import { ArrowRight, AlertTriangle, Building2 } from 'lucide-react'
+import { ArrowRight, AlertTriangle, Building2, ShieldAlert } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 
 interface ForwardTicketDialogProps {
   ticketId: string
   ticketNumber: string
+  reassignmentCount?: number
+  isSiteAdmin?: boolean
   open: boolean
   onOpenChange: (open: boolean) => void
 }
 
+const MAX_TRANSFERS = 2
+
 export function ForwardTicketDialog({
   ticketId,
   ticketNumber,
+  reassignmentCount = 0,
+  isSiteAdmin = false,
   open,
   onOpenChange,
 }: ForwardTicketDialogProps) {
@@ -48,8 +55,12 @@ export function ForwardTicketDialog({
   const [reason, setReason] = useState<'unable_to_assist' | 'wrong_org' | 'capacity' | 'other'>('unable_to_assist')
   const [notes, setNotes] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [adminOverride, setAdminOverride] = useState(false)
 
   const forwardMutation = useForwardTicket()
+
+  const atTransferLimit = reassignmentCount >= MAX_TRANSFERS
+  const canTransferToProvider = !atTransferLimit || (isSiteAdmin && adminOverride)
 
   // Fetch providers for autocomplete (only if forwarding to provider)
   const { data: providersData } = useProviders(
@@ -78,20 +89,21 @@ export function ForwardTicketDialog({
       })
 
       toast({
-        title: 'Ticket forwarded',
+        title: action === 'forward_to_admin' ? 'Referral forwarded to admin' : 'Referral transferred',
         description:
           action === 'forward_to_admin'
-            ? 'The ticket has been forwarded to the admin pool for reassignment.'
-            : 'The ticket has been forwarded to the selected provider.',
+            ? 'The referral has been returned to the admin pool for reassignment.'
+            : `The referral has been transferred to ${selectedProvider?.name || 'the selected provider'}. Status set to "Transferred Pending".`,
       })
 
       onOpenChange(false)
       router.refresh()
     } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to forward referral'
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to forward ticket',
+        description: message,
       })
     }
   }
@@ -103,6 +115,7 @@ export function ForwardTicketDialog({
     setReason('unable_to_assist')
     setNotes('')
     setSearchQuery('')
+    setAdminOverride(false)
     onOpenChange(false)
   }
 
@@ -118,12 +131,37 @@ export function ForwardTicketDialog({
           </DialogTitle>
           <DialogDescription>
             {step === 1
-              ? 'Choose where to forward this ticket'
-              : 'Provide details about why you are forwarding this ticket'}
+              ? 'Choose where to forward this referral'
+              : 'Provide details about why you are forwarding this referral'}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
+          {/* Transfer count indicator */}
+          {reassignmentCount > 0 && (
+            <div className={`flex items-start gap-2 p-3 rounded-md border text-sm ${
+              atTransferLimit
+                ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800'
+                : 'bg-muted/50 border-border'
+            }`}>
+              {atTransferLimit ? (
+                <ShieldAlert className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
+              ) : (
+                <AlertTriangle className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+              )}
+              <div>
+                <span className="font-medium">
+                  {reassignmentCount} of {MAX_TRANSFERS} transfers used.
+                </span>
+                {atTransferLimit && (
+                  <span className="text-red-700 dark:text-red-400 ml-1">
+                    Transfer limit reached. {isSiteAdmin ? 'Admin override available.' : 'Contact an admin for further transfers.'}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Step 1: Choose action */}
           {step === 1 && (
             <div className="space-y-4">
@@ -136,26 +174,50 @@ export function ForwardTicketDialog({
                       Admin Pool
                     </Label>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Return this ticket to the admin pool for manual reassignment. Admins will be
-                      notified.
+                      Return this referral to the admin pool for manual reassignment. Status will be
+                      set to &quot;Transferred&quot;.
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-start space-x-3 rounded-lg border p-4 hover:bg-muted/50">
-                  <RadioGroupItem value="forward_to_provider" id="provider" className="mt-0.5" />
+                <div className={`flex items-start space-x-3 rounded-lg border p-4 ${
+                  atTransferLimit && !isSiteAdmin ? 'opacity-50' : 'hover:bg-muted/50'
+                }`}>
+                  <RadioGroupItem
+                    value="forward_to_provider"
+                    id="provider"
+                    className="mt-0.5"
+                    disabled={atTransferLimit && !isSiteAdmin}
+                  />
                   <div className="flex-1">
                     <Label htmlFor="provider" className="font-semibold cursor-pointer">
                       Another Provider
                     </Label>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Forward directly to another provider that can better assist this client.
+                      Transfer directly to another provider. The new provider will see this as
+                      &quot;Transferred Pending&quot;.
                     </p>
                   </div>
                 </div>
               </RadioGroup>
 
-              {action === 'forward_to_provider' && (
+              {/* Admin override for transfer limit */}
+              {action === 'forward_to_provider' && atTransferLimit && isSiteAdmin && (
+                <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-950/20 rounded-md border border-amber-200 dark:border-amber-800">
+                  <Checkbox
+                    id="admin-override"
+                    checked={adminOverride}
+                    onCheckedChange={(checked) => setAdminOverride(checked === true)}
+                    className="mt-0.5"
+                  />
+                  <Label htmlFor="admin-override" className="text-sm cursor-pointer">
+                    <span className="font-semibold">Admin override:</span> Allow this transfer beyond the {MAX_TRANSFERS}-transfer limit.
+                    This will be logged in the audit trail.
+                  </Label>
+                </div>
+              )}
+
+              {action === 'forward_to_provider' && canTransferToProvider && (
                 <div className="space-y-2 mt-4">
                   <Label htmlFor="provider-search">Search for provider</Label>
                   <Input
@@ -218,6 +280,12 @@ export function ForwardTicketDialog({
                 <div className="text-sm">
                   <strong>Forwarding to:</strong>{' '}
                   {action === 'forward_to_admin' ? 'Admin Pool' : selectedProvider?.name || 'Unknown'}
+                  <br />
+                  <span className="text-muted-foreground">
+                    {action === 'forward_to_admin'
+                      ? 'Status will be set to "Transferred Another Provider"'
+                      : 'New provider will see status "Transferred Pending"'}
+                  </span>
                 </div>
               </div>
 
@@ -237,10 +305,10 @@ export function ForwardTicketDialog({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="notes">Additional notes (optional)</Label>
+                <Label htmlFor="notes">Transfer notes (optional)</Label>
                 <Textarea
                   id="notes"
-                  placeholder="Provide context about why this ticket should be forwarded..."
+                  placeholder="Provide context for the transfer — this will be visible to both providers..."
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   rows={4}
@@ -254,7 +322,10 @@ export function ForwardTicketDialog({
           {step === 1 && (
             <Button
               onClick={handleNext}
-              disabled={action === 'forward_to_provider' && !targetProviderId}
+              disabled={
+                (action === 'forward_to_provider' && !targetProviderId) ||
+                (action === 'forward_to_provider' && !canTransferToProvider)
+              }
             >
               Next
             </Button>
@@ -265,7 +336,11 @@ export function ForwardTicketDialog({
                 Back
               </Button>
               <Button onClick={handleSubmit} disabled={forwardMutation.isPending}>
-                {forwardMutation.isPending ? 'Forwarding...' : 'Forward Referral'}
+                {forwardMutation.isPending
+                  ? 'Forwarding...'
+                  : action === 'forward_to_provider'
+                    ? 'Transfer Referral'
+                    : 'Forward Referral'}
               </Button>
             </>
           )}

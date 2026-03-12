@@ -424,6 +424,7 @@ export async function sendTicketStatusNotification({
     unable_to_assist: 'Unable to Assist',
     client_unresponsive: 'Unresponsive',
     transferred_another_provider: 'Transferred to Another Provider',
+    transferred_pending: 'Transferred Pending',
   }
   const label = statusLabel[newStatus] || newStatus
 
@@ -453,6 +454,7 @@ export async function sendTicketStatusNotification({
   const statusTemplateKey: Record<string, string> = {
     in_process: 'ticket_status_in_process',
     transferred_another_provider: 'ticket_status_transferred',
+    transferred_pending: 'ticket_status_transferred_pending',
   }
   const templateKey = statusTemplateKey[newStatus] || 'ticket_status_update'
 

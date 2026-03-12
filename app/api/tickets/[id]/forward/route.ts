@@ -2,12 +2,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/middleware/auth'
 
+const MAX_TRANSFERS = 2
+
 interface ForwardRequest {
   action: 'forward_to_admin' | 'forward_to_provider'
   target_provider_id?: string
   reason: 'unable_to_assist' | 'wrong_org' | 'capacity' | 'other'
   notes?: string
   new_status?: string
+  /** Site admin can override the max-transfer limit */
+  admin_override?: boolean
 }
 
 export async function POST(
@@ -25,7 +29,7 @@ export async function POST(
 
     // Parse request body
     const body: ForwardRequest = await req.json()
-    const { action, target_provider_id, reason, notes, new_status } = body
+    const { action, target_provider_id, reason, notes, admin_override } = body
 
     // Validate required fields
     if (!action || !reason) {
@@ -76,6 +80,24 @@ export async function POST(
       }
     }
 
+    // Enforce max transfer limit when forwarding to another provider
+    if (action === 'forward_to_provider') {
+      const transferCount = ticket.reassignment_count || 0
+      if (transferCount >= MAX_TRANSFERS) {
+        if (!isSiteAdmin || !admin_override) {
+          return NextResponse.json(
+            {
+              error: 'Transfer limit reached',
+              message: `This referral has already been transferred ${transferCount} time(s). Maximum ${MAX_TRANSFERS} transfers allowed. An admin must handle further transfers.`,
+              reassignment_count: transferCount,
+              requires_admin: true,
+            },
+            { status: 422 }
+          )
+        }
+      }
+    }
+
     // Prepare previous state for audit trail
     const previousState = {
       provider_id: ticket.provider_id,
@@ -96,7 +118,7 @@ export async function POST(
           forwarded_from_provider_id: ticket.provider_id,
           reassignment_count: ticket.reassignment_count + 1,
           last_reassigned_at: new Date().toISOString(),
-          status: new_status || ticket.status,
+          status: 'transferred_another_provider',
           updated_at: new Date().toISOString(),
         })
         .eq('id', ticketId)
@@ -123,6 +145,7 @@ export async function POST(
         p_new_state: {
           provider_id: null,
           assigned_to: null,
+          status: 'transferred_another_provider',
           forwarded_from_provider_id: ticket.provider_id,
         },
         p_reason: reason,
@@ -132,7 +155,6 @@ export async function POST(
 
       // Send notification to site admins
       void (async () => {
-        // Fetch user's full_name for notification
         const { data: userProfile } = await supabase
           .from('users')
           .select('full_name')
@@ -151,7 +173,7 @@ export async function POST(
         })
       })()
 
-      // Fire webhook (prefer provider tenant_id)
+      // Fire webhook
       void (async () => {
         const { sendWebhookEvent } = await import('@/lib/utils/webhooks')
         let webhookTenantId: string | null = null
@@ -182,7 +204,7 @@ export async function POST(
         }
       })()
     } else {
-      // Forward to provider: assign to target's default handler
+      // Forward to provider: transfer to target provider
       if (!target_provider_id) {
         return NextResponse.json(
           { error: 'target_provider_id required' },
@@ -198,6 +220,7 @@ export async function POST(
         .eq('is_default_referral_handler', true)
         .maybeSingle()
 
+      // Auto-set status to transferred_pending for the new provider
       const { data, error } = await serviceClient
         .from('linksy_tickets')
         .update({
@@ -206,8 +229,8 @@ export async function POST(
           assigned_at: new Date().toISOString(),
           reassignment_count: ticket.reassignment_count + 1,
           last_reassigned_at: new Date().toISOString(),
-          forwarded_from_provider_id: null, // Clear if previously forwarded
-          status: new_status || ticket.status,
+          forwarded_from_provider_id: ticket.provider_id,
+          status: 'transferred_pending',
           updated_at: new Date().toISOString(),
         })
         .eq('id', ticketId)
@@ -237,19 +260,22 @@ export async function POST(
         p_new_state: {
           provider_id: target_provider_id,
           assigned_to: defaultHandler?.user_id || null,
+          status: 'transferred_pending',
+          forwarded_from_provider_id: ticket.provider_id,
         },
         p_reason: reason,
         p_notes: notes || null,
         p_metadata: {
           action: 'forward_to_provider',
           target_provider_id,
+          transfer_number: ticket.reassignment_count + 1,
+          admin_override: admin_override || false,
         },
       })
 
       // Send notification to new assignee
       if (defaultHandler?.user_id) {
         void (async () => {
-          // Fetch user's full_name for notification
           const { data: userProfile } = await supabase
             .from('users')
             .select('full_name')
@@ -270,7 +296,7 @@ export async function POST(
         })()
       }
 
-      // Fire webhook (prefer provider tenant_id)
+      // Fire webhook
       void (async () => {
         const { sendWebhookEvent } = await import('@/lib/utils/webhooks')
         let webhookTenantId: string | null = null
@@ -292,6 +318,7 @@ export async function POST(
               target_provider_id,
               forwarded_by: user.id,
               reason,
+              transfer_number: ticket.reassignment_count + 1,
             },
           })
         } else {

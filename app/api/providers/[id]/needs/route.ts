@@ -3,6 +3,35 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/middleware/auth'
 
 /**
+ * Verify the caller is a site admin, tenant admin, or a contact of this provider.
+ * Returns null if authorized, or a NextResponse error if not.
+ */
+async function requireProviderAccess(
+  auth: { user: { id: string }; isSiteAdmin: boolean; isTenantAdmin: boolean },
+  providerId: string
+): Promise<NextResponse | null> {
+  if (auth.isSiteAdmin || auth.isTenantAdmin) return null
+
+  const supabase = await createServiceClient()
+  const { data: contact } = await supabase
+    .from('linksy_provider_contacts')
+    .select('id')
+    .eq('provider_id', providerId)
+    .eq('user_id', auth.user.id)
+    .eq('status', 'active')
+    .maybeSingle()
+
+  if (!contact) {
+    return NextResponse.json(
+      { error: 'Forbidden — you must be a contact of this provider to manage its services' },
+      { status: 403 }
+    )
+  }
+
+  return null
+}
+
+/**
  * POST /api/providers/[id]/needs
  * Add a need to a provider
  */
@@ -14,6 +43,10 @@ export async function POST(
   if (authError) return authError
 
   const { id: providerId } = params
+
+  const accessError = await requireProviderAccess(auth, providerId)
+  if (accessError) return accessError
+
   const body = await request.json()
   const { need_id, source = 'manual', is_confirmed = true } = body
 
@@ -57,6 +90,10 @@ export async function DELETE(
   if (authError) return authError
 
   const { id: providerId } = params
+
+  const accessError = await requireProviderAccess(auth, providerId)
+  if (accessError) return accessError
+
   const { searchParams } = new URL(request.url)
   const need_id = searchParams.get('need_id')
 

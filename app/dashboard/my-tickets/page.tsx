@@ -21,6 +21,7 @@ const ticketStatusLabels: Record<TicketStatus, string> = {
   unable_to_assist: 'Unable to Assist',
   client_unresponsive: 'Unresponsive',
   transferred_another_provider: 'Transferred',
+  transferred_pending: 'Transferred Pending',
 }
 
 export default function MyTicketsPage() {

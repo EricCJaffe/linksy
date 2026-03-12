@@ -67,6 +67,7 @@ const statusLabels: Record<string, string> = {
   unable_to_assist: 'Unable to Assist',
   client_unresponsive: 'Client Unresponsive',
   transferred_another_provider: 'Transferred',
+  transferred_pending: 'Transferred Pending',
 }
 
 const statusColors: Record<string, string> = {
@@ -79,6 +80,7 @@ const statusColors: Record<string, string> = {
   unable_to_assist: 'bg-red-400',
   client_unresponsive: 'bg-gray-400',
   transferred_another_provider: 'bg-gray-500',
+  transferred_pending: 'bg-blue-400',
 }
 
 function BarChart({ items, colorClass = 'bg-primary' }: {

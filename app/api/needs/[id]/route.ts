@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { requireTenantAdmin } from '@/lib/middleware/auth'
+import { requireSiteAdmin } from '@/lib/middleware/auth'
 
 export async function PATCH(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const { data: auth, error } = await requireTenantAdmin()
+  const { data: auth, error } = await requireSiteAdmin()
   if (error) return error
 
   const { id } = params
@@ -43,7 +43,7 @@ export async function DELETE(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const { data: auth, error } = await requireTenantAdmin()
+  const { data: auth, error } = await requireSiteAdmin()
   if (error) return error
 
   const { id } = params

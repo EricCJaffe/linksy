@@ -46,6 +46,7 @@ export type TicketStatus =
   | 'unable_to_assist'
   | 'client_unresponsive'
   | 'transferred_another_provider'
+  | 'transferred_pending'
 export type ProviderStatusEnum = 'active' | 'paused' | 'inactive' | 'pending_approval'
 export type ProviderSource = 'CC' | 'UW' | 'IW' | 'Self-Registered' | 'Other'
 export type ApplicationStatus = 'pending' | 'approved' | 'rejected'

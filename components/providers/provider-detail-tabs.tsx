@@ -96,6 +96,7 @@ const ticketStatusLabels: Record<TicketStatus, string> = {
   unable_to_assist: 'Unable to Assist',
   client_unresponsive: 'Unresponsive',
   transferred_another_provider: 'Transferred',
+  transferred_pending: 'Transferred Pending',
 }
 
 const ticketStatusBadgeClass: Record<TicketStatus, string> = {
@@ -108,6 +109,7 @@ const ticketStatusBadgeClass: Record<TicketStatus, string> = {
   unable_to_assist: 'border-red-200 bg-red-50 text-red-700',
   client_unresponsive: 'border-violet-200 bg-violet-50 text-violet-700',
   transferred_another_provider: 'border-gray-200 bg-gray-50 text-gray-700',
+  transferred_pending: 'border-blue-200 bg-blue-50 text-blue-700',
 }
 
 const emptyLocationForm = {

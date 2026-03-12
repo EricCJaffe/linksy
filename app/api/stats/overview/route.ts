@@ -66,7 +66,7 @@ export async function GET(request: Request) {
 
   // Process ticket stats
   const totalTickets = ticketsData?.length || 0
-  const openTickets = ticketsData?.filter(t => ['pending', 'in_process'].includes(t.status)).length || 0
+  const openTickets = ticketsData?.filter(t => ['pending', 'in_process', 'transferred_pending'].includes(t.status)).length || 0
   const closedTickets = ticketsData?.filter(t =>
     ['customer_need_addressed', 'unable_to_assist', 'client_unresponsive',
      'wrong_organization_referred', 'outside_of_scope', 'client_not_eligible',

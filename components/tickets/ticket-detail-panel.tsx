@@ -39,6 +39,7 @@ const ticketStatusLabels: Record<TicketStatus, string> = {
   unable_to_assist: 'Unable to Assist',
   client_unresponsive: 'Unresponsive',
   transferred_another_provider: 'Transferred',
+  transferred_pending: 'Transferred Pending',
 }
 
 const ticketStatusVariant: Record<TicketStatus, string> = {
@@ -51,6 +52,7 @@ const ticketStatusVariant: Record<TicketStatus, string> = {
   unable_to_assist: 'destructive',
   client_unresponsive: 'secondary',
   transferred_another_provider: 'secondary',
+  transferred_pending: 'default',
 }
 
 const ticketStatusClass: Record<string, string> = {
@@ -58,6 +60,7 @@ const ticketStatusClass: Record<string, string> = {
   customer_need_addressed: 'border-green-500 text-green-700 bg-green-50',
   wrong_organization_referred: 'border-orange-500 text-orange-700 bg-orange-50',
   transferred_another_provider: 'border-gray-500 text-gray-700 bg-gray-50',
+  transferred_pending: 'border-blue-500 text-blue-700 bg-blue-50',
 }
 
 function StatusBadge({ status }: { status: TicketStatus }) {
@@ -388,6 +391,8 @@ export function TicketDetailPanel({ ticket }: TicketDetailPanelProps) {
       <ForwardTicketDialog
         ticketId={ticket.id}
         ticketNumber={ticket.ticket_number}
+        reassignmentCount={ticket.reassignment_count}
+        isSiteAdmin={isSiteAdmin}
         open={showForwardDialog}
         onOpenChange={setShowForwardDialog}
       />

@@ -40,7 +40,7 @@ export async function GET(request: Request) {
 
   if (status && status !== 'all') {
     if (status === 'open') {
-      query = query.in('status', ['pending', 'in_process'])
+      query = query.in('status', ['pending', 'in_process', 'transferred_pending'])
     } else if (status === 'closed') {
       query = query.in('status', [
         'customer_need_addressed',

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
-import { requireAuth, requireTenantAdmin } from '@/lib/middleware/auth'
+import { requireAuth, requireSiteAdmin } from '@/lib/middleware/auth'
 
 export async function GET() {
   const { data: auth, error } = await requireAuth()
@@ -36,7 +36,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const { data: auth, error } = await requireTenantAdmin()
+  const { data: auth, error } = await requireSiteAdmin()
   if (error) return error
 
   const body = await request.json()

@@ -31,6 +31,7 @@ const STATUS_LABELS: Record<string, string> = {
   unable_to_assist: 'Unable to Assist',
   client_unresponsive: 'Unresponsive',
   transferred_another_provider: 'Transferred',
+  transferred_pending: 'Transferred Pending',
 }
 
 interface DuplicateTicket {

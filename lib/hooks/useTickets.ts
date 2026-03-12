@@ -160,6 +160,7 @@ export function useForwardTicket() {
       reason,
       notes,
       new_status,
+      admin_override,
     }: {
       ticketId: string
       action: 'forward_to_admin' | 'forward_to_provider'
@@ -167,11 +168,12 @@ export function useForwardTicket() {
       reason: 'unable_to_assist' | 'wrong_org' | 'capacity' | 'other'
       notes?: string
       new_status?: string
+      admin_override?: boolean
     }) => {
       const res = await fetch(`/api/tickets/${ticketId}/forward`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, target_provider_id, reason, notes, new_status }),
+        body: JSON.stringify({ action, target_provider_id, reason, notes, new_status, admin_override }),
       })
       if (!res.ok) {
         const error = await res.json()
