@@ -287,7 +287,7 @@ export interface Ticket {
   created_at: string
   updated_at: string
   need?: Need
-  provider?: { name: string }
+  provider?: { name: string; phone?: string | null }
   comments?: TicketComment[]
 }
 
