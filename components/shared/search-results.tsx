@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 
 export interface SearchResult {
   id: string
-  type: 'user' | 'module' | 'setting' | 'file' | 'location' | 'ticket' | 'contact'
+  type: 'user' | 'module' | 'setting' | 'file' | 'location' | 'ticket' | 'contact' | 'provider'
   title: string
   subtitle: string
   description: string
@@ -19,6 +19,7 @@ export interface SearchResult {
 
 interface SearchResultsProps {
   results: {
+    providers?: SearchResult[]
     users?: SearchResult[]
     modules?: SearchResult[]
     settings?: SearchResult[]
@@ -45,6 +46,7 @@ const ICON_MAP = {
 }
 
 const TYPE_BADGE_STYLES: Record<string, string> = {
+  provider: 'bg-indigo-100 text-indigo-800 border-indigo-200',
   user: 'bg-blue-100 text-blue-800 border-blue-200',
   module: 'bg-purple-100 text-purple-800 border-purple-200',
   setting: 'bg-gray-100 text-gray-800 border-gray-200',
@@ -53,6 +55,7 @@ const TYPE_BADGE_STYLES: Record<string, string> = {
 }
 
 const TYPE_LABELS: Record<string, string> = {
+  provider: 'Provider',
   user: 'User',
   module: 'Module',
   setting: 'Setting',
@@ -91,6 +94,21 @@ export function SearchResults({
   const allResults: SearchResult[] = []
   const groups: { label: string; results: SearchResult[] }[] = []
 
+  if (results.providers && results.providers.length > 0) {
+    allResults.push(...results.providers)
+    groups.push({ label: 'Providers', results: results.providers })
+  }
+
+  if (results.contacts && results.contacts.length > 0) {
+    allResults.push(...results.contacts)
+    groups.push({ label: 'Contacts', results: results.contacts })
+  }
+
+  if (results.tickets && results.tickets.length > 0) {
+    allResults.push(...results.tickets)
+    groups.push({ label: 'Referrals', results: results.tickets })
+  }
+
   if (results.users && results.users.length > 0) {
     allResults.push(...results.users)
     groups.push({ label: 'Users', results: results.users })
@@ -104,16 +122,6 @@ export function SearchResults({
   if (results.settings && results.settings.length > 0) {
     allResults.push(...results.settings)
     groups.push({ label: 'Settings', results: results.settings })
-  }
-
-  if (results.tickets && results.tickets.length > 0) {
-    allResults.push(...results.tickets)
-    groups.push({ label: 'Referrals', results: results.tickets })
-  }
-
-  if (results.contacts && results.contacts.length > 0) {
-    allResults.push(...results.contacts)
-    groups.push({ label: 'Contacts', results: results.contacts })
   }
 
   const handleSelect = (result: SearchResult) => {
