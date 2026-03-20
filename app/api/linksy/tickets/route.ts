@@ -35,6 +35,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Provider is required' }, { status: 400 })
     }
 
+    if (!need_id) {
+      return NextResponse.json({ error: 'A service selection is required' }, { status: 400 })
+    }
+
     if (!client_phone && !client_email) {
       return NextResponse.json(
         { error: 'Please provide either a phone number or email address' },
@@ -197,7 +201,7 @@ export async function POST(request: Request) {
       .insert({
         site_id: SITE_ID,
         provider_id,
-        need_id: need_id || null,
+        need_id,
         ticket_number: ticketNumber,
         client_name: client_name || null,
         client_phone: client_phone || null,
@@ -244,7 +248,7 @@ export async function POST(request: Request) {
           status: 'pending',
           source: 'public_search',
           provider_id,
-          need_id: need_id || null,
+          need_id,
           client_name: client_name || null,
           created_at: new Date().toISOString(),
         },
