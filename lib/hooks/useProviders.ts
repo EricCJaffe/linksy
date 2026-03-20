@@ -12,6 +12,8 @@ function buildProviderParams(filters: ProviderFilters): string {
   if (filters.organization_type && filters.organization_type !== 'all') params.set('organization_type', filters.organization_type)
   if (filters.source && filters.source !== 'all') params.set('source', filters.source)
   if (filters.zip) params.set('zip', filters.zip)
+  if (filters.date_from) params.set('date_from', filters.date_from)
+  if (filters.date_to) params.set('date_to', filters.date_to)
   if (filters.limit) params.set('limit', String(filters.limit))
   if (filters.offset) params.set('offset', String(filters.offset))
   return params.toString()

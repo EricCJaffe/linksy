@@ -13,6 +13,7 @@ function buildTicketParams(filters: TicketFilters): string {
   if (filters.date_to) params.set('date_to', filters.date_to)
   if (filters.client_email) params.set('client_email', filters.client_email)
   if (filters.client_phone) params.set('client_phone', filters.client_phone)
+  if (filters.zip) params.set('zip', filters.zip)
   if (filters.limit) params.set('limit', String(filters.limit))
   if (filters.offset) params.set('offset', String(filters.offset))
   return params.toString()

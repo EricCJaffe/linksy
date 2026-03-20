@@ -21,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Search, ChevronLeft, ChevronRight, Users, ExternalLink, Download, ArrowUpDown } from 'lucide-react'
+import { Search, ChevronLeft, ChevronRight, Users, ExternalLink, Download, ArrowUpDown, CalendarDays, X, MapPin } from 'lucide-react'
 import { convertToCSV, downloadCSV } from '@/lib/utils/csv'
 
 const LIMIT = 50
@@ -65,6 +65,9 @@ export default function ContactsPage() {
   const [statusFilter, setStatusFilter] = useState('active')
   const [providerFilter, setProviderFilter] = useState('')
   const [roleFilter, setRoleFilter] = useState('')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [zipFilter, setZipFilter] = useState('')
   const [offset, setOffset] = useState(0)
   const [providers, setProviders] = useState<Array<{ id: string; name: string }>>([])
   const [sortField, setSortField] = useState<SortField>('name')
@@ -93,6 +96,9 @@ export default function ContactsPage() {
       if (search) params.set('q', search)
       if (providerFilter) params.set('provider_id', providerFilter)
       if (roleFilter) params.set('role', roleFilter)
+      if (dateFrom) params.set('date_from', dateFrom)
+      if (dateTo) params.set('date_to', dateTo)
+      if (zipFilter) params.set('zip', zipFilter)
 
       const res = await fetch(`/api/contacts?${params.toString()}`)
       if (res.ok) {
@@ -103,7 +109,7 @@ export default function ContactsPage() {
     } finally {
       setLoading(false)
     }
-  }, [offset, search, statusFilter, providerFilter, roleFilter])
+  }, [offset, search, statusFilter, providerFilter, roleFilter, dateFrom, dateTo, zipFilter])
 
   useEffect(() => {
     fetchContacts()
@@ -262,6 +268,57 @@ export default function ContactsPage() {
                 </SelectContent>
               </Select>
             </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 mt-3">
+            <div className="relative">
+              <MapPin className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Filter by zip..."
+                value={zipFilter}
+                onChange={(e) => {
+                  setZipFilter(e.target.value)
+                  setOffset(0)
+                }}
+                className="w-[140px] pl-9"
+                maxLength={10}
+              />
+            </div>
+            <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
+            <Input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => {
+                setDateFrom(e.target.value)
+                setOffset(0)
+              }}
+              className="w-[150px]"
+              aria-label="From date"
+            />
+            <span className="text-sm text-muted-foreground">to</span>
+            <Input
+              type="date"
+              value={dateTo}
+              onChange={(e) => {
+                setDateTo(e.target.value)
+                setOffset(0)
+              }}
+              className="w-[150px]"
+              aria-label="To date"
+            />
+            {(dateFrom || dateTo) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setDateFrom('')
+                  setDateTo('')
+                  setOffset(0)
+                }}
+              >
+                <X className="h-4 w-4 mr-1" />
+                Clear dates
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>

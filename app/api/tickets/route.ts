@@ -25,6 +25,7 @@ export async function GET(request: Request) {
   const dateTo = searchParams.get('date_to') || ''
   const clientEmail = searchParams.get('client_email') || ''
   const clientPhone = searchParams.get('client_phone') || ''
+  const zip = searchParams.get('zip') || ''
   const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10), 100)
   const offset = parseInt(searchParams.get('offset') || '0', 10)
 
@@ -105,6 +106,22 @@ export async function GET(request: Request) {
 
   if (clientPhone) {
     query = query.ilike('client_phone', `%${clientPhone}%`)
+  }
+
+  // Zip code filter: find tickets for providers with matching location postal_code
+  if (zip) {
+    const { data: zipLocations } = await supabase
+      .from('linksy_locations')
+      .select('provider_id')
+      .eq('postal_code', zip)
+    const zipProviderIds = (zipLocations || []).map((l: any) => l.provider_id).filter(Boolean)
+    if (zipProviderIds.length === 0) {
+      return NextResponse.json({
+        tickets: [],
+        pagination: { total: 0, hasMore: false, nextOffset: null },
+      })
+    }
+    query = query.in('provider_id', zipProviderIds)
   }
 
   const { data: tickets, count, error: queryError } = await query

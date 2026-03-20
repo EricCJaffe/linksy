@@ -27,7 +27,7 @@ import {
   TableCell,
 } from '@/components/ui/table'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Globe, Search, Download, CheckSquare, CalendarDays, X, ArrowUpDown, Phone } from 'lucide-react'
+import { Globe, Search, Download, CheckSquare, CalendarDays, X, ArrowUpDown, Phone, MapPin } from 'lucide-react'
 import type { TicketFilters, TicketStatus } from '@/lib/types/linksy'
 
 type SortField = 'ticket_number' | 'client' | 'provider' | 'status' | 'date'
@@ -83,6 +83,7 @@ export default function TicketsPage() {
     const dateToParam = searchParams.get('date_to')
     const clientEmailParam = searchParams.get('client_email')
     const clientPhoneParam = searchParams.get('client_phone')
+    const zipParam = searchParams.get('zip')
     return {
       status: (statusParam as TicketStatus | 'all') || 'all',
       q: qParam || undefined,
@@ -92,6 +93,7 @@ export default function TicketsPage() {
       date_to: dateToParam || undefined,
       client_email: clientEmailParam || undefined,
       client_phone: clientPhoneParam || undefined,
+      zip: zipParam || undefined,
       limit: LIMIT,
       offset: 0,
     }
@@ -167,6 +169,7 @@ export default function TicketsPage() {
       if (next.date_to) params.set('date_to', next.date_to)
       if (next.client_email) params.set('client_email', next.client_email)
       if (next.client_phone) params.set('client_phone', next.client_phone)
+      if (next.zip) params.set('zip', next.zip)
       const paramStr = params.toString()
       router.replace(paramStr ? `?${paramStr}` : '/dashboard/tickets', { scroll: false })
       return next
@@ -384,7 +387,7 @@ export default function TicketsPage() {
         </Select>
       </div>
 
-      {/* Email/Phone/Date filters */}
+      {/* Email/Phone/Zip/Date filters */}
       <div className="flex flex-wrap items-center gap-3">
         <Input
           placeholder="Filter by email..."
@@ -398,6 +401,16 @@ export default function TicketsPage() {
           onChange={(e) => handleFilterChange({ client_phone: e.target.value || undefined })}
           className="w-[160px]"
         />
+        <div className="relative">
+          <MapPin className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Filter by zip..."
+            value={filters.zip || ''}
+            onChange={(e) => handleFilterChange({ zip: e.target.value || undefined })}
+            className="w-[140px] pl-9"
+            maxLength={10}
+          />
+        </div>
         <CalendarDays className="h-4 w-4 text-muted-foreground" />
         <Input
           type="date"

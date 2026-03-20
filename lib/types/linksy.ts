@@ -365,6 +365,7 @@ export interface TicketFilters {
   date_to?: string
   client_email?: string
   client_phone?: string
+  zip?: string
   limit?: number
   offset?: number
 }
@@ -606,6 +607,8 @@ export interface ProviderFilters {
   organization_type?: 'all' | 'parent' | 'child' | 'standalone'
   source?: ProviderSource | 'all'
   zip?: string
+  date_from?: string
+  date_to?: string
   limit?: number
   offset?: number
 }

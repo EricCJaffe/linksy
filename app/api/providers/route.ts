@@ -14,6 +14,8 @@ export async function GET(request: Request) {
   const organizationType = searchParams.get('organization_type') || 'all'
   const source = searchParams.get('source') || 'all'
   const zip = searchParams.get('zip') || ''
+  const dateFrom = searchParams.get('date_from') || ''
+  const dateTo = searchParams.get('date_to') || ''
   const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10), 100)
   const offset = parseInt(searchParams.get('offset') || '0', 10)
 
@@ -85,6 +87,14 @@ export async function GET(request: Request) {
   } else if (organizationType === 'standalone') {
     // Standalone: no parent and no children (we'll filter this after the query)
     query = query.is('parent_provider_id', null)
+  }
+
+  // Date range filter
+  if (dateFrom) {
+    query = query.gte('created_at', dateFrom)
+  }
+  if (dateTo) {
+    query = query.lte('created_at', dateTo + 'T23:59:59.999Z')
   }
 
   // Zip code filter: find providers with a matching location postal_code

@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { AlertCircle, Calendar, CheckCircle, XCircle, LayoutList, CalendarDays } from 'lucide-react'
+import { AlertCircle, Calendar, CheckCircle, XCircle, LayoutList, CalendarDays, X, Search, MapPin } from 'lucide-react'
 import { useAdminEvents, useApproveEvent, useRejectEvent } from '@/lib/hooks/useAdminEvents'
 import { EventCalendar, formatRecurrence } from '@/components/providers/event-calendar'
 import { RefreshCw } from 'lucide-react'
@@ -14,6 +15,10 @@ import { RefreshCw } from 'lucide-react'
 export default function AdminEventsPage() {
   const [statusFilter, setStatusFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending')
   const [calendarView, setCalendarView] = useState(false)
+  const [search, setSearch] = useState('')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [zipFilter, setZipFilter] = useState('')
   const { data: events, isLoading, error } = useAdminEvents(statusFilter)
   const { data: allEvents } = useAdminEvents('all')
   const approveEvent = useApproveEvent()
@@ -25,6 +30,26 @@ export default function AdminEventsPage() {
     rejected: allEvents?.filter(e => e.status === 'rejected').length ?? 0,
     all: allEvents?.length ?? 0,
   }
+
+  const filteredEvents = useMemo(() => {
+    if (!events) return []
+    return events.filter((event) => {
+      const q = search.toLowerCase()
+      if (q) {
+        const title = event.title?.toLowerCase() || ''
+        const provider = event.provider?.name?.toLowerCase() || ''
+        const desc = event.description?.toLowerCase() || ''
+        if (!title.includes(q) && !provider.includes(q) && !desc.includes(q)) return false
+      }
+      if (dateFrom && event.event_date < dateFrom) return false
+      if (dateTo && event.event_date > dateTo + 'T23:59:59.999Z') return false
+      if (zipFilter) {
+        const address = event.address?.toLowerCase() || ''
+        if (!address.includes(zipFilter.toLowerCase())) return false
+      }
+      return true
+    })
+  }, [events, search, dateFrom, dateTo, zipFilter])
 
   const handleApprove = async (eventId: string) => {
     await approveEvent.mutateAsync(eventId)
@@ -116,23 +141,75 @@ export default function AdminEventsPage() {
         </div>
       </div>
 
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search title, provider..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 w-[220px]"
+          />
+        </div>
+        <div className="relative">
+          <MapPin className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Filter by zip..."
+            value={zipFilter}
+            onChange={(e) => setZipFilter(e.target.value)}
+            className="w-[140px] pl-9"
+            maxLength={10}
+          />
+        </div>
+        <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
+        <Input
+          type="date"
+          value={dateFrom}
+          onChange={(e) => setDateFrom(e.target.value)}
+          className="w-[150px]"
+          aria-label="From date"
+        />
+        <span className="text-sm text-muted-foreground">to</span>
+        <Input
+          type="date"
+          value={dateTo}
+          onChange={(e) => setDateTo(e.target.value)}
+          className="w-[150px]"
+          aria-label="To date"
+        />
+        {(dateFrom || dateTo) && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setDateFrom('')
+              setDateTo('')
+            }}
+          >
+            <X className="h-4 w-4 mr-1" />
+            Clear dates
+          </Button>
+        )}
+      </div>
+
       {isLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} className="h-32 w-full" />
           ))}
         </div>
-      ) : !events || events.length === 0 ? (
+      ) : !filteredEvents || filteredEvents.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
             No {statusFilter === 'all' ? '' : statusFilter} events found.
           </CardContent>
         </Card>
       ) : calendarView ? (
-        <EventCalendar events={events} showProvider />
+        <EventCalendar events={filteredEvents} showProvider />
       ) : (
         <div className="space-y-3">
-          {events.map((event) => {
+          {filteredEvents.map((event) => {
             const recurrenceLabel = formatRecurrence(event.recurrence_rule)
             return (
               <Card key={event.id}>
