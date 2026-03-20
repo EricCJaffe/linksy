@@ -595,6 +595,8 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
       project_status: formData.project_status,
       sector: formData.sector,
       is_active: formData.is_active,
+      provider_status: formData.provider_status,
+      accepting_referrals: formData.accepting_referrals,
       service_zip_codes: formData.service_zip_codes.length > 0 ? formData.service_zip_codes : null,
     }
 
@@ -1038,6 +1040,32 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
                     <SelectItem value="na">N/A</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="provider_status">Provider Status</Label>
+                <Select
+                  value={formData.provider_status}
+                  onValueChange={(value) => setFormData({ ...formData, provider_status: value as any })}
+                  disabled={!isEditing}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="paused">Paused</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="accepting_referrals">Accepting Referrals</Label>
+                <Switch
+                  id="accepting_referrals"
+                  checked={formData.accepting_referrals}
+                  onCheckedChange={(checked) => setFormData({ ...formData, accepting_referrals: checked })}
+                  disabled={!isEditing}
+                />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="md:col-span-2 space-y-2">

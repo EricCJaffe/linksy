@@ -85,14 +85,36 @@ export async function POST(request: Request) {
       }
     }
 
-    // Check if provider is frozen
+    // Check if provider is eligible to receive referrals
     if (!isTestReferral(client_name)) {
       const { data: providerCheck } = await supabase
         .from('linksy_providers')
-        .select('is_frozen')
+        .select('is_frozen, provider_status, accepting_referrals')
         .eq('id', provider_id)
         .single()
-      if (providerCheck?.is_frozen) {
+
+      if (!providerCheck) {
+        return NextResponse.json(
+          { error: 'Provider not found.' },
+          { status: 404 }
+        )
+      }
+
+      if (providerCheck.provider_status !== 'active') {
+        return NextResponse.json(
+          { error: 'This provider is not currently active.' },
+          { status: 400 }
+        )
+      }
+
+      if (!providerCheck.accepting_referrals) {
+        return NextResponse.json(
+          { error: 'This provider is not currently accepting referrals.' },
+          { status: 400 }
+        )
+      }
+
+      if (providerCheck.is_frozen) {
         return NextResponse.json(
           { error: 'This provider is currently not accepting referrals.' },
           { status: 400 }
