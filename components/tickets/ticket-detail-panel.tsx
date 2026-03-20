@@ -215,7 +215,7 @@ export function TicketDetailPanel({ ticket }: TicketDetailPanelProps) {
               <span>{ticket.provider?.name || '-'}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Need</span>
+              <span className="text-muted-foreground">Service</span>
               <span>{ticket.need?.name || '-'}</span>
             </div>
             <div className="flex justify-between">

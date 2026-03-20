@@ -504,14 +504,14 @@ export default function ProviderOnboardingPage() {
             </section>
           )}
 
-          {/* Step 3: Services / Needs */}
+          {/* Step 3: Services */}
           {step === 3 && (
             <section className="space-y-4">
               <h2 className="text-base font-semibold text-gray-900 mb-4 pb-2 border-b">
-                Services &amp; Needs
+                Services
               </h2>
               <p className="text-sm text-gray-500 mb-4">
-                Select all the services or needs your organization addresses:
+                Select all the services your organization provides:
               </p>
 
               {categories.length === 0 && (

@@ -478,11 +478,11 @@ export default function NewProviderPage() {
             </div>
           )}
 
-          {/* Step 3: Services/Needs */}
+          {/* Step 3: Services */}
           {currentStep === 3 && (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Select all the services or needs this provider addresses:
+                Select all the services this provider offers:
               </p>
               {categories?.map((category) => (
                 <div key={category.id} className="space-y-2">

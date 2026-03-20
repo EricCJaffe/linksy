@@ -30,7 +30,7 @@ export const DEFAULT_TERMINOLOGY: TerminologyDefinition[] = [
     key: 'client',
     defaultSingular: 'Client',
     defaultPlural: 'Clients',
-    description: 'External customers or companies you work with',
+    description: 'External clients or companies you work with',
     usedIn: ['CRM Features', 'Project Management', 'Reporting'],
   },
 ]

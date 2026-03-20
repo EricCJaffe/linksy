@@ -28,7 +28,7 @@ export const EMAIL_TEMPLATE_DEFINITIONS: EmailTemplateDefinition[] = [
   {
     key: 'ticket_new_assignment',
     name: 'New Referral Assigned',
-    description: 'Sent to default referral handler when a new referral ticket is assigned.',
+    description: 'Sent to default referral handler when a new referral is assigned.',
     placeholders: [
       'app_name',
       'to',
@@ -44,7 +44,7 @@ export const EMAIL_TEMPLATE_DEFINITIONS: EmailTemplateDefinition[] = [
   {
     key: 'ticket_status_update',
     name: 'Referral Status Update',
-    description: 'Sent to the client when a referral ticket status changes.',
+    description: 'Sent to the client when a referral status changes.',
     placeholders: [
       'app_name',
       'to',
@@ -85,8 +85,8 @@ export const EMAIL_TEMPLATE_DEFINITIONS: EmailTemplateDefinition[] = [
   },
   {
     key: 'ticket_forwarded_to_admin',
-    name: 'Ticket Forwarded to Admin Pool',
-    description: 'Sent to site admins when a provider forwards a ticket to the admin pool.',
+    name: 'Referral Forwarded to Admin Pool',
+    description: 'Sent to site admins when a provider forwards a referral to the admin pool.',
     placeholders: [
       'app_name',
       'ticket_number',
@@ -98,8 +98,8 @@ export const EMAIL_TEMPLATE_DEFINITIONS: EmailTemplateDefinition[] = [
   },
   {
     key: 'ticket_reassigned_to_provider',
-    name: 'Ticket Reassigned to Provider',
-    description: 'Sent to the assignee when a ticket is reassigned to a provider.',
+    name: 'Referral Reassigned to Provider',
+    description: 'Sent to the assignee when a referral is reassigned to a provider.',
     placeholders: [
       'app_name',
       'assignee_name',
@@ -114,8 +114,8 @@ export const EMAIL_TEMPLATE_DEFINITIONS: EmailTemplateDefinition[] = [
   },
   {
     key: 'ticket_assigned_internally',
-    name: 'Ticket Assigned Internally',
-    description: 'Sent to the assignee when a ticket is assigned internally within the same provider.',
+    name: 'Referral Assigned Internally',
+    description: 'Sent to the assignee when a referral is assigned internally within the same provider.',
     placeholders: [
       'app_name',
       'assignee_name',

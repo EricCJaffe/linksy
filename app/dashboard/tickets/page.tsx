@@ -480,7 +480,7 @@ export default function TicketsPage() {
               <SortableHeader field="client">Client</SortableHeader>
               <SortableHeader field="provider">Provider</SortableHeader>
               <TableHead>Phone</TableHead>
-              <TableHead>Need</TableHead>
+              <TableHead>Service</TableHead>
               <SortableHeader field="status">Status</SortableHeader>
               <SortableHeader field="date">Date</SortableHeader>
               <TableHead className="w-[170px]">Actions</TableHead>

@@ -87,8 +87,8 @@ export function ReassignTicketDialog({
       })
 
       toast({
-        title: 'Ticket reassigned',
-        description: `The ticket has been reassigned to ${selectedProvider?.name || 'the selected provider'}.`,
+        title: 'Referral reassigned',
+        description: `The referral has been reassigned to ${selectedProvider?.name || 'the selected provider'}.`,
       })
 
       onOpenChange(false)

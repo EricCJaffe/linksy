@@ -149,7 +149,7 @@ export function Sidebar() {
   const supportBadgeCount = supportOpenCount + supportInProgressCount
 
   // Filter out tabs for non-site-admins and provider users
-  // Only site admins should see the full provider directory and needs management
+  // Only site admins should see the full provider directory and services management
   // Provider contacts use the "Provider Portal" section instead
   const filteredMainNav = mainNavItems.filter((item) => {
     // Hide Providers tab if NOT a site admin
@@ -160,7 +160,7 @@ export function Sidebar() {
     if (item.href === '/dashboard/contacts' && !isSiteAdmin) {
       return false
     }
-    // Hide Needs tab if NOT a site admin
+    // Hide Services tab if NOT a site admin
     if (item.href === '/dashboard/needs' && !isSiteAdmin) {
       return false
     }

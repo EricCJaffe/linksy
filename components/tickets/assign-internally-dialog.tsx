@@ -72,8 +72,8 @@ export function AssignInternallyDialog({
       })
 
       toast({
-        title: 'Ticket assigned',
-        description: 'The ticket has been assigned to the selected contact.',
+        title: 'Referral assigned',
+        description: 'The referral has been assigned to the selected contact.',
       })
 
       onOpenChange(false)

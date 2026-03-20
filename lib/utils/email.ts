@@ -345,18 +345,18 @@ export async function sendNewTicketNotification({
     <h1 style="color:white;margin:0;font-size:24px">${appName}</h1>
   </div>
   <div style="background:#fff;padding:32px;border-radius:0 0 10px 10px;box-shadow:0 2px 4px rgba(0,0,0,0.1)">
-    <h2 style="color:#111;margin-top:0">New Referral Ticket Assigned</h2>
+    <h2 style="color:#111;margin-top:0">New Referral Assigned</h2>
     <p>Hi ${contactName},</p>
     <p>A new referral has been submitted to <strong>${providerName}</strong>.</p>
     <table style="border-collapse:collapse;width:100%;margin:16px 0">
-      <tr><td style="padding:8px 12px;background:#f3f4f6;font-weight:600;width:140px">Ticket #</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb">${ticketNumber}</td></tr>
+      <tr><td style="padding:8px 12px;background:#f3f4f6;font-weight:600;width:140px">Referral #</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb">${ticketNumber}</td></tr>
       <tr><td style="padding:8px 12px;background:#f3f4f6;font-weight:600">Client</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb">${safeClientName}</td></tr>
-      <tr><td style="padding:8px 12px;background:#f3f4f6;font-weight:600">Need</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb">${safeNeedName}</td></tr>
+      <tr><td style="padding:8px 12px;background:#f3f4f6;font-weight:600">Service</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb">${safeNeedName}</td></tr>
       <tr><td style="padding:8px 12px;background:#f3f4f6;font-weight:600;vertical-align:top">Description</td><td style="padding:8px 12px">${safeDescription}</td></tr>
       ${customFieldsHtml}
     </table>
     <div style="text-align:center;margin:28px 0">
-      <a href="${ticketUrl}" style="background:#2563eb;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:600;display:inline-block">View Ticket</a>
+      <a href="${ticketUrl}" style="background:#2563eb;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:600;display:inline-block">View Referral</a>
     </div>
     <p style="color:#6b7280;font-size:13px">You are receiving this because you are the default referral handler for ${providerName}.</p>
   </div>
@@ -365,7 +365,7 @@ export async function sendNewTicketNotification({
 
   const { subject, html, text } = await resolveEmailTemplate({
     templateKey: 'ticket_new_assignment',
-    defaultSubject: `New referral ticket #${ticketNumber} - ${providerName}`,
+    defaultSubject: `New referral #${ticketNumber} - ${providerName}`,
     defaultHtml,
     variables: {
       app_name: appName,
@@ -442,10 +442,10 @@ export async function sendTicketStatusNotification({
     <p>Your referral to <strong>${providerName}</strong> for <strong>${safeNeedName}</strong> has been updated.</p>
     <p style="font-size:20px;margin:24px 0">New status: <strong style="color:#2563eb">${label}</strong></p>
     <table style="border-collapse:collapse;width:100%;margin:16px 0">
-      <tr><td style="padding:8px 12px;background:#f3f4f6;font-weight:600;width:140px">Ticket #</td><td style="padding:8px 12px">${ticketNumber}</td></tr>
+      <tr><td style="padding:8px 12px;background:#f3f4f6;font-weight:600;width:140px">Referral #</td><td style="padding:8px 12px">${ticketNumber}</td></tr>
     </table>
     <p>If you have questions, please contact ${providerName} directly or reach out to the organization that submitted the referral on your behalf.</p>
-    <p style="color:#6b7280;font-size:13px">You are receiving this because you were listed as the client for referral ticket #${ticketNumber}.</p>
+    <p style="color:#6b7280;font-size:13px">You are receiving this because you were listed as the client for referral #${ticketNumber}.</p>
   </div>
 </body>
 </html>`.trim()
@@ -647,25 +647,25 @@ export async function sendTicketForwardedToAdminNotification({
     <h1 style="color:white;margin:0;font-size:24px">${appName}</h1>
   </div>
   <div style="background:#fff;padding:32px;border-radius:0 0 10px 10px;box-shadow:0 2px 4px rgba(0,0,0,0.1)">
-    <h2 style="color:#111;margin-top:0">⚠️ Ticket Forwarded to Admin Pool</h2>
-    <p>A provider has forwarded ticket <strong>#${ticket.ticket_number}</strong> to the admin pool for reassignment.</p>
+    <h2 style="color:#111;margin-top:0">⚠️ Referral Forwarded to Admin Pool</h2>
+    <p>A provider has forwarded referral <strong>#${ticket.ticket_number}</strong> to the admin pool for reassignment.</p>
     <table style="border-collapse:collapse;width:100%;margin:16px 0">
-      <tr><td style="padding:8px 12px;background:#f3f4f6;font-weight:600;width:140px">Ticket #</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb">${ticket.ticket_number}</td></tr>
+      <tr><td style="padding:8px 12px;background:#f3f4f6;font-weight:600;width:140px">Referral #</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb">${ticket.ticket_number}</td></tr>
       <tr><td style="padding:8px 12px;background:#f3f4f6;font-weight:600">Forwarded by</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb">${forwarderName}</td></tr>
       <tr><td style="padding:8px 12px;background:#f3f4f6;font-weight:600">Reason</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb">${reasonLabel}</td></tr>
       ${notes ? `<tr><td style="padding:8px 12px;background:#f3f4f6;font-weight:600;vertical-align:top">Notes</td><td style="padding:8px 12px">${notes}</td></tr>` : ''}
     </table>
     <div style="text-align:center;margin:28px 0">
-      <a href="${ticketUrl}" style="background:#dc2626;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:600;display:inline-block">Reassign Ticket</a>
+      <a href="${ticketUrl}" style="background:#dc2626;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:600;display:inline-block">Reassign Referral</a>
     </div>
-    <p style="color:#6b7280;font-size:13px">This ticket requires admin attention for reassignment to an appropriate provider.</p>
+    <p style="color:#6b7280;font-size:13px">This referral requires admin attention for reassignment to an appropriate provider.</p>
   </div>
 </body>
 </html>`.trim()
 
   const { subject, html, text } = await resolveEmailTemplate({
     templateKey: 'ticket_forwarded_to_admin',
-    defaultSubject: `Ticket #${ticket.ticket_number} forwarded for reassignment`,
+    defaultSubject: `Referral #${ticket.ticket_number} forwarded for reassignment`,
     defaultHtml,
     variables: {
       app_name: appName,
@@ -748,27 +748,27 @@ export async function sendTicketReassignedNotification({
     <h1 style="color:white;margin:0;font-size:24px">${appName}</h1>
   </div>
   <div style="background:#fff;padding:32px;border-radius:0 0 10px 10px;box-shadow:0 2px 4px rgba(0,0,0,0.1)">
-    <h2 style="color:#111;margin-top:0">Ticket Reassigned to ${providerName}</h2>
+    <h2 style="color:#111;margin-top:0">Referral Reassigned to ${providerName}</h2>
     <p>Hi ${assigneeName},</p>
-    <p>Ticket <strong>#${ticket.ticket_number}</strong> has been reassigned to ${providerName}.</p>
+    <p>Referral <strong>#${ticket.ticket_number}</strong> has been reassigned to ${providerName}.</p>
     <table style="border-collapse:collapse;width:100%;margin:16px 0">
-      <tr><td style="padding:8px 12px;background:#f3f4f6;font-weight:600;width:140px">Ticket #</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb">${ticket.ticket_number}</td></tr>
+      <tr><td style="padding:8px 12px;background:#f3f4f6;font-weight:600;width:140px">Referral #</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb">${ticket.ticket_number}</td></tr>
       <tr><td style="padding:8px 12px;background:#f3f4f6;font-weight:600">Client</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb">${ticket.client_name || 'Not provided'}</td></tr>
       <tr><td style="padding:8px 12px;background:#f3f4f6;font-weight:600">Reassigned by</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb">${reassignerName}</td></tr>
       <tr><td style="padding:8px 12px;background:#f3f4f6;font-weight:600">Reason</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb">${reasonLabel}</td></tr>
       ${notes ? `<tr><td style="padding:8px 12px;background:#f3f4f6;font-weight:600;vertical-align:top">Notes</td><td style="padding:8px 12px">${notes}</td></tr>` : ''}
     </table>
     <div style="text-align:center;margin:28px 0">
-      <a href="${ticketUrl}" style="background:#2563eb;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:600;display:inline-block">View Ticket</a>
+      <a href="${ticketUrl}" style="background:#2563eb;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:600;display:inline-block">View Referral</a>
     </div>
-    <p style="color:#6b7280;font-size:13px">You are receiving this because you have been assigned this ticket.</p>
+    <p style="color:#6b7280;font-size:13px">You are receiving this because you have been assigned this referral.</p>
   </div>
 </body>
 </html>`.trim()
 
   const { subject, html, text } = await resolveEmailTemplate({
     templateKey: 'ticket_reassigned_to_provider',
-    defaultSubject: `Ticket #${ticket.ticket_number} reassigned to ${providerName}`,
+    defaultSubject: `Referral #${ticket.ticket_number} reassigned to ${providerName}`,
     defaultHtml,
     variables: {
       app_name: appName,
@@ -835,26 +835,26 @@ export async function sendTicketAssignedInternallyNotification({
     <h1 style="color:white;margin:0;font-size:24px">${appName}</h1>
   </div>
   <div style="background:#fff;padding:32px;border-radius:0 0 10px 10px;box-shadow:0 2px 4px rgba(0,0,0,0.1)">
-    <h2 style="color:#111;margin-top:0">Ticket Assigned to You</h2>
+    <h2 style="color:#111;margin-top:0">Referral Assigned to You</h2>
     <p>Hi ${assigneeName},</p>
-    <p>Ticket <strong>#${ticket.ticket_number}</strong> has been assigned to you by ${assignerName}.</p>
+    <p>Referral <strong>#${ticket.ticket_number}</strong> has been assigned to you by ${assignerName}.</p>
     <table style="border-collapse:collapse;width:100%;margin:16px 0">
-      <tr><td style="padding:8px 12px;background:#f3f4f6;font-weight:600;width:140px">Ticket #</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb">${ticket.ticket_number}</td></tr>
+      <tr><td style="padding:8px 12px;background:#f3f4f6;font-weight:600;width:140px">Referral #</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb">${ticket.ticket_number}</td></tr>
       <tr><td style="padding:8px 12px;background:#f3f4f6;font-weight:600">Client</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb">${ticket.client_name || 'Not provided'}</td></tr>
       <tr><td style="padding:8px 12px;background:#f3f4f6;font-weight:600">Assigned by</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb">${assignerName}</td></tr>
       ${notes ? `<tr><td style="padding:8px 12px;background:#f3f4f6;font-weight:600;vertical-align:top">Notes</td><td style="padding:8px 12px">${notes}</td></tr>` : ''}
     </table>
     <div style="text-align:center;margin:28px 0">
-      <a href="${ticketUrl}" style="background:#2563eb;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:600;display:inline-block">View Ticket</a>
+      <a href="${ticketUrl}" style="background:#2563eb;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:600;display:inline-block">View Referral</a>
     </div>
-    <p style="color:#6b7280;font-size:13px">You are receiving this because this ticket has been assigned to you.</p>
+    <p style="color:#6b7280;font-size:13px">You are receiving this because this referral has been assigned to you.</p>
   </div>
 </body>
 </html>`.trim()
 
   const { subject, html, text } = await resolveEmailTemplate({
     templateKey: 'ticket_assigned_internally',
-    defaultSubject: `Ticket #${ticket.ticket_number} assigned to you`,
+    defaultSubject: `Referral #${ticket.ticket_number} assigned to you`,
     defaultHtml,
     variables: {
       app_name: appName,
