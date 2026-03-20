@@ -157,7 +157,7 @@ Core features that users and admins need on day one, plus remaining quality fixe
   - "Tickets" → "Referrals" (bulk actions, error messages, dialogs, aria labels)
   - "Need Addressed" → "Service Provided" (all 6 status label maps + report charts)
   - "Needs Addressed" → "Services Provided" (provider detail card title)
-  - "Forward Ticket" → "Forward Referral", "Reassign Ticket" → "Reassign Referral"
+  - "Forward Ticket" → "Transfer Referral", "Reassign Ticket" → "Reassign Referral"
   - "Ticket Actions/Info" → "Referral Actions/Info"
   - Landing page: "referral tickets" → "referrals"
 - [x] Applies to: frontend labels, exported reports, dropdown text. **Not** database column names. *(Remaining: email templates still use old terms — ties to 0.6.)*

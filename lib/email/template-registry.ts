@@ -85,8 +85,8 @@ export const EMAIL_TEMPLATE_DEFINITIONS: EmailTemplateDefinition[] = [
   },
   {
     key: 'ticket_forwarded_to_admin',
-    name: 'Referral Forwarded to Admin Pool',
-    description: 'Sent to site admins when a provider forwards a referral to the admin pool.',
+    name: 'Referral Transferred to Admin Pool',
+    description: 'Sent to site admins when a provider transfers a referral to the admin pool.',
     placeholders: [
       'app_name',
       'ticket_number',

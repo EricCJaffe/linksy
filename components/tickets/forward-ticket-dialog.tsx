@@ -89,7 +89,7 @@ export function ForwardTicketDialog({
       })
 
       toast({
-        title: action === 'forward_to_admin' ? 'Referral forwarded to admin' : 'Referral transferred',
+        title: action === 'forward_to_admin' ? 'Referral transferred to admin' : 'Referral transferred',
         description:
           action === 'forward_to_admin'
             ? 'The referral has been returned to the admin pool for reassignment.'
@@ -99,7 +99,7 @@ export function ForwardTicketDialog({
       onOpenChange(false)
       router.refresh()
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to forward referral'
+      const message = error instanceof Error ? error.message : 'Failed to transfer referral'
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -127,12 +127,12 @@ export function ForwardTicketDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ArrowRight className="h-5 w-5 text-orange-600" />
-            Forward Referral #{ticketNumber}
+            Transfer Referral #{ticketNumber}
           </DialogTitle>
           <DialogDescription>
             {step === 1
-              ? 'Choose where to forward this referral'
-              : 'Provide details about why you are forwarding this referral'}
+              ? 'Choose where to transfer this referral'
+              : 'Provide details about why you are transferring this referral'}
           </DialogDescription>
         </DialogHeader>
 
@@ -165,7 +165,7 @@ export function ForwardTicketDialog({
           {/* Step 1: Choose action */}
           {step === 1 && (
             <div className="space-y-4">
-              <Label>Forward to</Label>
+              <Label>Transfer to</Label>
               <RadioGroup value={action} onValueChange={(v) => setAction(v as any)}>
                 <div className="flex items-start space-x-3 rounded-lg border p-4 hover:bg-muted/50">
                   <RadioGroupItem value="forward_to_admin" id="admin" className="mt-0.5" />
@@ -278,7 +278,7 @@ export function ForwardTicketDialog({
               <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-950/20 rounded-md border border-amber-200 dark:border-amber-800">
                 <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5" />
                 <div className="text-sm">
-                  <strong>Forwarding to:</strong>{' '}
+                  <strong>Transferring to:</strong>{' '}
                   {action === 'forward_to_admin' ? 'Admin Pool' : selectedProvider?.name || 'Unknown'}
                   <br />
                   <span className="text-muted-foreground">
@@ -290,7 +290,7 @@ export function ForwardTicketDialog({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="reason">Reason for forwarding</Label>
+                <Label htmlFor="reason">Reason for transferring</Label>
                 <Select value={reason} onValueChange={(v) => setReason(v as any)}>
                   <SelectTrigger id="reason">
                     <SelectValue />
@@ -337,10 +337,8 @@ export function ForwardTicketDialog({
               </Button>
               <Button onClick={handleSubmit} disabled={forwardMutation.isPending}>
                 {forwardMutation.isPending
-                  ? 'Forwarding...'
-                  : action === 'forward_to_provider'
-                    ? 'Transfer Referral'
-                    : 'Forward Referral'}
+                  ? 'Transferring...'
+                  : 'Transfer Referral'}
               </Button>
             </>
           )}

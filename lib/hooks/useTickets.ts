@@ -177,7 +177,7 @@ export function useForwardTicket() {
       })
       if (!res.ok) {
         const error = await res.json()
-        throw new Error(error.error || 'Failed to forward ticket')
+        throw new Error(error.error || 'Failed to transfer referral')
       }
       return res.json() as Promise<{ success: boolean; ticket: Ticket }>
     },

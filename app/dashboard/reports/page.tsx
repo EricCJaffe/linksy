@@ -968,12 +968,12 @@ export default function ReportsPage() {
             </Card>
           </div>
 
-          {/* Top forwarding providers */}
+          {/* Top transferring providers */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <ArrowRight className="h-5 w-5 text-orange-600" />
-                Top Forwarding Providers
+                Top Transferring Providers
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -986,7 +986,7 @@ export default function ReportsPage() {
                       <TableHead className="w-16">Rank</TableHead>
                       <TableHead>Provider</TableHead>
                       <TableHead>Volume</TableHead>
-                      <TableHead className="text-right">Forwards</TableHead>
+                      <TableHead className="text-right">Transfers</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1011,7 +1011,7 @@ export default function ReportsPage() {
                   </TableBody>
                 </Table>
               ) : (
-                <p className="text-sm text-muted-foreground text-center py-8">No forwarding data yet</p>
+                <p className="text-sm text-muted-foreground text-center py-8">No transfer data yet</p>
               )}
             </CardContent>
           </Card>

@@ -143,7 +143,7 @@ export function TicketDetailPanel({ ticket }: TicketDetailPanelProps) {
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2">
-            {/* Forward button - available to provider contacts */}
+            {/* Transfer button - available to provider contacts */}
             {ticket.provider_id && (
               <Button
                 variant="outline"
@@ -152,7 +152,7 @@ export function TicketDetailPanel({ ticket }: TicketDetailPanelProps) {
                 className="flex items-center gap-2"
               >
                 <ArrowRight className="h-4 w-4" />
-                Forward Referral
+                Transfer Referral
               </Button>
             )}
 

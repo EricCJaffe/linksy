@@ -41,7 +41,7 @@ export async function POST(
 
     if (action === 'forward_to_provider' && !target_provider_id) {
       return NextResponse.json(
-        { error: 'target_provider_id required when forwarding to provider' },
+        { error: 'target_provider_id required when transferring to provider' },
         { status: 400 }
       )
     }
@@ -74,13 +74,13 @@ export async function POST(
 
       if (!contact) {
         return NextResponse.json(
-          { error: 'Unauthorized: You can only forward tickets for your own provider' },
+          { error: 'Unauthorized: You can only transfer referrals for your own provider' },
           { status: 403 }
         )
       }
     }
 
-    // Enforce max transfer limit when forwarding to another provider
+    // Enforce max transfer limit when transferring to another provider
     if (action === 'forward_to_provider') {
       const transferCount = ticket.reassignment_count || 0
       if (transferCount >= MAX_TRANSFERS) {
@@ -108,7 +108,7 @@ export async function POST(
     let updatedTicket: any
 
     if (action === 'forward_to_admin') {
-      // Forward to admin: orphan the ticket
+      // Transfer to admin: orphan the ticket
       const { data, error } = await serviceClient
         .from('linksy_tickets')
         .update({
@@ -126,9 +126,9 @@ export async function POST(
         .single()
 
       if (error) {
-        console.error('Error forwarding ticket to admin:', error)
+        console.error('Error transferring referral to admin:', error)
         return NextResponse.json(
-          { error: 'Failed to forward ticket' },
+          { error: 'Failed to transfer referral' },
           { status: 500 }
         )
       }
@@ -204,7 +204,7 @@ export async function POST(
         }
       })()
     } else {
-      // Forward to provider: transfer to target provider
+      // Transfer to provider: transfer to target provider
       if (!target_provider_id) {
         return NextResponse.json(
           { error: 'target_provider_id required' },
@@ -241,9 +241,9 @@ export async function POST(
         .single()
 
       if (error) {
-        console.error('Error forwarding ticket to provider:', error)
+        console.error('Error transferring referral to provider:', error)
         return NextResponse.json(
-          { error: 'Failed to forward ticket' },
+          { error: 'Failed to transfer referral' },
           { status: 500 }
         )
       }
@@ -335,7 +335,7 @@ export async function POST(
       ticket: updatedTicket,
     })
   } catch (error) {
-    console.error('Error forwarding ticket:', error)
+    console.error('Error transferring referral:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

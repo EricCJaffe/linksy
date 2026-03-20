@@ -634,7 +634,7 @@ export async function sendTicketForwardedToAdminNotification({
     .eq('is_site_admin', true)
 
   if (!admins || admins.length === 0) {
-    logger.warn('No site admins found to notify about forwarded ticket')
+    logger.warn('No site admins found to notify about transferred ticket')
     return { success: false, error: 'No site admins to notify' }
   }
 
@@ -647,11 +647,11 @@ export async function sendTicketForwardedToAdminNotification({
     <h1 style="color:white;margin:0;font-size:24px">${appName}</h1>
   </div>
   <div style="background:#fff;padding:32px;border-radius:0 0 10px 10px;box-shadow:0 2px 4px rgba(0,0,0,0.1)">
-    <h2 style="color:#111;margin-top:0">⚠️ Referral Forwarded to Admin Pool</h2>
-    <p>A provider has forwarded referral <strong>#${ticket.ticket_number}</strong> to the admin pool for reassignment.</p>
+    <h2 style="color:#111;margin-top:0">⚠️ Referral Transferred to Admin Pool</h2>
+    <p>A provider has transferred referral <strong>#${ticket.ticket_number}</strong> to the admin pool for reassignment.</p>
     <table style="border-collapse:collapse;width:100%;margin:16px 0">
       <tr><td style="padding:8px 12px;background:#f3f4f6;font-weight:600;width:140px">Referral #</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb">${ticket.ticket_number}</td></tr>
-      <tr><td style="padding:8px 12px;background:#f3f4f6;font-weight:600">Forwarded by</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb">${forwarderName}</td></tr>
+      <tr><td style="padding:8px 12px;background:#f3f4f6;font-weight:600">Transferred by</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb">${forwarderName}</td></tr>
       <tr><td style="padding:8px 12px;background:#f3f4f6;font-weight:600">Reason</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb">${reasonLabel}</td></tr>
       ${notes ? `<tr><td style="padding:8px 12px;background:#f3f4f6;font-weight:600;vertical-align:top">Notes</td><td style="padding:8px 12px">${notes}</td></tr>` : ''}
     </table>
@@ -665,7 +665,7 @@ export async function sendTicketForwardedToAdminNotification({
 
   const { subject, html, text } = await resolveEmailTemplate({
     templateKey: 'ticket_forwarded_to_admin',
-    defaultSubject: `Referral #${ticket.ticket_number} forwarded for reassignment`,
+    defaultSubject: `Referral #${ticket.ticket_number} transferred for reassignment`,
     defaultHtml,
     variables: {
       app_name: appName,
