@@ -56,7 +56,7 @@ interface ContactsResponse {
   pagination: { total: number; offset: number; limit: number }
 }
 
-type SortField = 'name' | 'email' | 'organization' | 'role' | 'date_added'
+type SortField = 'name' | 'email' | 'phone' | 'organization' | 'job_title' | 'role' | 'status' | 'date_added'
 type SortDir = 'asc' | 'desc'
 
 export default function ContactsPage() {
@@ -126,8 +126,11 @@ export default function ContactsPage() {
     switch (sortField) {
       case 'name': return (a.display_name || '').localeCompare(b.display_name || '') * dir
       case 'email': return (a.display_email || '').localeCompare(b.display_email || '') * dir
+      case 'phone': return (a.phone || '').localeCompare(b.phone || '') * dir
       case 'organization': return (a.provider?.name || '').localeCompare(b.provider?.name || '') * dir
+      case 'job_title': return (a.job_title || '').localeCompare(b.job_title || '') * dir
       case 'role': return (a.provider_role || '').localeCompare(b.provider_role || '') * dir
+      case 'status': return (a.status || '').localeCompare(b.status || '') * dir
       case 'date_added': return ((a.created_at || '').localeCompare(b.created_at || '')) * dir
       default: return 0
     }
@@ -246,7 +249,10 @@ export default function ContactsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Providers</SelectItem>
-                  {providers.map((p) => (
+                  {providers
+                    .slice()
+                    .sort((a, b) => a.name.localeCompare(b.name))
+                    .map((p) => (
                     <SelectItem key={p.id} value={p.id}>
                       {p.name}
                     </SelectItem>
@@ -341,11 +347,11 @@ export default function ContactsPage() {
                   <TableRow>
                     <SortableHeader field="name">Name</SortableHeader>
                     <SortableHeader field="email">Email</SortableHeader>
-                    <TableHead>Phone</TableHead>
+                    <SortableHeader field="phone">Phone</SortableHeader>
                     <SortableHeader field="organization">Organization</SortableHeader>
-                    <TableHead>Job Title</TableHead>
+                    <SortableHeader field="job_title">Job Title</SortableHeader>
                     <SortableHeader field="role">Role</SortableHeader>
-                    <TableHead>Status</TableHead>
+                    <SortableHeader field="status">Status</SortableHeader>
                     <SortableHeader field="date_added">Date Added</SortableHeader>
                   </TableRow>
                 </TableHeader>

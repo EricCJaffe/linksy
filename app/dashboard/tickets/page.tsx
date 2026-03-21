@@ -31,7 +31,7 @@ import { Globe, Search, Download, CheckSquare, CalendarDays, X, ArrowUpDown, Pho
 import type { TicketFilters, TicketStatus } from '@/lib/types/linksy'
 import { formatPhone } from '@/lib/utils/phone'
 
-type SortField = 'ticket_number' | 'client' | 'provider' | 'status' | 'date'
+type SortField = 'ticket_number' | 'client' | 'provider' | 'phone' | 'service' | 'status' | 'date'
 type SortDir = 'asc' | 'desc'
 
 const LIMIT = 50
@@ -195,6 +195,10 @@ export default function TicketsPage() {
         return dir * (a.client_name || '').localeCompare(b.client_name || '')
       case 'provider':
         return dir * (a.provider?.name || '').localeCompare(b.provider?.name || '')
+      case 'phone':
+        return dir * (a.provider?.phone || '').localeCompare(b.provider?.phone || '')
+      case 'service':
+        return dir * (a.need?.name || '').localeCompare(b.need?.name || '')
       case 'status':
         return dir * (a.status || '').localeCompare(b.status || '')
       case 'date':
@@ -363,7 +367,10 @@ export default function TicketsPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Providers</SelectItem>
-            {providersData?.providers.map((provider) => (
+            {providersData?.providers
+              .slice()
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map((provider) => (
               <SelectItem key={provider.id} value={provider.id}>
                 {provider.name}
               </SelectItem>
@@ -379,7 +386,10 @@ export default function TicketsPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Services</SelectItem>
-            {needs.map((need) => (
+            {needs
+              .slice()
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map((need) => (
               <SelectItem key={need.id} value={need.id}>
                 {need.name}
               </SelectItem>
@@ -493,8 +503,8 @@ export default function TicketsPage() {
               <SortableHeader field="ticket_number">Referral #</SortableHeader>
               <SortableHeader field="client">Client</SortableHeader>
               <SortableHeader field="provider">Provider</SortableHeader>
-              <TableHead>Phone</TableHead>
-              <TableHead>Service</TableHead>
+              <SortableHeader field="phone">Phone</SortableHeader>
+              <SortableHeader field="service">Service</SortableHeader>
               <SortableHeader field="status">Status</SortableHeader>
               <SortableHeader field="date">Date</SortableHeader>
               <TableHead className="w-[170px]">Actions</TableHead>
