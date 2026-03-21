@@ -7,7 +7,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { AlertCircle, TrendingUp, Users, BarChart3, History, Search, Phone, Globe, AlertTriangle, Navigation, MapPin, Clock, GitMerge, PieChart as PieChartIcon, ArrowRight } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { AlertCircle, TrendingUp, Users, BarChart3, History, Search, Phone, Globe, AlertTriangle, Navigation, MapPin, Clock, GitMerge, PieChart as PieChartIcon, ArrowRight, FileText, ChevronDown, ChevronUp, Calendar } from 'lucide-react'
 import {
   MonthlyTrendsChart as RechartsMonthlyChart,
   CategoryBreakdownChart,
@@ -82,6 +84,45 @@ interface ReportsData {
   nonReferralSummary: NonReferralSummary
   uniqueClients: UniqueClientsData
   totalIncludingNR: number
+}
+
+interface RepeatClientReferral {
+  id: string
+  status: string
+  created_at: string
+  providerName: string
+  needName: string
+}
+
+interface RepeatClient {
+  clientName: string | null
+  clientEmail: string | null
+  clientPhone: string | null
+  totalReferrals: number
+  repeatedNeeds: {
+    needName: string
+    referrals: RepeatClientReferral[]
+  }[]
+}
+
+interface RepeatClientsData {
+  repeatClients: RepeatClient[]
+  totalRepeatClients: number
+  top10ByMonth: {
+    month: string
+    clients: { name: string; email: string | null; phone: string | null; count: number }[]
+  }[]
+}
+
+interface StatusByProviderData {
+  providers: {
+    providerId: string
+    providerName: string
+    total: number
+    statusCounts: Record<string, number>
+  }[]
+  allStatuses: string[]
+  totalTickets: number
 }
 
 const statusLabels: Record<string, string> = {
@@ -176,7 +217,7 @@ const INTERACTION_LABELS: Record<string, { label: string; icon: React.ReactNode 
 }
 
 export default function ReportsPage() {
-  const [activeTab, setActiveTab] = useState<'referrals' | 'search' | 'charts' | 'reassignments'>('referrals')
+  const [activeTab, setActiveTab] = useState<'referrals' | 'search' | 'charts' | 'reassignments' | 'admin-reports'>('referrals')
   const [expandedProvider, setExpandedProvider] = useState<string | null>(null)
   const [data, setData] = useState<ReportsData | null>(null)
   const [searchData, setSearchData] = useState<SearchAnalyticsData | null>(null)
@@ -186,6 +227,15 @@ export default function ReportsPage() {
   const [error, setError] = useState<string | null>(null)
   const [includeLegacy, setIncludeLegacy] = useState(true)
   const [includeTest, setIncludeTest] = useState(false)
+
+  // Admin reports state
+  const [repeatClientsData, setRepeatClientsData] = useState<RepeatClientsData | null>(null)
+  const [statusByProviderData, setStatusByProviderData] = useState<StatusByProviderData | null>(null)
+  const [adminReportsLoading, setAdminReportsLoading] = useState(false)
+  const [adminDateFrom, setAdminDateFrom] = useState('')
+  const [adminDateTo, setAdminDateTo] = useState('')
+  const [expandedRepeatClient, setExpandedRepeatClient] = useState<number | null>(null)
+  const [adminIncludeTest, setAdminIncludeTest] = useState(false)
 
   // Get user role and provider access for role-based filtering
   const { data: user } = useCurrentUser()
@@ -247,6 +297,37 @@ export default function ReportsPage() {
     }
     if (activeTab === 'reassignments' && isSiteAdmin) fetchReassignmentStats()
   }, [activeTab, isSiteAdmin])
+
+  useEffect(() => {
+    const fetchAdminReports = async () => {
+      if (!isSiteAdmin || activeTab !== 'admin-reports') return
+      setAdminReportsLoading(true)
+      try {
+        const baseParams = new URLSearchParams()
+        if (adminDateFrom) baseParams.set('date_from', adminDateFrom)
+        if (adminDateTo) baseParams.set('date_to', adminDateTo)
+        if (adminIncludeTest) baseParams.set('include_test', 'true')
+
+        const repeatParams = new URLSearchParams(baseParams)
+        repeatParams.set('type', 'repeat-clients')
+        const statusParams = new URLSearchParams(baseParams)
+        statusParams.set('type', 'status-by-provider')
+
+        const [repeatRes, statusRes] = await Promise.all([
+          fetch(`/api/reports?${repeatParams.toString()}`),
+          fetch(`/api/reports?${statusParams.toString()}`),
+        ])
+
+        if (repeatRes.ok) setRepeatClientsData(await repeatRes.json())
+        if (statusRes.ok) setStatusByProviderData(await statusRes.json())
+      } catch {
+        // non-fatal
+      } finally {
+        setAdminReportsLoading(false)
+      }
+    }
+    fetchAdminReports()
+  }, [activeTab, isSiteAdmin, adminDateFrom, adminDateTo, adminIncludeTest])
 
   if (error && activeTab === 'referrals') {
     return (
@@ -358,6 +439,19 @@ export default function ReportsPage() {
           >
             <GitMerge className="h-4 w-4 inline mr-1.5" />
             Reassignments
+          </button>
+        )}
+        {isSiteAdmin && (
+          <button
+            onClick={() => setActiveTab('admin-reports')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'admin-reports'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <FileText className="h-4 w-4 inline mr-1.5" />
+            Admin Reports
           </button>
         )}
       </div>
@@ -1283,6 +1377,313 @@ export default function ReportsPage() {
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground text-center py-8">No reason data yet</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Admin Reports Tab */}
+      {activeTab === 'admin-reports' && isSiteAdmin && (
+        <div className="space-y-6">
+          {/* Date range filter */}
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex flex-wrap items-end gap-4">
+                <div className="space-y-1">
+                  <Label htmlFor="admin-date-from" className="text-sm">From</Label>
+                  <Input
+                    id="admin-date-from"
+                    type="date"
+                    value={adminDateFrom}
+                    onChange={(e) => setAdminDateFrom(e.target.value)}
+                    className="w-44"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="admin-date-to" className="text-sm">To</Label>
+                  <Input
+                    id="admin-date-to"
+                    type="date"
+                    value={adminDateTo}
+                    onChange={(e) => setAdminDateTo(e.target.value)}
+                    className="w-44"
+                  />
+                </div>
+                <Button
+                  variant={adminIncludeTest ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setAdminIncludeTest(!adminIncludeTest)}
+                  className={adminIncludeTest ? 'bg-orange-600 hover:bg-orange-700' : ''}
+                >
+                  Include Test Referrals
+                </Button>
+                {(adminDateFrom || adminDateTo) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => { setAdminDateFrom(''); setAdminDateTo('') }}
+                  >
+                    Clear Dates
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Repeat Clients Report */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Repeat Clients Report
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Clients with more than one referral for the same need category
+                {adminDateFrom || adminDateTo ? (
+                  <span className="ml-1 font-medium">
+                    ({adminDateFrom || 'all time'} to {adminDateTo || 'present'})
+                  </span>
+                ) : null}
+              </p>
+            </CardHeader>
+            <CardContent>
+              {adminReportsLoading ? (
+                <div className="space-y-2">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Skeleton key={`repeat-skel-${i}`} className="h-10 w-full" />
+                  ))}
+                </div>
+              ) : repeatClientsData && repeatClientsData.repeatClients.length > 0 ? (
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    {repeatClientsData.totalRepeatClients} repeat client{repeatClientsData.totalRepeatClients !== 1 ? 's' : ''} found
+                  </p>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-8"></TableHead>
+                        <TableHead>Client</TableHead>
+                        <TableHead>Contact</TableHead>
+                        <TableHead className="text-right">Repeat Referrals</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {repeatClientsData.repeatClients.map((client, idx) => {
+                        const isExpanded = expandedRepeatClient === idx
+                        return (
+                          <Fragment key={idx}>
+                            <TableRow
+                              className="cursor-pointer hover:bg-muted/50"
+                              onClick={() => setExpandedRepeatClient(isExpanded ? null : idx)}
+                            >
+                              <TableCell>
+                                {isExpanded ? (
+                                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                                ) : (
+                                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                )}
+                              </TableCell>
+                              <TableCell className="font-medium">
+                                {client.clientName || 'Unknown'}
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {client.clientEmail && <span className="block">{client.clientEmail}</span>}
+                                {client.clientPhone && <span className="block">{client.clientPhone}</span>}
+                              </TableCell>
+                              <TableCell className="text-right font-bold">
+                                {client.totalReferrals}
+                              </TableCell>
+                            </TableRow>
+                            {isExpanded && (
+                              <TableRow>
+                                <TableCell />
+                                <TableCell colSpan={3} className="py-2">
+                                  <div className="space-y-3">
+                                    {client.repeatedNeeds.map((need) => (
+                                      <div key={need.needName} className="bg-muted/30 rounded-md p-3">
+                                        <p className="text-xs font-medium text-muted-foreground mb-2">
+                                          {need.needName} ({need.referrals.length} referrals)
+                                        </p>
+                                        <div className="space-y-1">
+                                          {need.referrals.map((ref) => (
+                                            <div key={ref.id} className="flex items-center gap-3 text-sm">
+                                              <span className="w-24 shrink-0 text-xs text-muted-foreground flex items-center gap-1">
+                                                <Calendar className="h-3 w-3" />
+                                                {new Date(ref.created_at).toLocaleDateString()}
+                                              </span>
+                                              <span className="flex-1 truncate">{ref.providerName}</span>
+                                              <Badge
+                                                variant="outline"
+                                                className={`text-xs ${
+                                                  ref.status === 'pending' ? 'border-blue-300 text-blue-700' :
+                                                  ref.status === 'in_process' ? 'border-yellow-300 text-yellow-700' :
+                                                  ref.status === 'customer_need_addressed' ? 'border-green-300 text-green-700' :
+                                                  ref.status === 'unable_to_assist' ? 'border-red-300 text-red-700' :
+                                                  'border-gray-300 text-gray-700'
+                                                }`}
+                                              >
+                                                {statusLabels[ref.status] || ref.status}
+                                              </Badge>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </Fragment>
+                        )
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  No repeat clients found for the selected date range
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Top 10 Repeat Clients by Month */}
+          {!adminReportsLoading && repeatClientsData && repeatClientsData.top10ByMonth.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5" />
+                  Top 10 Repeat Clients by Month
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Highest-volume repeat clients broken down by month
+                </p>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {repeatClientsData.top10ByMonth.map((monthData) => (
+                    <div key={monthData.month}>
+                      <p className="text-sm font-medium mb-2">
+                        {new Date(monthData.month + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                      </p>
+                      <div className="space-y-1">
+                        {monthData.clients.map((client, i) => {
+                          const max = monthData.clients[0]?.count || 1
+                          return (
+                            <div key={`${monthData.month}-${i}`} className="flex items-center gap-3">
+                              <span className="w-6 shrink-0 text-xs text-muted-foreground text-right">
+                                #{i + 1}
+                              </span>
+                              <span className="w-40 shrink-0 truncate text-sm text-muted-foreground" title={client.name}>
+                                {client.name}
+                              </span>
+                              <div className="flex-1 h-5 bg-muted rounded overflow-hidden">
+                                <div
+                                  className="h-full bg-indigo-500 rounded"
+                                  style={{ width: `${(client.count / max) * 100}%` }}
+                                />
+                              </div>
+                              <span className="w-8 shrink-0 text-sm font-semibold text-right">{client.count}</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Status Breakdown by Provider */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                Status Breakdown by Provider
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Pending totals, Unable to Assist totals, and other status counts per provider
+              </p>
+            </CardHeader>
+            <CardContent>
+              {adminReportsLoading ? (
+                <div className="space-y-2">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Skeleton key={`status-skel-${i}`} className="h-10 w-full" />
+                  ))}
+                </div>
+              ) : statusByProviderData && statusByProviderData.providers.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="sticky left-0 bg-background">Provider</TableHead>
+                        <TableHead className="text-right font-bold">Total</TableHead>
+                        {statusByProviderData.allStatuses.map((status) => (
+                          <TableHead key={status} className="text-right text-xs whitespace-nowrap">
+                            {statusLabels[status] || status}
+                          </TableHead>
+                        ))}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {statusByProviderData.providers.map((provider) => (
+                        <TableRow key={provider.providerId}>
+                          <TableCell className="sticky left-0 bg-background font-medium whitespace-nowrap">
+                            {provider.providerName}
+                          </TableCell>
+                          <TableCell className="text-right font-bold">
+                            {provider.total}
+                          </TableCell>
+                          {statusByProviderData.allStatuses.map((status) => {
+                            const count = provider.statusCounts[status] || 0
+                            const isPending = status === 'pending'
+                            const isUnableToAssist = status === 'unable_to_assist'
+                            return (
+                              <TableCell
+                                key={status}
+                                className={`text-right text-sm ${
+                                  count > 0
+                                    ? isPending
+                                      ? 'text-blue-700 font-semibold'
+                                      : isUnableToAssist
+                                        ? 'text-red-600 font-semibold'
+                                        : ''
+                                    : 'text-muted-foreground'
+                                }`}
+                              >
+                                {count || '-'}
+                              </TableCell>
+                            )
+                          })}
+                        </TableRow>
+                      ))}
+                      {/* Totals row */}
+                      <TableRow className="border-t-2 font-bold">
+                        <TableCell className="sticky left-0 bg-background">Totals</TableCell>
+                        <TableCell className="text-right">
+                          {statusByProviderData.totalTickets}
+                        </TableCell>
+                        {statusByProviderData.allStatuses.map((status) => {
+                          const total = statusByProviderData.providers.reduce(
+                            (sum, p) => sum + (p.statusCounts[status] || 0), 0
+                          )
+                          return (
+                            <TableCell key={status} className="text-right">
+                              {total || '-'}
+                            </TableCell>
+                          )
+                        })}
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  No provider data found for the selected date range
+                </p>
               )}
             </CardContent>
           </Card>

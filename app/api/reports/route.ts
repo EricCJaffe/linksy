@@ -86,6 +86,20 @@ export async function GET(request: Request) {
     case 'search':
       return handleSearchReport(supabase, dataScope, providerIds)
 
+    case 'repeat-clients':
+      // Only site admins can see admin reports
+      if (!auth.isSiteAdmin) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
+      return handleRepeatClientsReport(supabase, searchParams, includeTest)
+
+    case 'status-by-provider':
+      // Only site admins can see admin reports
+      if (!auth.isSiteAdmin) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
+      return handleStatusByProviderReport(supabase, searchParams, includeTest)
+
     case 'reassignments':
       // Only site admins can see reassignments
       if (!auth.isSiteAdmin) {
@@ -359,6 +373,290 @@ async function handleReassignmentsReport(supabase: any) {
     top_forwarding_providers: [],
     top_receiving_providers: [],
     reason_breakdown: {},
+  })
+}
+
+async function handleRepeatClientsReport(
+  supabase: any,
+  searchParams: URLSearchParams,
+  includeTest: boolean
+) {
+  const dateFrom = searchParams.get('date_from')
+  const dateTo = searchParams.get('date_to')
+
+  let ticketsQuery = supabase
+    .from('linksy_tickets')
+    .select(`
+      id,
+      client_name,
+      client_email,
+      client_phone,
+      status,
+      created_at,
+      provider_id,
+      need_id,
+      provider:linksy_providers!provider_id(id, name),
+      need:linksy_needs!need_id(id, name, category:linksy_need_categories!category_id(name))
+    `)
+
+  if (!includeTest) {
+    ticketsQuery = ticketsQuery.or('is_test.is.null,is_test.eq.false')
+  }
+  if (dateFrom) {
+    ticketsQuery = ticketsQuery.gte('created_at', dateFrom)
+  }
+  if (dateTo) {
+    // Add end-of-day to dateTo
+    ticketsQuery = ticketsQuery.lte('created_at', dateTo + 'T23:59:59.999Z')
+  }
+
+  const { data: tickets, error } = await ticketsQuery
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  // Group tickets by client identity (email > phone > name) and need category
+  // A "repeat client" = same person with >1 referral for the same need category
+  const clientMap = new Map<string, {
+    clientKey: string
+    clientName: string | null
+    clientEmail: string | null
+    clientPhone: string | null
+    referralsByNeed: Map<string, {
+      needName: string
+      tickets: {
+        id: string
+        status: string
+        created_at: string
+        providerName: string
+        needName: string
+      }[]
+    }>
+  }>()
+
+  tickets.forEach((t: any) => {
+    const clientName = t.client_name?.trim()?.toLowerCase() || null
+    const clientEmail = t.client_email?.trim()?.toLowerCase() || null
+    const clientPhone = t.client_phone?.trim() || null
+
+    // Skip blank/test names with no other identifier
+    if (!clientEmail && !clientPhone && !clientName) return
+    if (isTestClientName(t.client_name) && !clientEmail && !clientPhone) return
+
+    // Identity key: prefer email, then phone, then name
+    const clientKey = clientEmail || clientPhone || clientName || ''
+    if (!clientKey) return
+
+    if (!clientMap.has(clientKey)) {
+      clientMap.set(clientKey, {
+        clientKey,
+        clientName: t.client_name,
+        clientEmail: t.client_email,
+        clientPhone: t.client_phone,
+        referralsByNeed: new Map(),
+      })
+    }
+
+    const client = clientMap.get(clientKey)!
+    // Update display info with most recent non-null values
+    if (t.client_name) client.clientName = t.client_name
+    if (t.client_email) client.clientEmail = t.client_email
+    if (t.client_phone) client.clientPhone = t.client_phone
+
+    const needName = t.need?.category?.name || t.need?.name || 'Unknown'
+    if (!client.referralsByNeed.has(needName)) {
+      client.referralsByNeed.set(needName, { needName, tickets: [] })
+    }
+
+    client.referralsByNeed.get(needName)!.tickets.push({
+      id: t.id,
+      status: t.status,
+      created_at: t.created_at,
+      providerName: t.provider?.name || 'Unknown',
+      needName: t.need?.name || 'Unknown',
+    })
+  })
+
+  // Filter to only clients with >1 referral for the same need
+  const repeatClients: {
+    clientName: string | null
+    clientEmail: string | null
+    clientPhone: string | null
+    totalReferrals: number
+    repeatedNeeds: {
+      needName: string
+      referrals: {
+        id: string
+        status: string
+        created_at: string
+        providerName: string
+        needName: string
+      }[]
+    }[]
+  }[] = []
+
+  clientMap.forEach((client) => {
+    const repeatedNeeds: typeof repeatClients[0]['repeatedNeeds'] = []
+    let totalRepeatReferrals = 0
+
+    client.referralsByNeed.forEach((needData) => {
+      if (needData.tickets.length > 1) {
+        repeatedNeeds.push({
+          needName: needData.needName,
+          referrals: needData.tickets.sort(
+            (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          ),
+        })
+        totalRepeatReferrals += needData.tickets.length
+      }
+    })
+
+    if (repeatedNeeds.length > 0) {
+      repeatClients.push({
+        clientName: client.clientName,
+        clientEmail: client.clientEmail,
+        clientPhone: client.clientPhone,
+        totalReferrals: totalRepeatReferrals,
+        repeatedNeeds,
+      })
+    }
+  })
+
+  // Sort by total referrals descending
+  repeatClients.sort((a, b) => b.totalReferrals - a.totalReferrals)
+
+  // Top 10 repeat clients by month/year
+  const monthlyTopClients = new Map<string, Map<string, number>>()
+
+  repeatClients.forEach((client) => {
+    const key = client.clientEmail || client.clientPhone || client.clientName || ''
+    client.repeatedNeeds.forEach((need) => {
+      need.referrals.forEach((ref) => {
+        const d = new Date(ref.created_at)
+        const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+        if (!monthlyTopClients.has(monthKey)) {
+          monthlyTopClients.set(monthKey, new Map())
+        }
+        const monthMap = monthlyTopClients.get(monthKey)!
+        monthMap.set(key, (monthMap.get(key) || 0) + 1)
+      })
+    })
+  })
+
+  // Build monthly top 10 lists
+  const top10ByMonth: {
+    month: string
+    clients: { name: string; email: string | null; phone: string | null; count: number }[]
+  }[] = []
+
+  const sortedMonths = Array.from(monthlyTopClients.keys()).sort().reverse()
+  sortedMonths.forEach((month) => {
+    const monthMap = monthlyTopClients.get(month)!
+    const sorted = Array.from(monthMap.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([key, count]) => {
+        const client = repeatClients.find(
+          (c) => (c.clientEmail || c.clientPhone || c.clientName || '') === key
+        )
+        return {
+          name: client?.clientName || key,
+          email: client?.clientEmail || null,
+          phone: client?.clientPhone || null,
+          count,
+        }
+      })
+    top10ByMonth.push({ month, clients: sorted })
+  })
+
+  return NextResponse.json({
+    repeatClients: repeatClients.slice(0, 100),
+    totalRepeatClients: repeatClients.length,
+    top10ByMonth,
+  })
+}
+
+async function handleStatusByProviderReport(
+  supabase: any,
+  searchParams: URLSearchParams,
+  includeTest: boolean
+) {
+  const dateFrom = searchParams.get('date_from')
+  const dateTo = searchParams.get('date_to')
+
+  let ticketsQuery = supabase
+    .from('linksy_tickets')
+    .select(`
+      id,
+      status,
+      provider_id,
+      created_at,
+      provider:linksy_providers!provider_id(id, name)
+    `)
+
+  if (!includeTest) {
+    ticketsQuery = ticketsQuery.or('is_test.is.null,is_test.eq.false')
+  }
+  if (dateFrom) {
+    ticketsQuery = ticketsQuery.gte('created_at', dateFrom)
+  }
+  if (dateTo) {
+    ticketsQuery = ticketsQuery.lte('created_at', dateTo + 'T23:59:59.999Z')
+  }
+
+  const { data: tickets, error } = await ticketsQuery
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  // Group by provider, then by status
+  const providerMap = new Map<string, {
+    providerId: string
+    providerName: string
+    statusCounts: Map<string, number>
+    total: number
+  }>()
+
+  tickets.forEach((t: any) => {
+    const providerId = t.provider_id || 'unknown'
+    const providerName = t.provider?.name || 'Unknown Provider'
+
+    if (!providerMap.has(providerId)) {
+      providerMap.set(providerId, {
+        providerId,
+        providerName,
+        statusCounts: new Map(),
+        total: 0,
+      })
+    }
+
+    const entry = providerMap.get(providerId)!
+    entry.total++
+    const status = t.status || 'unknown'
+    entry.statusCounts.set(status, (entry.statusCounts.get(status) || 0) + 1)
+  })
+
+  // Convert to array
+  const providers = Array.from(providerMap.values())
+    .sort((a, b) => b.total - a.total)
+    .map((p) => ({
+      providerId: p.providerId,
+      providerName: p.providerName,
+      total: p.total,
+      statusCounts: Object.fromEntries(p.statusCounts),
+    }))
+
+  // All statuses that appear in the data
+  const allStatuses = Array.from(
+    new Set(tickets.map((t: any) => t.status || 'unknown'))
+  ).sort()
+
+  return NextResponse.json({
+    providers,
+    allStatuses,
+    totalTickets: tickets.length,
   })
 }
 
