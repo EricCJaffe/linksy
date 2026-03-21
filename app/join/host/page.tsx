@@ -220,7 +220,7 @@ export default function HostOnboardingPage() {
           </button>
 
           <p className="text-xs text-gray-400 text-center">
-            We&apos;ll review your request and follow up via email within 2–3 business days.
+            We&apos;ll review your request and follow-up via email within 2–3 business days.
           </p>
         </form>
       </main>

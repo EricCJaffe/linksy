@@ -115,7 +115,7 @@ export default async function LandingPage() {
                 icon: <BarChart3 className="h-6 w-6 text-blue-600" />,
                 title: 'Referral Tracking',
                 description:
-                  'Create, manage, and track service referrals. Follow up on outcomes, measure resolution times, and see exactly where your community&apos;s needs are going unmet.',
+                  'Create, manage, and track service referrals. Follow-up on outcomes, measure resolution times, and see exactly where your community&apos;s needs are going unmet.',
               },
               {
                 icon: <Shield className="h-6 w-6 text-blue-600" />,

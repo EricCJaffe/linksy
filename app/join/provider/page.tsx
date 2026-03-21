@@ -766,7 +766,7 @@ export default function ProviderOnboardingPage() {
         </div>
 
         <p className="text-xs text-gray-400 text-center mt-4">
-          We&apos;ll review your application and follow up via email within 2–3 business days.
+          We&apos;ll review your application and follow-up via email within 2–3 business days.
         </p>
       </main>
     </div>
