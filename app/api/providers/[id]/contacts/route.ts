@@ -64,6 +64,7 @@ export async function POST(
       full_name: userId ? null : body.full_name, // Store full_name temporarily if no user yet
       job_title: body.job_title || null,
       phone: body.phone || null,
+      phone_extension: body.phone_extension || null,
       contact_type: body.contact_type || 'provider_employee',
       provider_role: body.provider_role || 'user',
       is_primary_contact: body.is_primary_contact || false,

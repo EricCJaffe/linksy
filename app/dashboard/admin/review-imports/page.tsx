@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/table'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { CheckCircle, XCircle, RefreshCw, Clock, AlertCircle, CheckSquare } from 'lucide-react'
+import { formatPhone } from '@/lib/utils/phone'
 
 interface PendingProvider {
   id: string
@@ -240,7 +241,7 @@ export default function ReviewImportsPage() {
                         <Badge variant="outline">{provider.sector}</Badge>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {provider.email || provider.phone || 'N/A'}
+                        {provider.email || (provider.phone ? formatPhone(provider.phone) : null) || 'N/A'}
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">

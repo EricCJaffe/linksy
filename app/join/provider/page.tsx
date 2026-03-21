@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { CheckCircle, ArrowLeft, ArrowRight, Plus, Trash2 } from 'lucide-react'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
+import { formatPhoneWithExt } from '@/lib/utils/phone'
 
 /* ─── Types ─── */
 
@@ -637,7 +638,7 @@ export default function ProviderOnboardingPage() {
                   {form.phone && (
                     <>
                       <dt className="text-gray-400">Phone</dt>
-                      <dd className="text-gray-900">{form.phone}{form.phone_extension ? ` ext. ${form.phone_extension}` : ''}</dd>
+                      <dd className="text-gray-900">{formatPhoneWithExt(form.phone, form.phone_extension)}</dd>
                     </>
                   )}
                   {form.website && (

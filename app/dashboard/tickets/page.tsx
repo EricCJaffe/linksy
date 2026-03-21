@@ -29,6 +29,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox'
 import { Globe, Search, Download, CheckSquare, CalendarDays, X, ArrowUpDown, Phone, MapPin } from 'lucide-react'
 import type { TicketFilters, TicketStatus } from '@/lib/types/linksy'
+import { formatPhone } from '@/lib/utils/phone'
 
 type SortField = 'ticket_number' | 'client' | 'provider' | 'status' | 'date'
 type SortDir = 'asc' | 'desc'
@@ -562,7 +563,7 @@ export default function TicketsPage() {
                     className="text-muted-foreground cursor-pointer whitespace-nowrap"
                     onClick={() => router.push(`/dashboard/tickets/${ticket.id}`)}
                   >
-                    {ticket.provider?.phone || '-'}
+                    {ticket.provider?.phone ? formatPhone(ticket.provider.phone) : '-'}
                   </TableCell>
                   <TableCell
                     className="text-muted-foreground cursor-pointer"

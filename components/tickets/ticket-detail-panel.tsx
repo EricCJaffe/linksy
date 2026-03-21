@@ -21,6 +21,7 @@ import { useUpdateTicket, useCreateTicketComment, useUpdateCommentPrivacy, useUp
 import { useCallLogs, useCreateCallLog, useDeleteCallLog } from '@/lib/hooks/useCallLogs'
 import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
 import type { Ticket, TicketStatus } from '@/lib/types/linksy'
+import { formatPhone } from '@/lib/utils/phone'
 import { ForwardTicketDialog } from './forward-ticket-dialog'
 import { AssignInternallyDialog } from './assign-internally-dialog'
 import { TicketHistoryTimeline } from './ticket-history-timeline'
@@ -196,7 +197,7 @@ export function TicketDetailPanel({ ticket }: TicketDetailPanelProps) {
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Phone</span>
-              <span>{ticket.client_phone || '-'}</span>
+              <span>{ticket.client_phone ? formatPhone(ticket.client_phone) : '-'}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Email</span>

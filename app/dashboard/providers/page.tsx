@@ -22,6 +22,7 @@ import {
 import { usePendingApplicationCount } from '@/lib/hooks/useProviderApplications'
 import Link from 'next/link'
 import type { ProviderFilters } from '@/lib/types/linksy'
+import { formatPhone } from '@/lib/utils/phone'
 
 const LIMIT = 50
 
@@ -152,7 +153,7 @@ export default function ProvidersPage() {
       const rows = selected.map((p) => [
         p.name,
         sectorLabels[p.sector] || p.sector,
-        p.phone || '',
+        p.phone ? formatPhone(p.phone) : '',
         p.provider_status === 'active' ? 'Active' : p.provider_status === 'paused' ? 'Paused' : 'Inactive',
         (p as any).source ? (sourceLabels[(p as any).source] || (p as any).source) : '',
         p.referral_type === 'contact_directly' ? 'Contact Directly' : 'Standard',
@@ -327,7 +328,7 @@ export default function ProvidersPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {provider.phone || '-'}
+                    {provider.phone ? formatPhone(provider.phone) : '-'}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {provider.location_count}

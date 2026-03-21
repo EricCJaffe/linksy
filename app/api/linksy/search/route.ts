@@ -202,6 +202,7 @@ export async function POST(request: Request) {
       name,
       description,
       phone,
+      phone_extension,
       email,
       website,
       hours_of_operation,

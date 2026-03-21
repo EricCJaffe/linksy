@@ -54,6 +54,7 @@ import type { Provider, ProviderDetail, NoteType, NoteAttachment, TicketStatus, 
 import { Plus, Copy, ExternalLink, Globe, Lock, MapPin, Pencil, Trash2, CheckCircle, Circle, BarChart2, FileText, LayoutList, CalendarDays, RefreshCw, Pin, PinOff, Phone, StickyNote, ChevronDown, FlaskConical } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import type { HostWidgetConfig } from '@/lib/types/linksy'
+import { formatPhoneWithExt } from '@/lib/utils/phone'
 
 interface ProviderDetailTabsProps {
   provider: ProviderDetail
@@ -120,6 +121,7 @@ const emptyLocationForm = {
   state: '',
   postal_code: '',
   phone: '',
+  phone_extension: '',
   is_primary: false,
 }
 
@@ -153,6 +155,7 @@ function LocationsCard({ provider }: { provider: ProviderDetail }) {
       state: loc.state || '',
       postal_code: loc.postal_code || '',
       phone: loc.phone || '',
+      phone_extension: loc.phone_extension || '',
       is_primary: loc.is_primary,
     })
   }
@@ -233,14 +236,25 @@ function LocationsCard({ provider }: { provider: ProviderDetail }) {
             onChange={(e) => onChange({ ...values, name: e.target.value })}
           />
         </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Phone</Label>
-          <Input
-            type="tel"
-            placeholder="(555) 000-0000"
-            value={values.phone}
-            onChange={(e) => onChange({ ...values, phone: e.target.value })}
-          />
+        <div className="grid grid-cols-3 gap-2">
+          <div className="col-span-2 space-y-1">
+            <Label className="text-xs">Phone</Label>
+            <Input
+              type="tel"
+              placeholder="(555) 000-0000"
+              value={values.phone}
+              onChange={(e) => onChange({ ...values, phone: e.target.value })}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Extension</Label>
+            <Input
+              placeholder="x123"
+              value={values.phone_extension}
+              onChange={(e) => onChange({ ...values, phone_extension: e.target.value })}
+              maxLength={20}
+            />
+          </div>
         </div>
       </div>
       <div className="space-y-1">
@@ -369,7 +383,7 @@ function LocationsCard({ provider }: { provider: ProviderDetail }) {
                         {[loc.address_line1, loc.address_line2, loc.city, loc.state, loc.postal_code]
                           .filter(Boolean).join(', ') || 'No address'}
                       </p>
-                      {loc.phone && <p className="text-sm text-muted-foreground">{loc.phone}</p>}
+                      {loc.phone && <p className="text-sm text-muted-foreground">{formatPhoneWithExt(loc.phone, loc.phone_extension)}</p>}
                     </div>
                     <div className="flex gap-1 ml-4 shrink-0">
                       <Button variant="ghost" size="sm" onClick={() => startEdit(loc)}>
@@ -473,6 +487,7 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
     state: primaryLocation?.state || '',
     postal_code: primaryLocation?.postal_code || '',
     phone: primaryLocation?.phone || '',
+    phone_extension: primaryLocation?.phone_extension || '',
     latitude: primaryLocation?.latitude || null,
     longitude: primaryLocation?.longitude || null,
   })
@@ -542,6 +557,7 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
       state: locationForm.state || null,
       postal_code: locationForm.postal_code || null,
       phone: locationForm.phone || null,
+      phone_extension: locationForm.phone_extension || null,
       is_primary: true,
     }
 
@@ -864,6 +880,7 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
       state: primaryLocation?.state || '',
       postal_code: primaryLocation?.postal_code || '',
       phone: primaryLocation?.phone || '',
+      phone_extension: primaryLocation?.phone_extension || '',
       latitude: primaryLocation?.latitude || null,
       longitude: primaryLocation?.longitude || null,
     })
@@ -1254,14 +1271,27 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="location_phone">Location Phone</Label>
-                <Input
-                  id="location_phone"
-                  value={locationForm.phone}
-                  onChange={(e) => setLocationForm({ ...locationForm, phone: e.target.value })}
-                  disabled={!isEditing}
-                />
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="md:col-span-2 space-y-2">
+                  <Label htmlFor="location_phone">Location Phone</Label>
+                  <Input
+                    id="location_phone"
+                    value={locationForm.phone}
+                    onChange={(e) => setLocationForm({ ...locationForm, phone: e.target.value })}
+                    disabled={!isEditing}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="location_phone_extension">Extension</Label>
+                  <Input
+                    id="location_phone_extension"
+                    value={locationForm.phone_extension}
+                    onChange={(e) => setLocationForm({ ...locationForm, phone_extension: e.target.value })}
+                    disabled={!isEditing}
+                    placeholder="x123"
+                    maxLength={20}
+                  />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="service_zip_codes">Service ZIP Codes</Label>
@@ -2004,7 +2034,7 @@ function ContactsTab({ provider }: { provider: ProviderDetail }) {
                   <TableCell className="text-muted-foreground">
                     {contact.user?.email || '-'}
                   </TableCell>
-                  <TableCell>{contact.phone || '-'}</TableCell>
+                  <TableCell>{contact.phone ? formatPhoneWithExt(contact.phone, contact.phone_extension) : '-'}</TableCell>
                   <TableCell>{contact.job_title || '-'}</TableCell>
                   <TableCell>
                     <Badge variant={contact.provider_role === 'admin' ? 'default' : 'secondary'}>
@@ -2370,7 +2400,7 @@ function ReferralsTab({ provider: initialProvider }: { provider: ProviderDetail 
 
               {ticket.client_phone && (
                 <div className="text-sm">
-                  <span className="font-medium">Phone:</span> {ticket.client_phone}
+                  <span className="font-medium">Phone:</span> {formatPhoneWithExt(ticket.client_phone, null)}
                 </div>
               )}
               {ticket.client_email && (

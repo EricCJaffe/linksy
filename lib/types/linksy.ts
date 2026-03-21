@@ -146,6 +146,7 @@ export interface ProviderLocation {
   state: string | null
   postal_code: string | null
   phone: string | null
+  phone_extension: string | null
   is_primary: boolean
   latitude: number | null
   longitude: number | null
@@ -203,6 +204,7 @@ export interface ProviderContact {
   job_title: string | null
   contact_type: string | null
   phone: string | null
+  phone_extension: string | null
   provider_role: ProviderContactRole
   status: ProviderContactStatus
   is_primary_contact: boolean
@@ -494,6 +496,7 @@ export interface ProviderApplication {
   services: string | null
   website: string | null
   phone: string | null
+  phone_extension: string | null
   hours: string | null
   address: string | null
   city: string | null
@@ -502,6 +505,7 @@ export interface ProviderApplication {
   contact_name: string
   contact_email: string
   contact_phone: string | null
+  contact_phone_extension: string | null
   status: ApplicationStatus
   reviewer_id: string | null
   reviewed_at: string | null

@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/table'
 import { Search, ChevronLeft, ChevronRight, Users, ExternalLink, Download, ArrowUpDown, CalendarDays, X, MapPin } from 'lucide-react'
 import { convertToCSV, downloadCSV } from '@/lib/utils/csv'
+import { formatPhoneWithExt } from '@/lib/utils/phone'
 
 const LIMIT = 50
 
@@ -34,6 +35,7 @@ interface Contact {
   full_name: string | null
   job_title: string | null
   phone: string | null
+  phone_extension: string | null
   contact_type: string
   provider_role: string
   is_primary_contact: boolean
@@ -371,7 +373,7 @@ export default function ContactsPage() {
                         {contact.display_email || '—'}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {contact.phone || '—'}
+                        {contact.phone ? formatPhoneWithExt(contact.phone, contact.phone_extension) : '—'}
                       </TableCell>
                       <TableCell>
                         {contact.provider ? (

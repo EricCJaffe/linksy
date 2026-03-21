@@ -9,13 +9,14 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Loader2, MapPin, Phone, Globe, Send, AlertTriangle, X, Navigation, Calendar, Clock, Repeat } from 'lucide-react'
 import type { HostWidgetConfig } from '@/lib/types/linksy'
 import { RichTextDisplay } from '@/components/ui/rich-text-display'
-import { formatPhone, phoneToTel } from '@/lib/utils/phone'
+import { formatPhone, formatPhoneWithExt, phoneToTel } from '@/lib/utils/phone'
 
 interface SearchResult {
   id: string
   name: string
   description: string | null
   phone: string | null
+  phone_extension: string | null
   email: string | null
   website: string | null
   hours_of_operation: string | null
@@ -405,7 +406,7 @@ export function FindHelpWidget({ hostProviderId, hostProviderName, widgetConfig 
                                 style={secondaryColor ? { color: secondaryColor } : undefined}
                               >
                                 <Phone className="h-3 w-3" />
-                                {formatPhone(provider.phone)}
+                                {formatPhoneWithExt(provider.phone, provider.phone_extension)}
                               </a>
                             )}
                             {provider.website && (

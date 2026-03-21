@@ -32,6 +32,7 @@ import { CallLogForm } from '@/components/providers/call-log-form'
 import { CallLogDisplay } from '@/components/providers/call-log-display'
 import { RichTextDisplay } from '@/components/ui/rich-text-display'
 import type { NoteType } from '@/lib/types/linksy'
+import { formatPhoneWithExt, phoneToTel } from '@/lib/utils/phone'
 
 interface ContactDetail {
   id: string
@@ -41,6 +42,7 @@ interface ContactDetail {
   full_name: string | null
   job_title: string | null
   phone: string | null
+  phone_extension: string | null
   contact_type: string
   provider_role: string
   is_primary_contact: boolean
@@ -207,7 +209,7 @@ export default function ContactDetailPage() {
             {contact.phone && (
               <div className="flex items-center gap-2">
                 <Phone className="h-4 w-4 text-muted-foreground" />
-                <a href={`tel:${contact.phone}`} className="hover:underline">{contact.phone}</a>
+                <a href={`tel:${phoneToTel(contact.phone)}`} className="hover:underline">{formatPhoneWithExt(contact.phone, contact.phone_extension)}</a>
               </div>
             )}
             {contact.job_title && (

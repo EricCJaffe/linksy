@@ -61,10 +61,11 @@ export async function PATCH(
   // Build update object
   const updates: Record<string, any> = {}
   const allowedFields = isEditingOwnContact
-    ? ['job_title', 'phone']  // Regular users can only edit these fields on their own contact
+    ? ['job_title', 'phone', 'phone_extension']  // Regular users can only edit these fields on their own contact
     : [
         'job_title',
         'phone',
+        'phone_extension',
         'contact_type',
         'provider_role',
         'is_primary_contact',

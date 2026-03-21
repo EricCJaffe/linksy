@@ -34,13 +34,14 @@ import {
 import { CreateTicketDialog } from '@/components/tickets/create-ticket-dialog'
 import { RichTextDisplay } from '@/components/ui/rich-text-display'
 import type { LucideIcon } from 'lucide-react'
-import { formatPhone, phoneToTel } from '@/lib/utils/phone'
+import { formatPhone, formatPhoneWithExt, phoneToTel } from '@/lib/utils/phone'
 
 interface SearchResult {
   id: string
   name: string
   description: string | null
   phone: string | null
+  phone_extension: string | null
   email: string | null
   website: string | null
   hours_of_operation: string | null
@@ -784,7 +785,7 @@ function ProviderCard({ provider, sessionId }: { provider: SearchResult; session
               className="flex items-center gap-2 text-blue-600 hover:text-blue-800"
             >
               <Phone className="h-4 w-4" />
-              {formatPhone(provider.phone)}
+              {formatPhoneWithExt(provider.phone, provider.phone_extension)}
             </a>
           )}
           {provider.website && (

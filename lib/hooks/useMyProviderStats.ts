@@ -5,6 +5,7 @@ interface ProviderInfo {
   name: string
   slug: string
   phone: string | null
+  phone_extension: string | null
   email: string | null
   website: string | null
   address: string | null

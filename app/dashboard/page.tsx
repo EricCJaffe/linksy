@@ -12,7 +12,7 @@ import { AgingReferralsWidget } from '@/components/admin/aging-referrals-widget'
 import { PendingImportsWidget } from '@/components/admin/pending-imports-widget'
 import { TopProvidersChart } from '@/components/admin/top-providers-chart'
 import { Building2, FileText, LifeBuoy, CheckCircle, AlertCircle, History, TrendingUp, MapPin, Phone, Mail, Globe } from 'lucide-react'
-import { formatPhone, phoneToTel } from '@/lib/utils/phone'
+import { formatPhoneWithExt, phoneToTel } from '@/lib/utils/phone'
 
 interface OverviewStats {
   providers: { total: number }
@@ -215,7 +215,7 @@ export default function DashboardPage() {
                     <div className="flex items-center gap-2">
                       <Phone className="h-4 w-4 text-muted-foreground" />
                       <a href={`tel:${phoneToTel(providerStats.provider.phone)}`} className="hover:underline">
-                        {formatPhone(providerStats.provider.phone)}
+                        {formatPhoneWithExt(providerStats.provider.phone, providerStats.provider.phone_extension)}
                       </a>
                     </div>
                   )}

@@ -23,6 +23,7 @@ import {
   useReviewApplication,
 } from '@/lib/hooks/useProviderApplications'
 import type { ApplicationStatus, ProviderApplication } from '@/lib/types/linksy'
+import { formatPhoneWithExt } from '@/lib/utils/phone'
 
 const sectorLabels: Record<string, string> = {
   nonprofit: 'Nonprofit',
@@ -222,7 +223,7 @@ function ApplicationCard({
               {application.contact_phone && (
                 <span className="flex items-center gap-1">
                   <Phone className="h-3.5 w-3.5" />
-                  {application.contact_phone}
+                  {formatPhoneWithExt(application.contact_phone, application.contact_phone_extension)}
                 </span>
               )}
               {application.website && (
@@ -238,7 +239,7 @@ function ApplicationCard({
               {application.phone && (
                 <span className="flex items-center gap-1">
                   <Phone className="h-3.5 w-3.5" />
-                  Org: {application.phone}
+                  Org: {formatPhoneWithExt(application.phone, application.phone_extension)}
                 </span>
               )}
               {application.hours && (

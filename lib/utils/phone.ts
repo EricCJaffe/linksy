@@ -27,6 +27,20 @@ export function formatPhone(phone: string | null | undefined): string {
 }
 
 /**
+ * Format a phone number with an optional extension.
+ * Returns formatted phone + " ext. XXX" if extension is present.
+ */
+export function formatPhoneWithExt(
+  phone: string | null | undefined,
+  extension: string | null | undefined
+): string {
+  const formatted = formatPhone(phone)
+  if (!formatted) return ''
+  if (extension) return `${formatted} ext. ${extension}`
+  return formatted
+}
+
+/**
  * Strip a phone number to digits-only for tel: links.
  */
 export function phoneToTel(phone: string | null | undefined): string {
