@@ -46,6 +46,7 @@ import { CallLogForm } from '@/components/providers/call-log-form'
 import { CallLogDisplay } from '@/components/providers/call-log-display'
 import { ParentChildManager } from '@/components/providers/parent-child-manager'
 import { ParentOrgDashboard } from '@/components/providers/parent-org-dashboard'
+import { DescriptionReviewCard } from '@/components/providers/description-review-card'
 import { useProviderChildren } from '@/lib/hooks/useProviderHierarchy'
 import { ImageUpload } from '@/components/ui/image-upload'
 import { WidgetPreview } from '@/components/widget/widget-preview'
@@ -1866,6 +1867,13 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
           )}
         </CardContent>
       </Card>
+
+      <DescriptionReviewCard
+        providerId={provider.id}
+        nextReviewAt={provider.next_description_review_at}
+        lastReviewAt={provider.last_description_review_at}
+        isSiteAdmin={currentUser?.profile?.role === 'site_admin'}
+      />
 
       {/* Freeze Dialog */}
       {freezeDialogOpen && (

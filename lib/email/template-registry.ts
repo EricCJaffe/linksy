@@ -7,6 +7,7 @@ export const EMAIL_TEMPLATE_KEYS = [
   'ticket_forwarded_to_admin',
   'ticket_reassigned_to_provider',
   'ticket_assigned_internally',
+  'description_review',
 ] as const
 
 export type EmailTemplateKey = (typeof EMAIL_TEMPLATE_KEYS)[number]
@@ -125,6 +126,22 @@ export const EMAIL_TEMPLATE_DEFINITIONS: EmailTemplateDefinition[] = [
       'assigner_name',
       'notes',
       'client_name',
+    ],
+  },
+  {
+    key: 'description_review',
+    name: 'Provider Description Review',
+    description: 'Sent quarterly to providers asking them to review their description against AI-scanned website content.',
+    placeholders: [
+      'app_name',
+      'contact_name',
+      'provider_name',
+      'current_description',
+      'ai_suggested_description',
+      'accept_current_url',
+      'accept_ai_url',
+      'edit_url',
+      'support_email',
     ],
   },
 ]

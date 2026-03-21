@@ -273,7 +273,7 @@ All 8 LOW findings resolved.
 - [ ] Spanish (es) language support / multi-language i18n
 - [ ] Two-factor authentication (2FA) for admins
 - [ ] SSO integration (SAML)
-- [ ] Autoupdates for provider description every 90 days
+- [x] Autoupdates for provider description every 90 days — COMPLETED 2026-03-21. Quarterly cron job (Jan/Apr/Jul/Oct) scans provider websites via OpenAI, compares descriptions, emails provider contacts with accept/edit links. Admin can override timing per provider. Email template editable in Admin Console.
 - [ ] Enhanced notification workflows beyond baseline
 - [ ] Host-specific email template customization (tenant/host-level overrides)
 - [ ] Host custom form builder for pre-proposal intake

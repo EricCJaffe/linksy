@@ -129,6 +129,9 @@ export interface Provider {
   host_searches_this_month: number
   host_monthly_token_budget: number | null
   host_usage_reset_at: string | null
+  // Description review
+  next_description_review_at: string | null
+  last_description_review_at: string | null
   // AI / search
   llm_context_card: string | null
   // Aggregated counts from list query
@@ -540,6 +543,24 @@ export interface Survey {
   rating: number | null
   feedback_text: string | null
   completed_at: string | null
+  created_at: string
+}
+
+// Description review (quarterly AI scan)
+export type DescriptionReviewStatus = 'pending' | 'accepted_current' | 'accepted_ai' | 'edited' | 'expired' | 'error'
+
+export interface DescriptionReview {
+  id: string
+  provider_id: string
+  current_description: string | null
+  ai_suggested_description: string | null
+  status: DescriptionReviewStatus
+  action_token: string
+  triggered_at: string
+  responded_at: string | null
+  triggered_by: string
+  error_message: string | null
+  batch_id: string | null
   created_at: string
 }
 
