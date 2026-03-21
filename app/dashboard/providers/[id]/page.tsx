@@ -7,6 +7,7 @@ import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
 import { ProviderDetailTabs } from '@/components/providers/provider-detail-tabs'
 import { PurgeProviderDialog } from '@/components/providers/purge-provider-dialog'
 import { SendTestReferralDialog } from '@/components/providers/send-test-referral-dialog'
+import { ProviderPublicPreview } from '@/components/providers/provider-public-preview'
 import { ProviderBreadcrumbs } from '@/components/providers/provider-breadcrumbs'
 import { ProviderQuickSwitcher } from '@/components/providers/provider-quick-switcher'
 import { Badge } from '@/components/ui/badge'
@@ -122,6 +123,7 @@ export default function ProviderDetailPage({
               <PurgeProviderDialog providerId={provider.id} providerName={provider.name} />
             </>
           )}
+          <ProviderPublicPreview provider={provider} />
           <Button size="sm" asChild>
             <Link href="/dashboard/support">Linksy Support</Link>
           </Button>
