@@ -12,7 +12,10 @@ import { AgingReferralsWidget } from '@/components/admin/aging-referrals-widget'
 import { StaleReferralAlertConfig } from '@/components/admin/stale-referral-alert-config'
 import { PendingImportsWidget } from '@/components/admin/pending-imports-widget'
 import { TopProvidersChart } from '@/components/admin/top-providers-chart'
-import { Building2, FileText, LifeBuoy, CheckCircle, AlertCircle, History, TrendingUp, MapPin, Phone, Mail, Globe } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
+import { Building2, FileText, LifeBuoy, CheckCircle, AlertCircle, History, TrendingUp, MapPin, Phone, Mail, Globe, Filter, X } from 'lucide-react'
 import { formatPhoneWithExt, phoneToTel } from '@/lib/utils/phone'
 
 interface OverviewStats {
@@ -29,6 +32,13 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<OverviewStats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [includeLegacy, setIncludeLegacy] = useState(true)
+  const [includeTest, setIncludeTest] = useState(false)
+  const [excludeBlankService, setExcludeBlankService] = useState(false)
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [showFilters, setShowFilters] = useState(false)
+
+  const hasActiveFilters = includeTest || excludeBlankService || !!dateFrom || !!dateTo
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -36,6 +46,10 @@ export default function DashboardPage() {
       try {
         const params = new URLSearchParams()
         if (includeLegacy) params.set('includeLegacy', 'true')
+        if (includeTest) params.set('include_test', 'true')
+        if (excludeBlankService) params.set('exclude_blank_service', 'true')
+        if (dateFrom) params.set('date_from', dateFrom)
+        if (dateTo) params.set('date_to', dateTo)
 
         const res = await fetch(`/api/stats/overview?${params.toString()}`)
         if (res.ok) {
@@ -49,7 +63,7 @@ export default function DashboardPage() {
       }
     }
     fetchStats()
-  }, [includeLegacy])
+  }, [includeLegacy, includeTest, excludeBlankService, dateFrom, dateTo])
 
   const isSiteAdmin = user?.profile?.role === 'site_admin'
   const isProviderUser = providerStats?.hasAccess && !isSiteAdmin
@@ -81,9 +95,87 @@ export default function DashboardPage() {
               <History className="h-4 w-4 mr-2" />
               All Time
             </Button>
+            <Button
+              variant={showFilters ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              <Filter className="h-4 w-4 mr-2" />
+              Filters
+              {hasActiveFilters && (
+                <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1 text-xs">
+                  {[includeTest, excludeBlankService, !!dateFrom || !!dateTo].filter(Boolean).length}
+                </Badge>
+              )}
+            </Button>
           </div>
         )}
       </div>
+
+      {isSiteAdmin && showFilters && (
+        <Card className="border-dashed">
+          <CardContent className="pt-4 pb-3">
+            <div className="flex flex-wrap items-end gap-4">
+              <div className="space-y-1">
+                <Label className="text-xs">From</Label>
+                <Input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="w-[150px] h-8 text-sm"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">To</Label>
+                <Input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="w-[150px] h-8 text-sm"
+                />
+              </div>
+              <div className="flex items-center gap-2 rounded-md border px-3 py-1.5">
+                <Switch
+                  id="include-test"
+                  checked={includeTest}
+                  onCheckedChange={setIncludeTest}
+                  className="scale-75"
+                />
+                <Label htmlFor="include-test" className="text-xs cursor-pointer whitespace-nowrap">
+                  Include test referrals
+                </Label>
+              </div>
+              <div className="flex items-center gap-2 rounded-md border px-3 py-1.5">
+                <Switch
+                  id="exclude-blank"
+                  checked={excludeBlankService}
+                  onCheckedChange={setExcludeBlankService}
+                  className="scale-75"
+                />
+                <Label htmlFor="exclude-blank" className="text-xs cursor-pointer whitespace-nowrap">
+                  Exclude blank services
+                </Label>
+              </div>
+              {hasActiveFilters && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 text-xs"
+                  onClick={() => {
+                    setIncludeTest(false)
+                    setExcludeBlankService(false)
+                    setDateFrom('')
+                    setDateTo('')
+                  }}
+                >
+                  <X className="h-3 w-3 mr-1" />
+                  Clear
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {isSiteAdmin && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

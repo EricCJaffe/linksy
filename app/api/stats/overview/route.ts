@@ -13,16 +13,29 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const includeLegacy = searchParams.get('includeLegacy') === 'true'
   const includeTest = searchParams.get('include_test') === 'true'
+  const excludeBlankService = searchParams.get('exclude_blank_service') === 'true'
+  const dateFrom = searchParams.get('date_from')
+  const dateTo = searchParams.get('date_to')
 
   const supabase = await createServiceClient()
 
   // Build ticket query with optional legacy filter, excluding test referrals unless toggled
-  let ticketsQuery = supabase.from('linksy_tickets').select('status', { count: 'exact' })
+  let ticketsQuery = supabase.from('linksy_tickets').select('status, need_id', { count: 'exact' })
   if (!includeLegacy) {
     ticketsQuery = ticketsQuery.is('legacy_id', null)
   }
   if (!includeTest) {
     ticketsQuery = ticketsQuery.or('is_test.is.null,is_test.eq.false')
+  }
+  if (excludeBlankService) {
+    ticketsQuery = ticketsQuery.not('need_id', 'is', null)
+  }
+  if (dateFrom) {
+    ticketsQuery = ticketsQuery.gte('created_at', dateFrom)
+  }
+  if (dateTo) {
+    // Add time to include the entire end date
+    ticketsQuery = ticketsQuery.lte('created_at', `${dateTo}T23:59:59.999Z`)
   }
 
   // Fetch all stats in parallel
@@ -56,7 +69,7 @@ export async function GET(request: Request) {
   // Fallback if is_test column doesn't exist yet
   let ticketsData = ticketsStats.data
   if (ticketsStats.error && ticketsStats.error.message.includes('is_test')) {
-    let retryQuery = supabase.from('linksy_tickets').select('status', { count: 'exact' })
+    let retryQuery = supabase.from('linksy_tickets').select('status, need_id', { count: 'exact' })
     if (!includeLegacy) {
       retryQuery = retryQuery.is('legacy_id', null)
     }
