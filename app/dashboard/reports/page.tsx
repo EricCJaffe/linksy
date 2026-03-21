@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -47,14 +47,41 @@ interface TimeToResolution {
   byStatus: { status: string; avg_days: number; count: number }[]
 }
 
+interface TopProviderWithServices {
+  id: string
+  name: string
+  referralType: string
+  count: number
+  topServices: { name: string; count: number }[]
+}
+
+interface NonReferralSummary {
+  total: number
+  byStatus: { status: string; count: number }[]
+  byCategory: { name: string; count: number }[]
+  topProviders: TopProviderWithServices[]
+}
+
+interface UniqueClientsData {
+  totalReferrals: number
+  uniqueClients: number
+  uniqueClientsIncludingTest: number
+  blankNameCount: number
+  testNameCount: number
+  utilizationRatio: number
+}
+
 interface ReportsData {
   referralsByCategory: { name: string; count: number }[]
-  topReferrers: { id: string; name: string; count: number }[]
+  topReferrers: TopProviderWithServices[]
   referralsByStatus: { status: string; count: number }[]
   referralsBySource: { source: string; count: number }[]
   monthlyTrends: { month: string; count: number }[]
   recentActivity: { last30Days: number }
   timeToResolution: TimeToResolution
+  nonReferralSummary: NonReferralSummary
+  uniqueClients: UniqueClientsData
+  totalIncludingNR: number
 }
 
 const statusLabels: Record<string, string> = {
@@ -150,6 +177,7 @@ const INTERACTION_LABELS: Record<string, { label: string; icon: React.ReactNode 
 
 export default function ReportsPage() {
   const [activeTab, setActiveTab] = useState<'referrals' | 'search' | 'charts' | 'reassignments'>('referrals')
+  const [expandedProvider, setExpandedProvider] = useState<string | null>(null)
   const [data, setData] = useState<ReportsData | null>(null)
   const [searchData, setSearchData] = useState<SearchAnalyticsData | null>(null)
   const [reassignmentData, setReassignmentData] = useState<any | null>(null)
@@ -612,15 +640,22 @@ export default function ReportsPage() {
         <div className="space-y-6">
 
       {/* Summary stat cards */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
         {isLoading ? (
-          Array.from({ length: 3 }).map((_, i) => <Skeleton key={`skel-${i}`} className="h-24" />)
+          Array.from({ length: 5 }).map((_, i) => <Skeleton key={`skel-${i}`} className="h-24" />)
         ) : data && (
           <>
             <Card>
               <CardContent className="pt-6">
-                <p className="text-sm text-muted-foreground">Total Referrals</p>
+                <p className="text-sm text-muted-foreground">Referrals (Services)</p>
                 <p className="text-4xl font-bold mt-1">{totalReferrals}</p>
+              </CardContent>
+            </Card>
+            <Card className="border-amber-200">
+              <CardContent className="pt-6">
+                <p className="text-sm text-muted-foreground">Non-Referrals (NR)</p>
+                <p className="text-4xl font-bold mt-1 text-amber-600">{data.nonReferralSummary?.total || 0}</p>
+                <p className="text-xs text-muted-foreground mt-1">Contact-directly orgs</p>
               </CardContent>
             </Card>
             <Card>
@@ -634,6 +669,15 @@ export default function ReportsPage() {
                 <p className="text-sm text-muted-foreground">Pending Referrals</p>
                 <p className="text-4xl font-bold mt-1">
                   {data.referralsByStatus.find((s) => s.status === 'pending')?.count || 0}
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="border-teal-200">
+              <CardContent className="pt-6">
+                <p className="text-sm text-muted-foreground">Unique Clients</p>
+                <p className="text-4xl font-bold mt-1 text-teal-600">{data.uniqueClients?.uniqueClients || 0}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {data.uniqueClients?.utilizationRatio || 0}x avg utilization
                 </p>
               </CardContent>
             </Card>
@@ -797,7 +841,7 @@ export default function ReportsPage() {
         </Card>
       </div>
 
-      {/* Top Referrers */}
+      {/* Top Referrers with drill-down */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -805,7 +849,7 @@ export default function ReportsPage() {
             Top Providers by Referral Volume
           </CardTitle>
           <p className="text-sm text-muted-foreground">
-            Providers receiving the most referrals
+            Click a provider to see their top 3 services
           </p>
         </CardHeader>
         <CardContent>
@@ -824,20 +868,55 @@ export default function ReportsPage() {
               <TableBody>
                 {data.topReferrers.map((provider, index) => {
                   const maxCount = data.topReferrers[0]?.count || 1
+                  const isExpanded = expandedProvider === provider.id
                   return (
-                    <TableRow key={provider.id}>
-                      <TableCell className="font-medium text-muted-foreground">#{index + 1}</TableCell>
-                      <TableCell className="font-medium">{provider.name}</TableCell>
-                      <TableCell className="w-40">
-                        <div className="h-3 bg-muted rounded overflow-hidden">
-                          <div
-                            className="h-full bg-primary rounded"
-                            style={{ width: `${(provider.count / maxCount) * 100}%` }}
-                          />
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right font-bold">{provider.count}</TableCell>
-                    </TableRow>
+                    <Fragment key={provider.id}>
+                      <TableRow
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => setExpandedProvider(isExpanded ? null : provider.id)}
+                      >
+                        <TableCell className="font-medium text-muted-foreground">#{index + 1}</TableCell>
+                        <TableCell className="font-medium">
+                          {provider.name}
+                          {provider.topServices && provider.topServices.length > 0 && (
+                            <span className="ml-2 text-xs text-muted-foreground">
+                              {isExpanded ? '▲' : '▼'}
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="w-40">
+                          <div className="h-3 bg-muted rounded overflow-hidden">
+                            <div
+                              className="h-full bg-primary rounded"
+                              style={{ width: `${(provider.count / maxCount) * 100}%` }}
+                            />
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right font-bold">{provider.count}</TableCell>
+                      </TableRow>
+                      {isExpanded && provider.topServices && provider.topServices.length > 0 && (
+                        <TableRow>
+                          <TableCell />
+                          <TableCell colSpan={3} className="py-2">
+                            <div className="bg-muted/30 rounded-md p-3 space-y-1.5">
+                              <p className="text-xs font-medium text-muted-foreground mb-2">Top Services</p>
+                              {provider.topServices.map((svc) => (
+                                <div key={svc.name} className="flex items-center gap-2">
+                                  <div className="flex-1 h-2 bg-muted rounded overflow-hidden">
+                                    <div
+                                      className="h-full bg-blue-400 rounded"
+                                      style={{ width: `${(svc.count / provider.topServices[0].count) * 100}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-xs text-muted-foreground min-w-[120px] truncate">{svc.name}</span>
+                                  <span className="text-xs font-semibold w-8 text-right">{svc.count}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </Fragment>
                   )
                 })}
               </TableBody>
@@ -849,6 +928,106 @@ export default function ReportsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Non-Referral (NR) Organizations */}
+      {!isLoading && data && data.nonReferralSummary && data.nonReferralSummary.total > 0 && (
+        <Card className="border-amber-200">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-amber-700">
+              <Users className="h-5 w-5" />
+              Non-Referral (NR) Organizations
+              <Badge variant="outline" className="ml-2 text-amber-600 border-amber-300">Contact Directly</Badge>
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Organizations where clients contact directly (not through referral system). Counted separately from Services Provided.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <p className="text-sm font-medium mb-2">Top NR Providers</p>
+                {data.nonReferralSummary.topProviders.length > 0 ? (
+                  <div className="space-y-2">
+                    {data.nonReferralSummary.topProviders.map((p) => {
+                      const max = data.nonReferralSummary.topProviders[0]?.count || 1
+                      return (
+                        <div key={p.id} className="space-y-1">
+                          <div className="flex items-center gap-3">
+                            <span className="w-32 shrink-0 truncate text-sm text-right text-muted-foreground" title={p.name}>{p.name}</span>
+                            <div className="flex-1 h-5 bg-muted rounded overflow-hidden">
+                              <div className="h-full rounded bg-amber-400" style={{ width: `${(p.count / max) * 100}%` }} />
+                            </div>
+                            <span className="w-8 shrink-0 text-sm font-semibold text-right">{p.count}</span>
+                          </div>
+                          {p.topServices.length > 0 && (
+                            <div className="ml-36 text-xs text-muted-foreground">
+                              {p.topServices.map((s) => s.name).join(', ')}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No NR provider data</p>
+                )}
+              </div>
+              <div>
+                <p className="text-sm font-medium mb-2">NR Status Breakdown</p>
+                <BarChart
+                  items={data.nonReferralSummary.byStatus.map((i: any) => ({
+                    label: statusLabels[i.status] || i.status,
+                    count: i.count,
+                  }))}
+                  colorClass="bg-amber-400"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Unique Client Count (True Utilization) */}
+      {!isLoading && data && data.uniqueClients && (
+        <Card className="border-teal-200">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-teal-700">
+              <Users className="h-5 w-5" />
+              Unique Client Count (True Utilization)
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              How many distinct people used the system vs total referral count. Same person multiple times = counted once. Test names excluded.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-6 md:grid-cols-4">
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground">Total Referrals</p>
+                <p className="text-3xl font-bold mt-1">{data.uniqueClients.totalReferrals}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground">Unique Clients</p>
+                <p className="text-3xl font-bold mt-1 text-teal-600">{data.uniqueClients.uniqueClients}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground">Avg Referrals/Client</p>
+                <p className="text-3xl font-bold mt-1">{data.uniqueClients.utilizationRatio}x</p>
+              </div>
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground">Excluded</p>
+                <p className="text-3xl font-bold mt-1 text-gray-400">{data.uniqueClients.testNameCount + data.uniqueClients.blankNameCount}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {data.uniqueClients.testNameCount} test + {data.uniqueClients.blankNameCount} blank
+                </p>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground mt-4 text-center">
+              Is it {data.uniqueClients.uniqueClients} people using the system, or {data.uniqueClients.totalReferrals} total referrals?
+              Answer: {data.uniqueClients.uniqueClients} unique clients generated {data.uniqueClients.totalReferrals} referrals.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Referrals by Source */}
       {!isLoading && data && data.referralsBySource.length > 0 && (

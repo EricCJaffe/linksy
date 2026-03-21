@@ -118,7 +118,8 @@ async function handleReferralsReport(
       need_id,
       source,
       legacy_id,
-      provider:linksy_providers!provider_id(id, name),
+      client_name,
+      provider:linksy_providers!provider_id(id, name, referral_type),
       need:linksy_needs!need_id(id, name, category:linksy_need_categories!category_id(name))
     `)
 
@@ -146,14 +147,33 @@ async function handleReferralsReport(
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  // Aggregate data
-  const referralsByStatus = aggregateByField(tickets, 'status')
-  const referralsByCategory = aggregateByCategory(tickets)
-  const referralsBySource = aggregateByField(tickets, 'source')
-  const topReferrers = aggregateTopProviders(tickets)
-  const monthlyTrends = aggregateMonthlyTrends(tickets)
-  const recentActivity = calculateRecentActivity(tickets)
-  const timeToResolution = calculateTimeToResolution(tickets)
+  // Split tickets into referral vs non-referral (contact_directly) providers
+  const referralTickets = tickets.filter(
+    (t: any) => t.provider?.referral_type !== 'contact_directly'
+  )
+  const nonReferralTickets = tickets.filter(
+    (t: any) => t.provider?.referral_type === 'contact_directly'
+  )
+
+  // Aggregate data (referral providers only)
+  const referralsByStatus = aggregateByField(referralTickets, 'status')
+  const referralsByCategory = aggregateByCategory(referralTickets)
+  const referralsBySource = aggregateByField(referralTickets, 'source')
+  const topReferrers = aggregateTopProvidersWithServices(referralTickets)
+  const monthlyTrends = aggregateMonthlyTrends(referralTickets)
+  const recentActivity = calculateRecentActivity(referralTickets)
+  const timeToResolution = calculateTimeToResolution(referralTickets)
+
+  // Non-referral summary
+  const nonReferralSummary = {
+    total: nonReferralTickets.length,
+    byStatus: aggregateByField(nonReferralTickets, 'status'),
+    byCategory: aggregateByCategory(nonReferralTickets),
+    topProviders: aggregateTopProvidersWithServices(nonReferralTickets),
+  }
+
+  // Unique client count (exclude test names like "Mega Coolmint")
+  const uniqueClients = calculateUniqueClients(tickets)
 
   return NextResponse.json({
     referralsByStatus,
@@ -163,6 +183,9 @@ async function handleReferralsReport(
     monthlyTrends,
     recentActivity,
     timeToResolution,
+    nonReferralSummary,
+    uniqueClients,
+    totalIncludingNR: tickets.length,
   })
 }
 
@@ -381,6 +404,98 @@ function aggregateTopProviders(tickets: any[]) {
   return Array.from(providerCounts.values())
     .sort((a, b) => b.count - a.count)
     .slice(0, 10)
+}
+
+function aggregateTopProvidersWithServices(tickets: any[]) {
+  const providerMap = new Map<string, {
+    id: string
+    name: string
+    referralType: string
+    count: number
+    services: Map<string, number>
+  }>()
+
+  tickets.forEach((ticket: any) => {
+    if (!ticket.provider) return
+    const key = ticket.provider.id
+
+    if (!providerMap.has(key)) {
+      providerMap.set(key, {
+        id: ticket.provider.id,
+        name: ticket.provider.name,
+        referralType: ticket.provider.referral_type || 'standard',
+        count: 0,
+        services: new Map(),
+      })
+    }
+
+    const entry = providerMap.get(key)!
+    entry.count++
+
+    const serviceName = ticket.need?.name
+    if (serviceName) {
+      entry.services.set(serviceName, (entry.services.get(serviceName) || 0) + 1)
+    }
+  })
+
+  return Array.from(providerMap.values())
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10)
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      referralType: p.referralType,
+      count: p.count,
+      topServices: Array.from(p.services.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([name, count]) => ({ name, count })),
+    }))
+}
+
+const TEST_NAME_PATTERNS = [
+  /mega\s*coolmint/i,
+  /test\s*(user|client|referral|person)/i,
+  /^test$/i,
+]
+
+function isTestClientName(name: string | null): boolean {
+  if (!name || !name.trim()) return true
+  return TEST_NAME_PATTERNS.some((pattern) => pattern.test(name.trim()))
+}
+
+function calculateUniqueClients(tickets: any[]) {
+  const allClients = new Set<string>()
+  const realClients = new Set<string>()
+  let blankCount = 0
+  let testNameCount = 0
+
+  tickets.forEach((ticket: any) => {
+    const name = ticket.client_name?.trim()?.toLowerCase()
+    if (!name) {
+      blankCount++
+      return
+    }
+
+    allClients.add(name)
+
+    if (isTestClientName(ticket.client_name)) {
+      testNameCount++
+    } else {
+      realClients.add(name)
+    }
+  })
+
+  return {
+    totalReferrals: tickets.length,
+    uniqueClients: realClients.size,
+    uniqueClientsIncludingTest: allClients.size,
+    blankNameCount: blankCount,
+    testNameCount,
+    utilizationRatio: realClients.size > 0
+      ? Math.round((tickets.length / realClients.size) * 10) / 10
+      : 0,
+  }
 }
 
 function aggregateMonthlyTrends(items: any[]) {
