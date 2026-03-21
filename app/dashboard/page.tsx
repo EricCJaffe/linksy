@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
 import { useMyProviderStats } from '@/lib/hooks/useMyProviderStats'
 import { AgingReferralsWidget } from '@/components/admin/aging-referrals-widget'
+import { StaleReferralAlertConfig } from '@/components/admin/stale-referral-alert-config'
 import { PendingImportsWidget } from '@/components/admin/pending-imports-widget'
 import { TopProvidersChart } from '@/components/admin/top-providers-chart'
 import { Building2, FileText, LifeBuoy, CheckCircle, AlertCircle, History, TrendingUp, MapPin, Phone, Mail, Globe } from 'lucide-react'
@@ -365,6 +366,7 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
             <AgingReferralsWidget />
+            <StaleReferralAlertConfig />
             <PendingImportsWidget />
           </div>
         </>

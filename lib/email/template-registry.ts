@@ -8,6 +8,7 @@ export const EMAIL_TEMPLATE_KEYS = [
   'ticket_reassigned_to_provider',
   'ticket_assigned_internally',
   'description_review',
+  'stale_referral_alert',
 ] as const
 
 export type EmailTemplateKey = (typeof EMAIL_TEMPLATE_KEYS)[number]
@@ -142,6 +143,20 @@ export const EMAIL_TEMPLATE_DEFINITIONS: EmailTemplateDefinition[] = [
       'accept_ai_url',
       'edit_url',
       'support_email',
+    ],
+  },
+  {
+    key: 'stale_referral_alert',
+    name: 'Stale Referral Alert',
+    description: 'Sent daily to designated recipients when referrals stay Pending longer than the configured threshold.',
+    placeholders: [
+      'app_name',
+      'total_count',
+      'threshold_hours',
+      'threshold_days',
+      'age_breakdown',
+      'ticket_table',
+      'dashboard_url',
     ],
   },
 ]
