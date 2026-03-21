@@ -34,38 +34,57 @@ export async function GET(request: Request) {
     return NextResponse.json({ duplicates: [] })
   }
 
-  // Find duplicates by email
+  // Find duplicates by email and by name (case-insensitive)
   const duplicateGroups: any[] = []
-  const processed = new Set<string>()
+  const seenContactIds = new Set<string>()
 
-  // Group by email
+  const mapContact = (c: any) => ({
+    id: c.id,
+    user_id: c.user_id,
+    email: c.user?.email || c.email,
+    full_name: c.user?.full_name || c.full_name,
+    job_title: c.job_title,
+    is_primary_contact: c.is_primary_contact,
+    is_default_referral_handler: c.is_default_referral_handler,
+    created_at: c.created_at,
+  })
+
+  // Group by email (case-insensitive)
   const emailGroups = new Map<string, any[]>()
-
   for (const contact of contacts) {
-    const email = contact.user?.email?.toLowerCase().trim()
+    const email = (contact.user?.email || contact.email || '').toLowerCase().trim()
     if (!email) continue
-
-    if (!emailGroups.has(email)) {
-      emailGroups.set(email, [])
-    }
+    if (!emailGroups.has(email)) emailGroups.set(email, [])
     emailGroups.get(email)!.push(contact)
   }
 
-  // Find groups with more than one contact
   for (const [email, group] of Array.from(emailGroups.entries())) {
     if (group.length > 1) {
+      for (const c of group) seenContactIds.add(c.id)
       duplicateGroups.push({
         email,
-        contacts: group.map((c: any) => ({
-          id: c.id,
-          user_id: c.user_id,
-          email: c.user?.email,
-          full_name: c.user?.full_name,
-          job_title: c.job_title,
-          is_primary_contact: c.is_primary_contact,
-          is_default_referral_handler: c.is_default_referral_handler,
-          created_at: c.created_at,
-        })),
+        match_type: 'email',
+        contacts: group.map(mapContact),
+      })
+    }
+  }
+
+  // Group by name (case-insensitive, trimmed) — only contacts not already in email groups
+  const nameGroups = new Map<string, any[]>()
+  for (const contact of contacts) {
+    if (seenContactIds.has(contact.id)) continue
+    const name = (contact.user?.full_name || contact.full_name || '').toLowerCase().trim()
+    if (!name) continue
+    if (!nameGroups.has(name)) nameGroups.set(name, [])
+    nameGroups.get(name)!.push(contact)
+  }
+
+  for (const [name, group] of Array.from(nameGroups.entries())) {
+    if (group.length > 1) {
+      duplicateGroups.push({
+        email: group[0].user?.email || group[0].email || name,
+        match_type: 'name',
+        contacts: group.map(mapContact),
       })
     }
   }

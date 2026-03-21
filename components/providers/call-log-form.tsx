@@ -20,6 +20,7 @@ import type { CallOutcome, CallLogData } from '@/lib/types/linksy'
 
 interface CallLogFormProps {
   providerId: string
+  contactId?: string
   onSuccess: () => void
   onCancel: () => void
 }
@@ -33,7 +34,7 @@ const callOutcomes: { value: CallOutcome; label: string }[] = [
   { value: 'wrong_number', label: 'Wrong Number' },
 ]
 
-export function CallLogForm({ providerId, onSuccess, onCancel }: CallLogFormProps) {
+export function CallLogForm({ providerId, contactId, onSuccess, onCancel }: CallLogFormProps) {
   const { toast } = useToast()
   const [saving, setSaving] = useState(false)
   const [formData, setFormData] = useState<{
@@ -79,7 +80,10 @@ export function CallLogForm({ providerId, onSuccess, onCancel }: CallLogFormProp
         follow_up_date: formData.follow_up_date || undefined,
       }
 
-      const res = await fetch(`/api/providers/${providerId}/notes`, {
+      const url = contactId
+        ? `/api/contacts/${contactId}/notes`
+        : `/api/providers/${providerId}/notes`
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -87,6 +91,7 @@ export function CallLogForm({ providerId, onSuccess, onCancel }: CallLogFormProp
           content: formData.content || 'Call log entry',
           call_log_data: callLogData,
           is_private: formData.is_private,
+          ...(contactId ? { provider_id: providerId } : {}),
         }),
       })
 

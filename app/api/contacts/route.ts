@@ -44,9 +44,9 @@ export async function GET(request: Request) {
     query = query.eq('status', status)
   }
 
-  // Search filter (name, email, job_title)
+  // Search filter (name, email, job_title, phone)
   if (q) {
-    query = query.or(`full_name.ilike.%${q}%,email.ilike.%${q}%,job_title.ilike.%${q}%`)
+    query = query.or(`full_name.ilike.%${q}%,email.ilike.%${q}%,job_title.ilike.%${q}%,phone.ilike.%${q}%`)
   }
 
   // Provider filter

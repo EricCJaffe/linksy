@@ -18,7 +18,7 @@ export async function GET(
 
   const { data: notes, error } = await supabase
     .from('linksy_provider_notes')
-    .select('*, user:users!author_id(full_name, email)')
+    .select('id, note_type, content, is_private, call_log_data, created_at, updated_at, user:users!author_id(full_name, email)')
     .eq('contact_id', id)
     .order('created_at', { ascending: false })
 

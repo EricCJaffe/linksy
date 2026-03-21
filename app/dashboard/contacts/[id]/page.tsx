@@ -27,6 +27,9 @@ import {
   Lock,
   Globe,
   StickyNote,
+  Pencil,
+  Check,
+  X,
 } from 'lucide-react'
 import { CallLogForm } from '@/components/providers/call-log-form'
 import { CallLogDisplay } from '@/components/providers/call-log-display'
@@ -61,6 +64,7 @@ interface ContactNote {
   is_private: boolean
   call_log_data?: any
   created_at: string
+  updated_at?: string
   user?: { full_name: string | null; email: string }
 }
 
@@ -153,6 +157,48 @@ export default function ContactDetailPage() {
   const handleCallLogSuccess = () => {
     setShowCallLog(false)
     fetchNotes()
+  }
+
+  // Edit note state
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
+  const [editContent, setEditContent] = useState('')
+  const [editNoteType, setEditNoteType] = useState<NoteType>('general')
+  const [editPrivate, setEditPrivate] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+
+  const startEdit = (note: ContactNote) => {
+    setEditingNoteId(note.id)
+    setEditContent(note.content)
+    setEditNoteType(note.note_type)
+    setEditPrivate(note.is_private)
+  }
+
+  const cancelEdit = () => {
+    setEditingNoteId(null)
+    setEditContent('')
+  }
+
+  const handleEditNote = async (noteId: string) => {
+    setIsEditing(true)
+    try {
+      const res = await fetch(`/api/contacts/${id}/notes/${noteId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: editContent,
+          note_type: editNoteType,
+          is_private: editPrivate,
+        }),
+      })
+      if (res.ok) {
+        setEditingNoteId(null)
+        fetchNotes()
+      }
+    } catch {
+      // silent
+    } finally {
+      setIsEditing(false)
+    }
   }
 
   if (isLoading) {
@@ -330,6 +376,7 @@ export default function ContactDetailPage() {
           {showCallLog && contact?.provider_id && (
             <CallLogForm
               providerId={contact.provider_id}
+              contactId={id}
               onSuccess={handleCallLogSuccess}
               onCancel={() => setShowCallLog(false)}
             />
@@ -364,9 +411,59 @@ export default function ContactDetailPage() {
                     <span className="text-xs text-muted-foreground ml-auto">
                       {note.user?.full_name || note.user?.email || 'System'} &middot;{' '}
                       {new Date(note.created_at).toLocaleString()}
+                      {note.updated_at && note.updated_at !== note.created_at && (
+                        <> &middot; edited {new Date(note.updated_at).toLocaleString()}</>
+                      )}
                     </span>
+                    {editingNoteId !== note.id && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0"
+                        onClick={() => startEdit(note)}
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                    )}
                   </div>
-                  {note.note_type === 'call_log' && note.call_log_data ? (
+                  {editingNoteId === note.id ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3">
+                        <Select value={editNoteType} onValueChange={(v) => setEditNoteType(v as NoteType)}>
+                          <SelectTrigger className="w-36">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="general">General</SelectItem>
+                            <SelectItem value="outreach">Outreach</SelectItem>
+                            <SelectItem value="update">Update</SelectItem>
+                            <SelectItem value="internal">Internal</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <div className="flex items-center gap-1.5">
+                          <Switch id={`edit-private-${note.id}`} checked={editPrivate} onCheckedChange={setEditPrivate} />
+                          <Label htmlFor={`edit-private-${note.id}`} className="text-xs">
+                            {editPrivate ? 'Private' : 'Public'}
+                          </Label>
+                        </div>
+                      </div>
+                      <Textarea
+                        value={editContent}
+                        onChange={(e) => setEditContent(e.target.value)}
+                        rows={3}
+                      />
+                      <div className="flex justify-end gap-2">
+                        <Button variant="ghost" size="sm" onClick={cancelEdit} disabled={isEditing}>
+                          <X className="h-3 w-3 mr-1" />
+                          Cancel
+                        </Button>
+                        <Button size="sm" onClick={() => handleEditNote(note.id)} disabled={isEditing}>
+                          <Check className="h-3 w-3 mr-1" />
+                          {isEditing ? 'Saving...' : 'Save'}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : note.note_type === 'call_log' && note.call_log_data ? (
                     <CallLogDisplay
                       callLogData={note.call_log_data}
                       content={note.content}
