@@ -66,7 +66,9 @@ export async function POST(request: Request) {
       provider_id: body.provider_id || null,
       caller_name: body.caller_name || null,
       call_type: body.call_type || 'outbound',
-      duration_minutes: body.duration_minutes || null,
+      duration_minutes: body.duration_minutes ?? null,
+      started_at: body.started_at || null,
+      ended_at: body.ended_at || null,
       notes: body.notes || null,
       created_by: auth.user.id,
     })

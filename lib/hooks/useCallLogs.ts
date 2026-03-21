@@ -31,6 +31,8 @@ export function useCreateCallLog() {
       caller_name?: string
       call_type: 'inbound' | 'outbound'
       duration_minutes?: number
+      started_at?: string
+      ended_at?: string
       notes?: string
     }) => {
       const res = await fetch('/api/call-logs', {

@@ -528,6 +528,8 @@ export interface CallLog {
   caller_name: string | null
   call_type: CallType
   duration_minutes: number | null
+  started_at: string | null
+  ended_at: string | null
   notes: string | null
   created_by: string | null
   created_at: string
