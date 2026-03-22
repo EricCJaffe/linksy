@@ -2,17 +2,19 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 export interface DuplicateCheckResult {
   blocked: boolean
-  flagType: 'case_a' | 'case_b' | 'case_c' | null
+  flagType: 'case_a' | 'case_b' | 'case_c' | 'case_d' | null
   message: string | null
   relatedTickets: Array<{ id: string; ticket_number: string; created_at: string }>
 }
 
 /**
  * Check for duplicate referrals per TASK-029 rules:
- * - Case B: Same client + provider + service + same day → BLOCK
+ * - Case B: Same client + provider + service + within 30 days → BLOCK
  * - Case A: Same client + 5+ providers + same service + same day → FLAG (allow but warn)
  * - Case C: Same client + same provider on consecutive days → FLAG (allow but warn)
+ * - Case D: Same client + same service category + same week → FLAG (allow but warn)
  *
+ * Note: Same person + different need + same provider = always OK (no dedup).
  * Test referrals are exempt (caller should skip this function for test referrals).
  */
 export async function checkDuplicateReferral(
@@ -42,33 +44,37 @@ export async function checkDuplicateReferral(
   todayStart.setUTCHours(0, 0, 0, 0)
   const todayISO = todayStart.toISOString()
 
-  // Case B: Same client + same provider + same service + same day → BLOCK
+  // Case B: Same client + same provider + same service + within 30 days → BLOCK
   {
+    const thirtyDaysAgo = new Date(todayStart)
+    thirtyDaysAgo.setUTCDate(thirtyDaysAgo.getUTCDate() - 30)
+    const thirtyDaysAgoISO = thirtyDaysAgo.toISOString()
+
     let query = supabase
       .from('linksy_tickets')
       .select('id, ticket_number, created_at')
       .eq('provider_id', provider_id)
-      .gte('created_at', todayISO)
+      .gte('created_at', thirtyDaysAgoISO)
       .or(clientFilter)
 
     if (need_id) {
       query = query.eq('need_id', need_id)
     }
 
-    const { data: sameDayDups } = await query.limit(5)
-    if (sameDayDups && sameDayDups.length > 0) {
+    const { data: recentDups } = await query.limit(5)
+    if (recentDups && recentDups.length > 0) {
       return {
         blocked: true,
         flagType: 'case_b',
-        message: `A referral for this client and provider already exists today (${sameDayDups[0].ticket_number}). Use force: true to override.`,
-        relatedTickets: sameDayDups,
+        message: `A referral for this client to this provider for the same service already exists within the last 30 days (${recentDups[0].ticket_number}). Please wait or contact us if you need further assistance.`,
+        relatedTickets: recentDups,
       }
     }
   }
 
   // Case A: Same client + 5+ providers + same service + same day → FLAG
   if (need_id) {
-    let query = supabase
+    const query = supabase
       .from('linksy_tickets')
       .select('id, ticket_number, provider_id, created_at')
       .eq('need_id', need_id)
@@ -112,6 +118,55 @@ export async function checkDuplicateReferral(
         flagType: 'case_c',
         message: `This client had a referral to this provider yesterday (${yesterdayTickets[0].ticket_number}). Flagged for review.`,
         relatedTickets: yesterdayTickets,
+      }
+    }
+  }
+
+  // Case D: Same client + same service category + same week → FLAG
+  // If the client already has a referral for any need within the same category
+  // this week, flag it for review (they may be shopping around within a category).
+  if (need_id) {
+    // Look up the category for the requested need
+    const { data: needData } = await supabase
+      .from('linksy_needs')
+      .select('category_id')
+      .eq('id', need_id)
+      .single()
+
+    if (needData?.category_id) {
+      // Get start of current week (Monday UTC)
+      const weekStart = new Date(todayStart)
+      const dayOfWeek = weekStart.getUTCDay() // 0=Sun, 1=Mon, ...
+      const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+      weekStart.setUTCDate(weekStart.getUTCDate() - daysFromMonday)
+      const weekStartISO = weekStart.toISOString()
+
+      // Find all needs in the same category
+      const { data: categoryNeeds } = await supabase
+        .from('linksy_needs')
+        .select('id')
+        .eq('category_id', needData.category_id)
+
+      if (categoryNeeds && categoryNeeds.length > 1) {
+        const categoryNeedIds = categoryNeeds.map(n => n.id)
+
+        // Check for tickets this week with any need in the same category
+        const { data: sameCategoryTickets } = await supabase
+          .from('linksy_tickets')
+          .select('id, ticket_number, created_at')
+          .in('need_id', categoryNeedIds)
+          .gte('created_at', weekStartISO)
+          .or(clientFilter)
+          .limit(5)
+
+        if (sameCategoryTickets && sameCategoryTickets.length > 0) {
+          return {
+            blocked: false,
+            flagType: 'case_d',
+            message: `This client already has a referral for a similar service category this week (${sameCategoryTickets[0].ticket_number}). Flagged for review.`,
+            relatedTickets: sameCategoryTickets,
+          }
+        }
       }
     }
   }
