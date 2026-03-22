@@ -6,6 +6,7 @@ import { useTickets, useUpdateTicket } from '@/lib/hooks/useTickets'
 import { useProviders } from '@/lib/hooks/useProviders'
 import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
 import { useSupportTickets } from '@/lib/hooks/useSupportTickets'
+import { useUndoableAction } from '@/lib/hooks/useUndoableAction'
 import { useDebounce } from '@/lib/hooks/useDebounce'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -99,6 +100,7 @@ export default function TicketsPage() {
   const searchParams = useSearchParams()
   const { data: user } = useCurrentUser()
   const updateTicket = useUpdateTicket()
+  const { execute: undoableAction } = useUndoableAction()
   const [filters, setFilters] = useState<TicketFilters>(() => {
     const statusParam = searchParams.get('status')
     const qParam = searchParams.get('q')
@@ -663,9 +665,18 @@ export default function TicketsPage() {
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <Select
                       value={ticket.status}
-                      onValueChange={(value) =>
-                        updateTicket.mutate({ id: ticket.id, status: value as TicketStatus })
-                      }
+                      onValueChange={(value) => {
+                        const previousStatus = ticket.status
+                        undoableAction({
+                          description: `Status changed to ${ticketStatusLabels[value as TicketStatus] || value}`,
+                          action: () => {
+                            updateTicket.mutate({ id: ticket.id, status: value as TicketStatus })
+                          },
+                          undoAction: () => {
+                            updateTicket.mutate({ id: ticket.id, status: previousStatus })
+                          },
+                        })
+                      }}
                     >
                       <SelectTrigger className="h-9">
                         <SelectValue />

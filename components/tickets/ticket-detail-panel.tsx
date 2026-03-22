@@ -20,6 +20,7 @@ import { Label } from '@/components/ui/label'
 import { useUpdateTicket, useCreateTicketComment, useUpdateCommentPrivacy, useUpdateComment } from '@/lib/hooks/useTickets'
 import { useCallLogs, useCreateCallLog, useDeleteCallLog } from '@/lib/hooks/useCallLogs'
 import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
+import { useUndoableAction } from '@/lib/hooks/useUndoableAction'
 import type { Ticket, TicketStatus } from '@/lib/types/linksy'
 import { formatPhone } from '@/lib/utils/phone'
 import { ForwardTicketDialog } from './forward-ticket-dialog'
@@ -88,9 +89,19 @@ export function TicketDetailPanel({ ticket }: TicketDetailPanelProps) {
   const [showForwardDialog, setShowForwardDialog] = useState(false)
   const [showAssignDialog, setShowAssignDialog] = useState(false)
   const [showHistoryDialog, setShowHistoryDialog] = useState(false)
+  const { execute: undoableAction } = useUndoableAction()
 
   const handleStatusChange = (newStatus: string) => {
-    updateTicket.mutate({ id: ticket.id, status: newStatus as TicketStatus })
+    const previousStatus = ticket.status
+    undoableAction({
+      description: `Status changed to ${ticketStatusLabels[newStatus as TicketStatus] || newStatus}`,
+      action: () => {
+        updateTicket.mutate({ id: ticket.id, status: newStatus as TicketStatus })
+      },
+      undoAction: () => {
+        updateTicket.mutate({ id: ticket.id, status: previousStatus })
+      },
+    })
   }
 
   const handleAddComment = () => {
@@ -331,10 +342,22 @@ export function TicketDetailPanel({ ticket }: TicketDetailPanelProps) {
                         <button
                           type="button"
                           onClick={() =>
-                            updateCommentPrivacy.mutate({
-                              ticketId: ticket.id,
-                              commentId: comment.id,
-                              is_private: !comment.is_private,
+                            undoableAction({
+                              description: `Comment marked as ${comment.is_private ? 'public' : 'private'}`,
+                              action: () => {
+                                updateCommentPrivacy.mutate({
+                                  ticketId: ticket.id,
+                                  commentId: comment.id,
+                                  is_private: !comment.is_private,
+                                })
+                              },
+                              undoAction: () => {
+                                updateCommentPrivacy.mutate({
+                                  ticketId: ticket.id,
+                                  commentId: comment.id,
+                                  is_private: !!comment.is_private,
+                                })
+                              },
                             })
                           }
                           title={comment.is_private ? 'Make public' : 'Make private'}

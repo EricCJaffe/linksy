@@ -18,6 +18,8 @@ import {
   AlignRight,
   RemoveFormatting,
   Palette,
+  Undo2,
+  Redo2,
 } from 'lucide-react'
 
 const COLOR_PRESETS = [
@@ -202,6 +204,25 @@ export function RichTextEditor({ value, onChange, disabled, placeholder, onReady
 
         <ToolbarButton
           active={false}
+          onClick={() => editor.chain().focus().undo().run()}
+          title="Undo (Ctrl+Z)"
+          disabled={!editor.can().undo()}
+        >
+          <Undo2 className="h-4 w-4" />
+        </ToolbarButton>
+        <ToolbarButton
+          active={false}
+          onClick={() => editor.chain().focus().redo().run()}
+          title="Redo (Ctrl+Y)"
+          disabled={!editor.can().redo()}
+        >
+          <Redo2 className="h-4 w-4" />
+        </ToolbarButton>
+
+        <Separator />
+
+        <ToolbarButton
+          active={false}
           onClick={() => editor.chain().focus().clearNodes().unsetAllMarks().run()}
           title="Clear Formatting"
         >
@@ -220,18 +241,21 @@ function ToolbarButton({
   onClick,
   title,
   children,
+  disabled,
 }: {
   active: boolean
   onClick: () => void
   title: string
   children: React.ReactNode
+  disabled?: boolean
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       title={title}
-      className={`inline-flex h-7 w-7 items-center justify-center rounded text-sm transition-colors hover:bg-accent ${
+      disabled={disabled}
+      className={`inline-flex h-7 w-7 items-center justify-center rounded text-sm transition-colors hover:bg-accent disabled:opacity-30 disabled:pointer-events-none ${
         active ? 'bg-accent text-accent-foreground' : 'text-muted-foreground'
       }`}
     >

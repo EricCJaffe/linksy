@@ -284,7 +284,7 @@ All 8 LOW findings resolved.
 - [ ] Stronger anti-spam logic beyond current rate/duplicate guards
 
 #### Program Review — Complex Features
-- [ ] **[TASK-002] Undo/redo system-wide** — Undo button (Ctrl+Z) + Redo (Ctrl+Y) on all data entry screens. Last 5 actions per session. Works for field edits, status changes, notes. Tooltip for non-undoable actions.
+- [x] **[TASK-002] Undo/redo (phase 1)** — Rich text editor undo/redo toolbar buttons (Ctrl+Z/Y). Undo toast on instant-save actions (status changes, privacy toggles) via `useUndoableAction` hook. See `docs/SAVE-BEHAVIOR.md`. Phase 2: full action history stack for field edits across all screens.
 - [ ] **[TASK-032] Per-provider SLA timers** — Custom resolution timeframe per provider. Auto-send reminder at due date. Provider can reset, confirm, or transfer. Client notification on transfer.
 
 #### Program Review — Wish List
