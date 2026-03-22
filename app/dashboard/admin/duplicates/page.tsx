@@ -13,7 +13,10 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, ArrowUpDown } from 'lucide-react'
+
+type SortField = 'ticket_number' | 'flag_type' | 'client' | 'provider' | 'service' | 'status' | 'date'
+type SortDir = 'asc' | 'desc'
 
 const FLAG_LABELS: Record<string, { label: string; color: string }> = {
   case_a: { label: 'High Volume (5+ same day)', color: 'border-red-200 bg-red-50 text-red-700' },
@@ -31,6 +34,7 @@ const STATUS_LABELS: Record<string, string> = {
   unable_to_assist: 'Unable to Assist',
   client_unresponsive: 'Unresponsive',
   transferred_another_provider: 'Transferred',
+  transferred_pending: 'Transferred Pending',
 }
 
 interface DuplicateTicket {
@@ -51,6 +55,8 @@ export default function DuplicatesPage() {
   const [tickets, setTickets] = useState<DuplicateTicket[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [sortField, setSortField] = useState<SortField>('date')
+  const [sortDir, setSortDir] = useState<SortDir>('desc')
 
   useEffect(() => {
     fetch('/api/admin/referrals/duplicates')
@@ -62,6 +68,38 @@ export default function DuplicatesPage() {
       .catch((err) => setError(err.message))
       .finally(() => setIsLoading(false))
   }, [])
+
+  const sortedTickets = [...tickets].sort((a, b) => {
+    const dir = sortDir === 'asc' ? 1 : -1
+    switch (sortField) {
+      case 'ticket_number': return dir * (a.ticket_number || '').localeCompare(b.ticket_number || '')
+      case 'flag_type': return dir * (a.duplicate_flag_type || '').localeCompare(b.duplicate_flag_type || '')
+      case 'client': return dir * (a.client_name || '').localeCompare(b.client_name || '')
+      case 'provider': return dir * (a.provider?.name || '').localeCompare(b.provider?.name || '')
+      case 'service': return dir * (a.need?.name || '').localeCompare(b.need?.name || '')
+      case 'status': return dir * (a.status || '').localeCompare(b.status || '')
+      case 'date': return dir * (new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+      default: return 0
+    }
+  })
+
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortDir(field === 'date' ? 'desc' : 'asc')
+    }
+  }
+
+  const SortableHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
+    <TableHead>
+      <button onClick={() => toggleSort(field)} className="flex items-center gap-1 hover:text-foreground">
+        {children}
+        <ArrowUpDown className={`h-3 w-3 ${sortField === field ? 'text-foreground' : 'text-muted-foreground/50'}`} />
+      </button>
+    </TableHead>
+  )
 
   const caseACounts = tickets.filter((t) => t.duplicate_flag_type === 'case_a').length
   const caseBCounts = tickets.filter((t) => t.duplicate_flag_type === 'case_b').length
@@ -113,13 +151,13 @@ export default function DuplicatesPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Referral #</TableHead>
-              <TableHead>Flag Type</TableHead>
-              <TableHead>Client</TableHead>
-              <TableHead>Provider</TableHead>
-              <TableHead>Service</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Date</TableHead>
+              <SortableHeader field="ticket_number">Referral #</SortableHeader>
+              <SortableHeader field="flag_type">Flag Type</SortableHeader>
+              <SortableHeader field="client">Client</SortableHeader>
+              <SortableHeader field="provider">Provider</SortableHeader>
+              <SortableHeader field="service">Service</SortableHeader>
+              <SortableHeader field="status">Status</SortableHeader>
+              <SortableHeader field="date">Date</SortableHeader>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -138,7 +176,7 @@ export default function DuplicatesPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              tickets.map((ticket) => {
+              sortedTickets.map((ticket) => {
                 const flag = FLAG_LABELS[ticket.duplicate_flag_type] || { label: ticket.duplicate_flag_type, color: '' }
                 return (
                   <TableRow

@@ -25,6 +25,7 @@ export async function GET(request: Request) {
   const dateTo = searchParams.get('date_to') || ''
   const clientEmail = searchParams.get('client_email') || ''
   const clientPhone = searchParams.get('client_phone') || ''
+  const zip = searchParams.get('zip') || ''
   const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10), 100)
   const offset = parseInt(searchParams.get('offset') || '0', 10)
 
@@ -66,7 +67,7 @@ export async function GET(request: Request) {
   let query = supabase
     .from('linksy_tickets')
     .select(
-      '*, linksy_providers!provider_id(name), linksy_needs!need_id(name)',
+      '*, linksy_providers!provider_id(name, phone), linksy_needs!need_id(name)',
       { count: 'exact' }
     )
     .order('created_at', { ascending: false })
@@ -107,6 +108,22 @@ export async function GET(request: Request) {
     query = query.ilike('client_phone', `%${clientPhone}%`)
   }
 
+  // Zip code filter: find tickets for providers with matching location postal_code
+  if (zip) {
+    const { data: zipLocations } = await supabase
+      .from('linksy_locations')
+      .select('provider_id')
+      .eq('postal_code', zip)
+    const zipProviderIds = (zipLocations || []).map((l: any) => l.provider_id).filter(Boolean)
+    if (zipProviderIds.length === 0) {
+      return NextResponse.json({
+        tickets: [],
+        pagination: { total: 0, hasMore: false, nextOffset: null },
+      })
+    }
+    query = query.in('provider_id', zipProviderIds)
+  }
+
   const { data: tickets, count, error: queryError } = await query
 
   if (queryError) {
@@ -132,7 +149,7 @@ export async function GET(request: Request) {
     sla_due_at: t.sla_due_at,
     created_at: t.created_at,
     updated_at: t.updated_at,
-    provider: t.linksy_providers ? { name: t.linksy_providers.name } : null,
+    provider: t.linksy_providers ? { name: t.linksy_providers.name, phone: t.linksy_providers.phone ?? null } : null,
     need: t.linksy_needs ? { id: t.linksy_needs.id, name: t.linksy_needs.name } : null,
   }))
 
@@ -197,6 +214,32 @@ export async function POST(request: Request) {
     }
   }
 
+  // Daily referral cap: max 2 referrals per client per day
+  // Prevents clients from spamming providers with excessive referrals
+  if ((body.client_email || body.client_phone) && !isTest) {
+    const MAX_REFERRALS_PER_DAY = 2
+    const todayStart = new Date()
+    todayStart.setUTCHours(0, 0, 0, 0)
+    const todayISO = todayStart.toISOString()
+
+    const dailyOrConditions: string[] = []
+    if (body.client_email) dailyOrConditions.push(`client_email.eq.${body.client_email}`)
+    if (body.client_phone) dailyOrConditions.push(`client_phone.eq.${body.client_phone}`)
+
+    const { count: dailyCount } = await supabase
+      .from('linksy_tickets')
+      .select('id', { count: 'exact', head: true })
+      .gte('created_at', todayISO)
+      .or(dailyOrConditions.join(','))
+
+    if ((dailyCount ?? 0) >= MAX_REFERRALS_PER_DAY) {
+      return NextResponse.json({
+        error: 'Daily referral limit reached',
+        message: `This client has reached the maximum of ${MAX_REFERRALS_PER_DAY} referral requests per day. Please try again tomorrow.`,
+      }, { status: 429 })
+    }
+  }
+
   // Referral cap: max 4 active referrals per client (identified by email or phone)
   // Only count tickets that are still active (not closed/resolved)
   const MAX_REFERRALS_PER_CLIENT = 4
@@ -250,13 +293,19 @@ export async function POST(request: Request) {
 
   let ticketNumber = body.ticket_number
   if (!ticketNumber) {
-    const { count } = await supabase
-      .from('linksy_tickets')
-      .select('*', { count: 'exact', head: true })
+    // Generate ticket number atomically via PostgreSQL sequence (prevents race conditions)
+    const { data: seqResult, error: seqError } = await supabase.rpc(
+      'linksy_next_ticket_number' as any
+    )
 
-    const sequenceNumber = 2000 + (count || 0) + 1
-    const suffix = String(Math.floor(Math.random() * 100)).padStart(2, '0')
-    ticketNumber = `R-${sequenceNumber}-${suffix}`
+    if (seqError || seqResult == null) {
+      console.warn('Ticket sequence unavailable, using timestamp fallback:', seqError?.message)
+      const fallbackSeq = Date.now() % 1000000
+      const suffix = String(Math.floor(Math.random() * 100)).padStart(2, '0')
+      ticketNumber = `R-${fallbackSeq}-${suffix}`
+    } else {
+      ticketNumber = seqResult as string
+    }
   }
 
   const { data: ticket, error: insertError } = await supabase

@@ -87,8 +87,8 @@ export function ReassignTicketDialog({
       })
 
       toast({
-        title: 'Ticket reassigned',
-        description: `The ticket has been reassigned to ${selectedProvider?.name || 'the selected provider'}.`,
+        title: 'Referral reassigned',
+        description: `The referral has been reassigned to ${selectedProvider?.name || 'the selected provider'}.`,
       })
 
       onOpenChange(false)
@@ -244,7 +244,7 @@ export function ReassignTicketDialog({
               onCheckedChange={(checked) => setPreserveHistory(checked === true)}
             />
             <Label htmlFor="preserve-history" className="text-sm font-normal cursor-pointer">
-              Preserve forwarding history (keep track of original provider if this was forwarded)
+              Preserve transfer history (keep track of original provider if this was transferred)
             </Label>
           </div>
         </div>

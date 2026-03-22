@@ -21,6 +21,9 @@ export async function GET(request: Request) {
   const status = searchParams.get('status') || 'active'
   const providerId = searchParams.get('provider_id') || ''
   const role = searchParams.get('role') || ''
+  const dateFrom = searchParams.get('date_from') || ''
+  const dateTo = searchParams.get('date_to') || ''
+  const zip = searchParams.get('zip') || ''
   const offset = parseInt(searchParams.get('offset') || '0') || 0
   const limit = parseInt(searchParams.get('limit') || '50') || 50
 
@@ -41,9 +44,9 @@ export async function GET(request: Request) {
     query = query.eq('status', status)
   }
 
-  // Search filter (name, email, job_title)
+  // Search filter (name, email, job_title, phone)
   if (q) {
-    query = query.or(`full_name.ilike.%${q}%,email.ilike.%${q}%,job_title.ilike.%${q}%`)
+    query = query.or(`full_name.ilike.%${q}%,email.ilike.%${q}%,job_title.ilike.%${q}%,phone.ilike.%${q}%`)
   }
 
   // Provider filter
@@ -54,6 +57,30 @@ export async function GET(request: Request) {
   // Role filter
   if (role) {
     query = query.eq('provider_role', role)
+  }
+
+  // Date range filter
+  if (dateFrom) {
+    query = query.gte('created_at', dateFrom)
+  }
+  if (dateTo) {
+    query = query.lte('created_at', dateTo + 'T23:59:59.999Z')
+  }
+
+  // Zip code filter: find contacts for providers with matching location postal_code
+  if (zip) {
+    const { data: zipLocations } = await supabase
+      .from('linksy_locations')
+      .select('provider_id')
+      .eq('postal_code', zip)
+    const zipProviderIds = (zipLocations || []).map((l: any) => l.provider_id).filter(Boolean)
+    if (zipProviderIds.length === 0) {
+      return NextResponse.json({
+        contacts: [],
+        pagination: { total: 0, offset, limit },
+      })
+    }
+    query = query.in('provider_id', zipProviderIds)
   }
 
   const { data: contacts, count, error: fetchError } = await query

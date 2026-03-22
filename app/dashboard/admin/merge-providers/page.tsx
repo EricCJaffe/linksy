@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { AlertCircle, CheckCircle2, RefreshCw, Search } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { formatPhone } from '@/lib/utils/phone'
 
 export default function MergeProvidersPage() {
   const router = useRouter()
@@ -153,7 +154,7 @@ export default function MergeProvidersPage() {
                       </div>
                       <div className="text-sm text-muted-foreground space-y-1">
                         <div>Email: {provider.email || 'N/A'}</div>
-                        <div>Phone: {provider.phone || 'N/A'}</div>
+                        <div>Phone: {provider.phone ? formatPhone(provider.phone) : 'N/A'}</div>
                         <div>Website: {provider.website || 'N/A'}</div>
                         <div>Sector: {provider.sector}</div>
                       </div>

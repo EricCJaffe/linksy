@@ -1,13 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { AlertCircle, TrendingUp, Users, BarChart3, History, Search, Phone, Globe, AlertTriangle, Navigation, MapPin, Clock, GitMerge, PieChart as PieChartIcon, ArrowRight } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { AlertCircle, TrendingUp, Users, BarChart3, History, Search, Phone, Globe, AlertTriangle, Navigation, MapPin, Clock, GitMerge, PieChart as PieChartIcon, ArrowRight, FileText, ChevronDown, ChevronUp, Calendar, Download, Map } from 'lucide-react'
 import {
   MonthlyTrendsChart as RechartsMonthlyChart,
   CategoryBreakdownChart,
@@ -47,14 +49,121 @@ interface TimeToResolution {
   byStatus: { status: string; avg_days: number; count: number }[]
 }
 
+interface TopProviderWithServices {
+  id: string
+  name: string
+  referralType: string
+  count: number
+  topServices: { name: string; count: number }[]
+}
+
+interface NonReferralSummary {
+  total: number
+  byStatus: { status: string; count: number }[]
+  byCategory: { name: string; count: number }[]
+  topProviders: TopProviderWithServices[]
+}
+
+interface UniqueClientsData {
+  totalReferrals: number
+  uniqueClients: number
+  uniqueClientsIncludingTest: number
+  blankNameCount: number
+  testNameCount: number
+  utilizationRatio: number
+}
+
 interface ReportsData {
   referralsByCategory: { name: string; count: number }[]
-  topReferrers: { id: string; name: string; count: number }[]
+  topReferrers: TopProviderWithServices[]
   referralsByStatus: { status: string; count: number }[]
   referralsBySource: { source: string; count: number }[]
   monthlyTrends: { month: string; count: number }[]
   recentActivity: { last30Days: number }
   timeToResolution: TimeToResolution
+  nonReferralSummary: NonReferralSummary
+  uniqueClients: UniqueClientsData
+  totalIncludingNR: number
+}
+
+interface RepeatClientReferral {
+  id: string
+  status: string
+  created_at: string
+  providerName: string
+  needName: string
+}
+
+interface RepeatClient {
+  clientName: string | null
+  clientEmail: string | null
+  clientPhone: string | null
+  totalReferrals: number
+  repeatedNeeds: {
+    needName: string
+    referrals: RepeatClientReferral[]
+  }[]
+}
+
+interface RepeatClientsData {
+  repeatClients: RepeatClient[]
+  totalRepeatClients: number
+  top10ByMonth: {
+    month: string
+    clients: { name: string; email: string | null; phone: string | null; count: number }[]
+  }[]
+}
+
+interface StatusByProviderData {
+  providers: {
+    providerId: string
+    providerName: string
+    total: number
+    statusCounts: Record<string, number>
+  }[]
+  allStatuses: string[]
+  totalTickets: number
+}
+
+interface ServiceGapCategory {
+  categoryId: string
+  categoryName: string
+  providerCount: number
+  providers: string[]
+  hasGap: boolean
+}
+
+interface ServiceGapZipEntry {
+  zipCode: string
+  categories: ServiceGapCategory[]
+  gapCount: number
+  totalCategories: number
+}
+
+interface ServiceGapCategoryEntry {
+  categoryId: string
+  categoryName: string
+  zipCodes: {
+    zipCode: string
+    providerCount: number
+    providers: string[]
+    hasGap: boolean
+  }[]
+  gapCount: number
+  totalZipCodes: number
+}
+
+interface ServiceGapsData {
+  zipCodes: string[]
+  categories: { id: string; name: string }[]
+  byZipCode: ServiceGapZipEntry[]
+  byCategory: ServiceGapCategoryEntry[]
+  summary: {
+    totalZipCodes: number
+    totalCategories: number
+    totalGaps: number
+    totalCells: number
+  }
 }
 
 const statusLabels: Record<string, string> = {
@@ -67,6 +176,7 @@ const statusLabels: Record<string, string> = {
   unable_to_assist: 'Unable to Assist',
   client_unresponsive: 'Client Unresponsive',
   transferred_another_provider: 'Transferred',
+  transferred_pending: 'Transferred Pending',
 }
 
 const statusColors: Record<string, string> = {
@@ -79,6 +189,7 @@ const statusColors: Record<string, string> = {
   unable_to_assist: 'bg-red-400',
   client_unresponsive: 'bg-gray-400',
   transferred_another_provider: 'bg-gray-500',
+  transferred_pending: 'bg-blue-400',
 }
 
 function BarChart({ items, colorClass = 'bg-primary' }: {
@@ -146,8 +257,49 @@ const INTERACTION_LABELS: Record<string, { label: string; icon: React.ReactNode 
   profile_view: { label: 'Profile Views', icon: <Search className="h-3 w-3" /> },
 }
 
+function downloadServiceGapsCsv(data: ServiceGapsData, view: 'by-zip' | 'by-category') {
+  let csv = ''
+
+  if (view === 'by-zip') {
+    // Header: Zip Code, Gaps, Category1, Category2, ...
+    csv += ['Zip Code', 'Gaps', ...data.categories.map((c) => `"${c.name}"`)].join(',') + '\n'
+    for (const row of data.byZipCode) {
+      const cells = [
+        row.zipCode,
+        row.gapCount.toString(),
+        ...row.categories.map((c) =>
+          c.hasGap ? '0 (GAP)' : `${c.providerCount}`
+        ),
+      ]
+      csv += cells.join(',') + '\n'
+    }
+  } else {
+    // Header: Category, Gaps, Zip1, Zip2, ...
+    csv += ['Category', 'Gaps', ...data.zipCodes].join(',') + '\n'
+    for (const row of data.byCategory) {
+      const cells = [
+        `"${row.categoryName}"`,
+        row.gapCount.toString(),
+        ...row.zipCodes.map((z) =>
+          z.hasGap ? '0 (GAP)' : `${z.providerCount}`
+        ),
+      ]
+      csv += cells.join(',') + '\n'
+    }
+  }
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `service-gaps-${view}-${new Date().toISOString().slice(0, 10)}.csv`
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
 export default function ReportsPage() {
-  const [activeTab, setActiveTab] = useState<'referrals' | 'search' | 'charts' | 'reassignments'>('referrals')
+  const [activeTab, setActiveTab] = useState<'referrals' | 'search' | 'charts' | 'reassignments' | 'admin-reports' | 'service-gaps'>('referrals')
+  const [expandedProvider, setExpandedProvider] = useState<string | null>(null)
   const [data, setData] = useState<ReportsData | null>(null)
   const [searchData, setSearchData] = useState<SearchAnalyticsData | null>(null)
   const [reassignmentData, setReassignmentData] = useState<any | null>(null)
@@ -156,6 +308,20 @@ export default function ReportsPage() {
   const [error, setError] = useState<string | null>(null)
   const [includeLegacy, setIncludeLegacy] = useState(true)
   const [includeTest, setIncludeTest] = useState(false)
+
+  // Service gaps state
+  const [serviceGapsData, setServiceGapsData] = useState<ServiceGapsData | null>(null)
+  const [serviceGapsLoading, setServiceGapsLoading] = useState(false)
+  const [serviceGapsView, setServiceGapsView] = useState<'by-zip' | 'by-category'>('by-zip')
+
+  // Admin reports state
+  const [repeatClientsData, setRepeatClientsData] = useState<RepeatClientsData | null>(null)
+  const [statusByProviderData, setStatusByProviderData] = useState<StatusByProviderData | null>(null)
+  const [adminReportsLoading, setAdminReportsLoading] = useState(false)
+  const [adminDateFrom, setAdminDateFrom] = useState('')
+  const [adminDateTo, setAdminDateTo] = useState('')
+  const [expandedRepeatClient, setExpandedRepeatClient] = useState<number | null>(null)
+  const [adminIncludeTest, setAdminIncludeTest] = useState(false)
 
   // Get user role and provider access for role-based filtering
   const { data: user } = useCurrentUser()
@@ -217,6 +383,54 @@ export default function ReportsPage() {
     }
     if (activeTab === 'reassignments' && isSiteAdmin) fetchReassignmentStats()
   }, [activeTab, isSiteAdmin])
+
+  useEffect(() => {
+    const fetchAdminReports = async () => {
+      if (!isSiteAdmin || activeTab !== 'admin-reports') return
+      setAdminReportsLoading(true)
+      try {
+        const baseParams = new URLSearchParams()
+        if (adminDateFrom) baseParams.set('date_from', adminDateFrom)
+        if (adminDateTo) baseParams.set('date_to', adminDateTo)
+        if (adminIncludeTest) baseParams.set('include_test', 'true')
+
+        const repeatParams = new URLSearchParams(baseParams)
+        repeatParams.set('type', 'repeat-clients')
+        const statusParams = new URLSearchParams(baseParams)
+        statusParams.set('type', 'status-by-provider')
+
+        const [repeatRes, statusRes] = await Promise.all([
+          fetch(`/api/reports?${repeatParams.toString()}`),
+          fetch(`/api/reports?${statusParams.toString()}`),
+        ])
+
+        if (repeatRes.ok) setRepeatClientsData(await repeatRes.json())
+        if (statusRes.ok) setStatusByProviderData(await statusRes.json())
+      } catch {
+        // non-fatal
+      } finally {
+        setAdminReportsLoading(false)
+      }
+    }
+    fetchAdminReports()
+  }, [activeTab, isSiteAdmin, adminDateFrom, adminDateTo, adminIncludeTest])
+
+  useEffect(() => {
+    const fetchServiceGaps = async () => {
+      if (!isSiteAdmin || activeTab !== 'service-gaps') return
+      if (serviceGapsData) return // already loaded
+      setServiceGapsLoading(true)
+      try {
+        const res = await fetch('/api/reports?type=service-gaps')
+        if (res.ok) setServiceGapsData(await res.json())
+      } catch {
+        // non-fatal
+      } finally {
+        setServiceGapsLoading(false)
+      }
+    }
+    fetchServiceGaps()
+  }, [activeTab, isSiteAdmin, serviceGapsData])
 
   if (error && activeTab === 'referrals') {
     return (
@@ -328,6 +542,32 @@ export default function ReportsPage() {
           >
             <GitMerge className="h-4 w-4 inline mr-1.5" />
             Reassignments
+          </button>
+        )}
+        {isSiteAdmin && (
+          <button
+            onClick={() => setActiveTab('admin-reports')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'admin-reports'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <FileText className="h-4 w-4 inline mr-1.5" />
+            Admin Reports
+          </button>
+        )}
+        {isSiteAdmin && (
+          <button
+            onClick={() => setActiveTab('service-gaps')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'service-gaps'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Map className="h-4 w-4 inline mr-1.5" />
+            Service Gaps
           </button>
         )}
       </div>
@@ -610,15 +850,22 @@ export default function ReportsPage() {
         <div className="space-y-6">
 
       {/* Summary stat cards */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
         {isLoading ? (
-          Array.from({ length: 3 }).map((_, i) => <Skeleton key={`skel-${i}`} className="h-24" />)
+          Array.from({ length: 5 }).map((_, i) => <Skeleton key={`skel-${i}`} className="h-24" />)
         ) : data && (
           <>
             <Card>
               <CardContent className="pt-6">
-                <p className="text-sm text-muted-foreground">Total Referrals</p>
+                <p className="text-sm text-muted-foreground">Referrals (Services)</p>
                 <p className="text-4xl font-bold mt-1">{totalReferrals}</p>
+              </CardContent>
+            </Card>
+            <Card className="border-amber-200">
+              <CardContent className="pt-6">
+                <p className="text-sm text-muted-foreground">Non-Referrals (NR)</p>
+                <p className="text-4xl font-bold mt-1 text-amber-600">{data.nonReferralSummary?.total || 0}</p>
+                <p className="text-xs text-muted-foreground mt-1">Contact-directly orgs</p>
               </CardContent>
             </Card>
             <Card>
@@ -632,6 +879,15 @@ export default function ReportsPage() {
                 <p className="text-sm text-muted-foreground">Pending Referrals</p>
                 <p className="text-4xl font-bold mt-1">
                   {data.referralsByStatus.find((s) => s.status === 'pending')?.count || 0}
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="border-teal-200">
+              <CardContent className="pt-6">
+                <p className="text-sm text-muted-foreground">Unique Clients</p>
+                <p className="text-4xl font-bold mt-1 text-teal-600">{data.uniqueClients?.uniqueClients || 0}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {data.uniqueClients?.utilizationRatio || 0}x avg utilization
                 </p>
               </CardContent>
             </Card>
@@ -795,7 +1051,7 @@ export default function ReportsPage() {
         </Card>
       </div>
 
-      {/* Top Referrers */}
+      {/* Top Referrers with drill-down */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -803,7 +1059,7 @@ export default function ReportsPage() {
             Top Providers by Referral Volume
           </CardTitle>
           <p className="text-sm text-muted-foreground">
-            Providers receiving the most referrals
+            Click a provider to see their top 3 services
           </p>
         </CardHeader>
         <CardContent>
@@ -822,20 +1078,55 @@ export default function ReportsPage() {
               <TableBody>
                 {data.topReferrers.map((provider, index) => {
                   const maxCount = data.topReferrers[0]?.count || 1
+                  const isExpanded = expandedProvider === provider.id
                   return (
-                    <TableRow key={provider.id}>
-                      <TableCell className="font-medium text-muted-foreground">#{index + 1}</TableCell>
-                      <TableCell className="font-medium">{provider.name}</TableCell>
-                      <TableCell className="w-40">
-                        <div className="h-3 bg-muted rounded overflow-hidden">
-                          <div
-                            className="h-full bg-primary rounded"
-                            style={{ width: `${(provider.count / maxCount) * 100}%` }}
-                          />
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right font-bold">{provider.count}</TableCell>
-                    </TableRow>
+                    <Fragment key={provider.id}>
+                      <TableRow
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => setExpandedProvider(isExpanded ? null : provider.id)}
+                      >
+                        <TableCell className="font-medium text-muted-foreground">#{index + 1}</TableCell>
+                        <TableCell className="font-medium">
+                          {provider.name}
+                          {provider.topServices && provider.topServices.length > 0 && (
+                            <span className="ml-2 text-xs text-muted-foreground">
+                              {isExpanded ? '▲' : '▼'}
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="w-40">
+                          <div className="h-3 bg-muted rounded overflow-hidden">
+                            <div
+                              className="h-full bg-primary rounded"
+                              style={{ width: `${(provider.count / maxCount) * 100}%` }}
+                            />
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right font-bold">{provider.count}</TableCell>
+                      </TableRow>
+                      {isExpanded && provider.topServices && provider.topServices.length > 0 && (
+                        <TableRow>
+                          <TableCell />
+                          <TableCell colSpan={3} className="py-2">
+                            <div className="bg-muted/30 rounded-md p-3 space-y-1.5">
+                              <p className="text-xs font-medium text-muted-foreground mb-2">Top Services</p>
+                              {provider.topServices.map((svc) => (
+                                <div key={svc.name} className="flex items-center gap-2">
+                                  <div className="flex-1 h-2 bg-muted rounded overflow-hidden">
+                                    <div
+                                      className="h-full bg-blue-400 rounded"
+                                      style={{ width: `${(svc.count / provider.topServices[0].count) * 100}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-xs text-muted-foreground min-w-[120px] truncate">{svc.name}</span>
+                                  <span className="text-xs font-semibold w-8 text-right">{svc.count}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </Fragment>
                   )
                 })}
               </TableBody>
@@ -847,6 +1138,106 @@ export default function ReportsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Non-Referral (NR) Organizations */}
+      {!isLoading && data && data.nonReferralSummary && data.nonReferralSummary.total > 0 && (
+        <Card className="border-amber-200">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-amber-700">
+              <Users className="h-5 w-5" />
+              Non-Referral (NR) Organizations
+              <Badge variant="outline" className="ml-2 text-amber-600 border-amber-300">Contact Directly</Badge>
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Organizations where clients contact directly (not through referral system). Counted separately from Services Provided.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <p className="text-sm font-medium mb-2">Top NR Providers</p>
+                {data.nonReferralSummary.topProviders.length > 0 ? (
+                  <div className="space-y-2">
+                    {data.nonReferralSummary.topProviders.map((p) => {
+                      const max = data.nonReferralSummary.topProviders[0]?.count || 1
+                      return (
+                        <div key={p.id} className="space-y-1">
+                          <div className="flex items-center gap-3">
+                            <span className="w-32 shrink-0 truncate text-sm text-right text-muted-foreground" title={p.name}>{p.name}</span>
+                            <div className="flex-1 h-5 bg-muted rounded overflow-hidden">
+                              <div className="h-full rounded bg-amber-400" style={{ width: `${(p.count / max) * 100}%` }} />
+                            </div>
+                            <span className="w-8 shrink-0 text-sm font-semibold text-right">{p.count}</span>
+                          </div>
+                          {p.topServices.length > 0 && (
+                            <div className="ml-36 text-xs text-muted-foreground">
+                              {p.topServices.map((s) => s.name).join(', ')}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No NR provider data</p>
+                )}
+              </div>
+              <div>
+                <p className="text-sm font-medium mb-2">NR Status Breakdown</p>
+                <BarChart
+                  items={data.nonReferralSummary.byStatus.map((i: any) => ({
+                    label: statusLabels[i.status] || i.status,
+                    count: i.count,
+                  }))}
+                  colorClass="bg-amber-400"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Unique Client Count (True Utilization) */}
+      {!isLoading && data && data.uniqueClients && (
+        <Card className="border-teal-200">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-teal-700">
+              <Users className="h-5 w-5" />
+              Unique Client Count (True Utilization)
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              How many distinct people used the system vs total referral count. Same person multiple times = counted once. Test names excluded.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-6 md:grid-cols-4">
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground">Total Referrals</p>
+                <p className="text-3xl font-bold mt-1">{data.uniqueClients.totalReferrals}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground">Unique Clients</p>
+                <p className="text-3xl font-bold mt-1 text-teal-600">{data.uniqueClients.uniqueClients}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground">Avg Referrals/Client</p>
+                <p className="text-3xl font-bold mt-1">{data.uniqueClients.utilizationRatio}x</p>
+              </div>
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground">Excluded</p>
+                <p className="text-3xl font-bold mt-1 text-gray-400">{data.uniqueClients.testNameCount + data.uniqueClients.blankNameCount}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {data.uniqueClients.testNameCount} test + {data.uniqueClients.blankNameCount} blank
+                </p>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground mt-4 text-center">
+              Is it {data.uniqueClients.uniqueClients} people using the system, or {data.uniqueClients.totalReferrals} total referrals?
+              Answer: {data.uniqueClients.uniqueClients} unique clients generated {data.uniqueClients.totalReferrals} referrals.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Referrals by Source */}
       {!isLoading && data && data.referralsBySource.length > 0 && (
@@ -966,12 +1357,12 @@ export default function ReportsPage() {
             </Card>
           </div>
 
-          {/* Top forwarding providers */}
+          {/* Top transferring providers */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <ArrowRight className="h-5 w-5 text-orange-600" />
-                Top Forwarding Providers
+                Top Transferring Providers
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -984,7 +1375,7 @@ export default function ReportsPage() {
                       <TableHead className="w-16">Rank</TableHead>
                       <TableHead>Provider</TableHead>
                       <TableHead>Volume</TableHead>
-                      <TableHead className="text-right">Forwards</TableHead>
+                      <TableHead className="text-right">Transfers</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1009,7 +1400,7 @@ export default function ReportsPage() {
                   </TableBody>
                 </Table>
               ) : (
-                <p className="text-sm text-muted-foreground text-center py-8">No forwarding data yet</p>
+                <p className="text-sm text-muted-foreground text-center py-8">No transfer data yet</p>
               )}
             </CardContent>
           </Card>
@@ -1105,6 +1496,519 @@ export default function ReportsPage() {
               )}
             </CardContent>
           </Card>
+        </div>
+      )}
+
+      {/* Admin Reports Tab */}
+      {activeTab === 'admin-reports' && isSiteAdmin && (
+        <div className="space-y-6">
+          {/* Date range filter */}
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex flex-wrap items-end gap-4">
+                <div className="space-y-1">
+                  <Label htmlFor="admin-date-from" className="text-sm">From</Label>
+                  <Input
+                    id="admin-date-from"
+                    type="date"
+                    value={adminDateFrom}
+                    onChange={(e) => setAdminDateFrom(e.target.value)}
+                    className="w-44"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="admin-date-to" className="text-sm">To</Label>
+                  <Input
+                    id="admin-date-to"
+                    type="date"
+                    value={adminDateTo}
+                    onChange={(e) => setAdminDateTo(e.target.value)}
+                    className="w-44"
+                  />
+                </div>
+                <Button
+                  variant={adminIncludeTest ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setAdminIncludeTest(!adminIncludeTest)}
+                  className={adminIncludeTest ? 'bg-orange-600 hover:bg-orange-700' : ''}
+                >
+                  Include Test Referrals
+                </Button>
+                {(adminDateFrom || adminDateTo) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => { setAdminDateFrom(''); setAdminDateTo('') }}
+                  >
+                    Clear Dates
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Repeat Clients Report */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Repeat Clients Report
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Clients with more than one referral for the same need category
+                {adminDateFrom || adminDateTo ? (
+                  <span className="ml-1 font-medium">
+                    ({adminDateFrom || 'all time'} to {adminDateTo || 'present'})
+                  </span>
+                ) : null}
+              </p>
+            </CardHeader>
+            <CardContent>
+              {adminReportsLoading ? (
+                <div className="space-y-2">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Skeleton key={`repeat-skel-${i}`} className="h-10 w-full" />
+                  ))}
+                </div>
+              ) : repeatClientsData && repeatClientsData.repeatClients.length > 0 ? (
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    {repeatClientsData.totalRepeatClients} repeat client{repeatClientsData.totalRepeatClients !== 1 ? 's' : ''} found
+                  </p>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-8"></TableHead>
+                        <TableHead>Client</TableHead>
+                        <TableHead>Contact</TableHead>
+                        <TableHead className="text-right">Repeat Referrals</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {repeatClientsData.repeatClients.map((client, idx) => {
+                        const isExpanded = expandedRepeatClient === idx
+                        return (
+                          <Fragment key={idx}>
+                            <TableRow
+                              className="cursor-pointer hover:bg-muted/50"
+                              onClick={() => setExpandedRepeatClient(isExpanded ? null : idx)}
+                            >
+                              <TableCell>
+                                {isExpanded ? (
+                                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                                ) : (
+                                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                )}
+                              </TableCell>
+                              <TableCell className="font-medium">
+                                {client.clientName || 'Unknown'}
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {client.clientEmail && <span className="block">{client.clientEmail}</span>}
+                                {client.clientPhone && <span className="block">{client.clientPhone}</span>}
+                              </TableCell>
+                              <TableCell className="text-right font-bold">
+                                {client.totalReferrals}
+                              </TableCell>
+                            </TableRow>
+                            {isExpanded && (
+                              <TableRow>
+                                <TableCell />
+                                <TableCell colSpan={3} className="py-2">
+                                  <div className="space-y-3">
+                                    {client.repeatedNeeds.map((need) => (
+                                      <div key={need.needName} className="bg-muted/30 rounded-md p-3">
+                                        <p className="text-xs font-medium text-muted-foreground mb-2">
+                                          {need.needName} ({need.referrals.length} referrals)
+                                        </p>
+                                        <div className="space-y-1">
+                                          {need.referrals.map((ref) => (
+                                            <div key={ref.id} className="flex items-center gap-3 text-sm">
+                                              <span className="w-24 shrink-0 text-xs text-muted-foreground flex items-center gap-1">
+                                                <Calendar className="h-3 w-3" />
+                                                {new Date(ref.created_at).toLocaleDateString()}
+                                              </span>
+                                              <span className="flex-1 truncate">{ref.providerName}</span>
+                                              <Badge
+                                                variant="outline"
+                                                className={`text-xs ${
+                                                  ref.status === 'pending' ? 'border-blue-300 text-blue-700' :
+                                                  ref.status === 'in_process' ? 'border-yellow-300 text-yellow-700' :
+                                                  ref.status === 'customer_need_addressed' ? 'border-green-300 text-green-700' :
+                                                  ref.status === 'unable_to_assist' ? 'border-red-300 text-red-700' :
+                                                  'border-gray-300 text-gray-700'
+                                                }`}
+                                              >
+                                                {statusLabels[ref.status] || ref.status}
+                                              </Badge>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </Fragment>
+                        )
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  No repeat clients found for the selected date range
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Top 10 Repeat Clients by Month */}
+          {!adminReportsLoading && repeatClientsData && repeatClientsData.top10ByMonth.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5" />
+                  Top 10 Repeat Clients by Month
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Highest-volume repeat clients broken down by month
+                </p>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {repeatClientsData.top10ByMonth.map((monthData) => (
+                    <div key={monthData.month}>
+                      <p className="text-sm font-medium mb-2">
+                        {new Date(monthData.month + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                      </p>
+                      <div className="space-y-1">
+                        {monthData.clients.map((client, i) => {
+                          const max = monthData.clients[0]?.count || 1
+                          return (
+                            <div key={`${monthData.month}-${i}`} className="flex items-center gap-3">
+                              <span className="w-6 shrink-0 text-xs text-muted-foreground text-right">
+                                #{i + 1}
+                              </span>
+                              <span className="w-40 shrink-0 truncate text-sm text-muted-foreground" title={client.name}>
+                                {client.name}
+                              </span>
+                              <div className="flex-1 h-5 bg-muted rounded overflow-hidden">
+                                <div
+                                  className="h-full bg-indigo-500 rounded"
+                                  style={{ width: `${(client.count / max) * 100}%` }}
+                                />
+                              </div>
+                              <span className="w-8 shrink-0 text-sm font-semibold text-right">{client.count}</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Status Breakdown by Provider */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                Status Breakdown by Provider
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Pending totals, Unable to Assist totals, and other status counts per provider
+              </p>
+            </CardHeader>
+            <CardContent>
+              {adminReportsLoading ? (
+                <div className="space-y-2">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Skeleton key={`status-skel-${i}`} className="h-10 w-full" />
+                  ))}
+                </div>
+              ) : statusByProviderData && statusByProviderData.providers.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="sticky left-0 bg-background">Provider</TableHead>
+                        <TableHead className="text-right font-bold">Total</TableHead>
+                        {statusByProviderData.allStatuses.map((status) => (
+                          <TableHead key={status} className="text-right text-xs whitespace-nowrap">
+                            {statusLabels[status] || status}
+                          </TableHead>
+                        ))}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {statusByProviderData.providers.map((provider) => (
+                        <TableRow key={provider.providerId}>
+                          <TableCell className="sticky left-0 bg-background font-medium whitespace-nowrap">
+                            {provider.providerName}
+                          </TableCell>
+                          <TableCell className="text-right font-bold">
+                            {provider.total}
+                          </TableCell>
+                          {statusByProviderData.allStatuses.map((status) => {
+                            const count = provider.statusCounts[status] || 0
+                            const isPending = status === 'pending'
+                            const isUnableToAssist = status === 'unable_to_assist'
+                            return (
+                              <TableCell
+                                key={status}
+                                className={`text-right text-sm ${
+                                  count > 0
+                                    ? isPending
+                                      ? 'text-blue-700 font-semibold'
+                                      : isUnableToAssist
+                                        ? 'text-red-600 font-semibold'
+                                        : ''
+                                    : 'text-muted-foreground'
+                                }`}
+                              >
+                                {count || '-'}
+                              </TableCell>
+                            )
+                          })}
+                        </TableRow>
+                      ))}
+                      {/* Totals row */}
+                      <TableRow className="border-t-2 font-bold">
+                        <TableCell className="sticky left-0 bg-background">Totals</TableCell>
+                        <TableCell className="text-right">
+                          {statusByProviderData.totalTickets}
+                        </TableCell>
+                        {statusByProviderData.allStatuses.map((status) => {
+                          const total = statusByProviderData.providers.reduce(
+                            (sum, p) => sum + (p.statusCounts[status] || 0), 0
+                          )
+                          return (
+                            <TableCell key={status} className="text-right">
+                              {total || '-'}
+                            </TableCell>
+                          )
+                        })}
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  No provider data found for the selected date range
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Service Gaps Tab */}
+      {activeTab === 'service-gaps' && isSiteAdmin && (
+        <div className="space-y-6">
+          {/* Summary cards */}
+          {serviceGapsLoading ? (
+            <div className="grid gap-4 md:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, i) => <Skeleton key={`gap-skel-${i}`} className="h-24" />)}
+            </div>
+          ) : serviceGapsData ? (
+            <>
+              <div className="grid gap-4 md:grid-cols-3">
+                <Card className="border-primary/20 bg-gradient-to-b from-primary/5 to-white">
+                  <CardContent className="pt-6">
+                    <p className="text-sm text-muted-foreground">Clay County Zip Codes</p>
+                    <p className="text-4xl font-bold mt-1">{serviceGapsData.summary.totalZipCodes}</p>
+                  </CardContent>
+                </Card>
+                <Card className="border-primary/20 bg-gradient-to-b from-primary/5 to-white">
+                  <CardContent className="pt-6">
+                    <p className="text-sm text-muted-foreground">Service Categories</p>
+                    <p className="text-4xl font-bold mt-1">{serviceGapsData.summary.totalCategories}</p>
+                  </CardContent>
+                </Card>
+                <Card className={serviceGapsData.summary.totalGaps > 0 ? 'border-orange-300 bg-gradient-to-b from-orange-50 to-white' : 'border-green-300 bg-gradient-to-b from-green-50 to-white'}>
+                  <CardContent className="pt-6">
+                    <p className="text-sm text-muted-foreground">Service Gaps Found</p>
+                    <p className={`text-4xl font-bold mt-1 ${serviceGapsData.summary.totalGaps > 0 ? 'text-orange-600' : 'text-green-600'}`}>
+                      {serviceGapsData.summary.totalGaps}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      of {serviceGapsData.summary.totalCells} zip/category combinations
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* View toggle and CSV export */}
+              <div className="flex items-center justify-between">
+                <div className="flex gap-2">
+                  <Button
+                    variant={serviceGapsView === 'by-zip' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setServiceGapsView('by-zip')}
+                  >
+                    <MapPin className="h-4 w-4 mr-1.5" />
+                    By Zip Code
+                  </Button>
+                  <Button
+                    variant={serviceGapsView === 'by-category' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setServiceGapsView('by-category')}
+                  >
+                    <BarChart3 className="h-4 w-4 mr-1.5" />
+                    By Category
+                  </Button>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => downloadServiceGapsCsv(serviceGapsData, serviceGapsView)}
+                >
+                  <Download className="h-4 w-4 mr-1.5" />
+                  Export CSV
+                </Button>
+              </div>
+
+              {/* By Zip Code View */}
+              {serviceGapsView === 'by-zip' && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <MapPin className="h-5 w-5" />
+                      Service Coverage by Zip Code
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      For each Clay County zip code, shows which service categories have providers and where gaps exist
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="sticky left-0 bg-background z-10 min-w-[100px]">Zip Code</TableHead>
+                            <TableHead className="text-center min-w-[80px]">Gaps</TableHead>
+                            {serviceGapsData.categories.map((cat) => (
+                              <TableHead key={cat.id} className="text-center min-w-[120px] text-xs">
+                                {cat.name}
+                              </TableHead>
+                            ))}
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {serviceGapsData.byZipCode.map((zipEntry) => (
+                            <TableRow key={zipEntry.zipCode}>
+                              <TableCell className="sticky left-0 bg-background z-10 font-medium">
+                                {zipEntry.zipCode}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {zipEntry.gapCount > 0 ? (
+                                  <Badge variant="destructive" className="text-xs">
+                                    {zipEntry.gapCount}
+                                  </Badge>
+                                ) : (
+                                  <Badge className="bg-green-100 text-green-800 text-xs">0</Badge>
+                                )}
+                              </TableCell>
+                              {zipEntry.categories.map((cat) => (
+                                <TableCell
+                                  key={cat.categoryId}
+                                  className={`text-center text-sm ${cat.hasGap ? 'bg-red-50' : ''}`}
+                                  title={cat.providers.length > 0 ? cat.providers.join(', ') : 'No providers'}
+                                >
+                                  {cat.hasGap ? (
+                                    <span className="text-red-500 font-semibold">--</span>
+                                  ) : (
+                                    <span className="text-green-700 font-medium">{cat.providerCount}</span>
+                                  )}
+                                </TableCell>
+                              ))}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-3">
+                      Numbers show provider count per zip/category. <span className="text-red-500 font-semibold">--</span> indicates a gap (no providers). Hover over a cell to see provider names.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* By Category View */}
+              {serviceGapsView === 'by-category' && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <BarChart3 className="h-5 w-5" />
+                      Service Coverage by Category
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      For each service category, shows which zip codes have providers and where gaps exist
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="sticky left-0 bg-background z-10 min-w-[200px]">Category</TableHead>
+                            <TableHead className="text-center min-w-[80px]">Gaps</TableHead>
+                            {serviceGapsData.zipCodes.map((zip) => (
+                              <TableHead key={zip} className="text-center min-w-[90px]">
+                                {zip}
+                              </TableHead>
+                            ))}
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {serviceGapsData.byCategory.map((catEntry) => (
+                            <TableRow key={catEntry.categoryId}>
+                              <TableCell className="sticky left-0 bg-background z-10 font-medium text-sm">
+                                {catEntry.categoryName}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {catEntry.gapCount > 0 ? (
+                                  <Badge variant="destructive" className="text-xs">
+                                    {catEntry.gapCount}
+                                  </Badge>
+                                ) : (
+                                  <Badge className="bg-green-100 text-green-800 text-xs">0</Badge>
+                                )}
+                              </TableCell>
+                              {catEntry.zipCodes.map((zipEntry) => (
+                                <TableCell
+                                  key={zipEntry.zipCode}
+                                  className={`text-center text-sm ${zipEntry.hasGap ? 'bg-red-50' : ''}`}
+                                  title={zipEntry.providers.length > 0 ? zipEntry.providers.join(', ') : 'No providers'}
+                                >
+                                  {zipEntry.hasGap ? (
+                                    <span className="text-red-500 font-semibold">--</span>
+                                  ) : (
+                                    <span className="text-green-700 font-medium">{zipEntry.providerCount}</span>
+                                  )}
+                                </TableCell>
+                              ))}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-3">
+                      Numbers show provider count per category/zip. <span className="text-red-500 font-semibold">--</span> indicates a gap (no providers). Hover over a cell to see provider names.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-8">
+              Unable to load service gap data
+            </p>
+          )}
         </div>
       )}
     </div>

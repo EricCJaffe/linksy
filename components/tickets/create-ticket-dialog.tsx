@@ -85,6 +85,13 @@ export function CreateTicketDialog({
     setError(null)
     setIsSubmitting(true)
 
+    // Validate service/need selection
+    if (!needId) {
+      setError('A service selection is required to submit a referral. Please go back and search for a specific service.')
+      setIsSubmitting(false)
+      return
+    }
+
     // Validate required custom fields
     for (const field of customFields) {
       if (field.is_required && !customData[field.field_label]) {

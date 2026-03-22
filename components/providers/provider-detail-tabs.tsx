@@ -46,6 +46,8 @@ import { CallLogForm } from '@/components/providers/call-log-form'
 import { CallLogDisplay } from '@/components/providers/call-log-display'
 import { ParentChildManager } from '@/components/providers/parent-child-manager'
 import { ParentOrgDashboard } from '@/components/providers/parent-org-dashboard'
+import { DescriptionReviewCard } from '@/components/providers/description-review-card'
+import { SlaSettingsCard } from '@/components/providers/sla-settings-card'
 import { useProviderChildren } from '@/lib/hooks/useProviderHierarchy'
 import { ImageUpload } from '@/components/ui/image-upload'
 import { WidgetPreview } from '@/components/widget/widget-preview'
@@ -54,6 +56,7 @@ import type { Provider, ProviderDetail, NoteType, NoteAttachment, TicketStatus, 
 import { Plus, Copy, ExternalLink, Globe, Lock, MapPin, Pencil, Trash2, CheckCircle, Circle, BarChart2, FileText, LayoutList, CalendarDays, RefreshCw, Pin, PinOff, Phone, StickyNote, ChevronDown, FlaskConical } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import type { HostWidgetConfig } from '@/lib/types/linksy'
+import { formatPhoneWithExt } from '@/lib/utils/phone'
 
 interface ProviderDetailTabsProps {
   provider: ProviderDetail
@@ -96,6 +99,7 @@ const ticketStatusLabels: Record<TicketStatus, string> = {
   unable_to_assist: 'Unable to Assist',
   client_unresponsive: 'Unresponsive',
   transferred_another_provider: 'Transferred',
+  transferred_pending: 'Transferred Pending',
 }
 
 const ticketStatusBadgeClass: Record<TicketStatus, string> = {
@@ -108,6 +112,7 @@ const ticketStatusBadgeClass: Record<TicketStatus, string> = {
   unable_to_assist: 'border-red-200 bg-red-50 text-red-700',
   client_unresponsive: 'border-violet-200 bg-violet-50 text-violet-700',
   transferred_another_provider: 'border-gray-200 bg-gray-50 text-gray-700',
+  transferred_pending: 'border-blue-200 bg-blue-50 text-blue-700',
 }
 
 const emptyLocationForm = {
@@ -118,6 +123,7 @@ const emptyLocationForm = {
   state: '',
   postal_code: '',
   phone: '',
+  phone_extension: '',
   is_primary: false,
 }
 
@@ -151,6 +157,7 @@ function LocationsCard({ provider }: { provider: ProviderDetail }) {
       state: loc.state || '',
       postal_code: loc.postal_code || '',
       phone: loc.phone || '',
+      phone_extension: loc.phone_extension || '',
       is_primary: loc.is_primary,
     })
   }
@@ -231,14 +238,25 @@ function LocationsCard({ provider }: { provider: ProviderDetail }) {
             onChange={(e) => onChange({ ...values, name: e.target.value })}
           />
         </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Phone</Label>
-          <Input
-            type="tel"
-            placeholder="(555) 000-0000"
-            value={values.phone}
-            onChange={(e) => onChange({ ...values, phone: e.target.value })}
-          />
+        <div className="grid grid-cols-3 gap-2">
+          <div className="col-span-2 space-y-1">
+            <Label className="text-xs">Phone</Label>
+            <Input
+              type="tel"
+              placeholder="(555) 000-0000"
+              value={values.phone}
+              onChange={(e) => onChange({ ...values, phone: e.target.value })}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Extension</Label>
+            <Input
+              placeholder="x123"
+              value={values.phone_extension}
+              onChange={(e) => onChange({ ...values, phone_extension: e.target.value })}
+              maxLength={20}
+            />
+          </div>
         </div>
       </div>
       <div className="space-y-1">
@@ -367,7 +385,7 @@ function LocationsCard({ provider }: { provider: ProviderDetail }) {
                         {[loc.address_line1, loc.address_line2, loc.city, loc.state, loc.postal_code]
                           .filter(Boolean).join(', ') || 'No address'}
                       </p>
-                      {loc.phone && <p className="text-sm text-muted-foreground">{loc.phone}</p>}
+                      {loc.phone && <p className="text-sm text-muted-foreground">{formatPhoneWithExt(loc.phone, loc.phone_extension)}</p>}
                     </div>
                     <div className="flex gap-1 ml-4 shrink-0">
                       <Button variant="ghost" size="sm" onClick={() => startEdit(loc)}>
@@ -471,6 +489,7 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
     state: primaryLocation?.state || '',
     postal_code: primaryLocation?.postal_code || '',
     phone: primaryLocation?.phone || '',
+    phone_extension: primaryLocation?.phone_extension || '',
     latitude: primaryLocation?.latitude || null,
     longitude: primaryLocation?.longitude || null,
   })
@@ -540,6 +559,7 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
       state: locationForm.state || null,
       postal_code: locationForm.postal_code || null,
       phone: locationForm.phone || null,
+      phone_extension: locationForm.phone_extension || null,
       is_primary: true,
     }
 
@@ -593,6 +613,8 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
       project_status: formData.project_status,
       sector: formData.sector,
       is_active: formData.is_active,
+      provider_status: formData.provider_status,
+      accepting_referrals: formData.accepting_referrals,
       service_zip_codes: formData.service_zip_codes.length > 0 ? formData.service_zip_codes : null,
     }
 
@@ -860,6 +882,7 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
       state: primaryLocation?.state || '',
       postal_code: primaryLocation?.postal_code || '',
       phone: primaryLocation?.phone || '',
+      phone_extension: primaryLocation?.phone_extension || '',
       latitude: primaryLocation?.latitude || null,
       longitude: primaryLocation?.longitude || null,
     })
@@ -871,6 +894,23 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
   const [freezeReason, setFreezeReason] = useState('')
   const [freezeReturnDate, setFreezeReturnDate] = useState('')
   const [isFreezing, setIsFreezing] = useState(false)
+  const [pendingReferralCount, setPendingReferralCount] = useState<number | null>(null)
+  const [isCheckingReferrals, setIsCheckingReferrals] = useState(false)
+
+  const openFreezeDialog = async () => {
+    setFreezeDialogOpen(true)
+    setIsCheckingReferrals(true)
+    setPendingReferralCount(null)
+    try {
+      const res = await fetch(`/api/providers/${provider.id}/freeze?check=pending`)
+      if (res.ok) {
+        const data = await res.json()
+        setPendingReferralCount(data.pending_count ?? 0)
+      }
+    } catch { /* silent */ } finally {
+      setIsCheckingReferrals(false)
+    }
+  }
 
   const handleFreeze = async () => {
     if (!freezeReason) return
@@ -945,7 +985,7 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
             !isEditing ? (
               <div className="flex gap-2">
                 {!provider.is_frozen && (
-                  <Button variant="outline" size="sm" onClick={() => setFreezeDialogOpen(true)}>
+                  <Button variant="outline" size="sm" onClick={openFreezeDialog}>
                     Freeze
                   </Button>
                 )}
@@ -1036,6 +1076,32 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
                     <SelectItem value="na">N/A</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="provider_status">Provider Status</Label>
+                <Select
+                  value={formData.provider_status}
+                  onValueChange={(value) => setFormData({ ...formData, provider_status: value as any })}
+                  disabled={!isEditing}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="paused">Paused</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="accepting_referrals">Accepting Referrals</Label>
+                <Switch
+                  id="accepting_referrals"
+                  checked={formData.accepting_referrals}
+                  onCheckedChange={(checked) => setFormData({ ...formData, accepting_referrals: checked })}
+                  disabled={!isEditing}
+                />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="md:col-span-2 space-y-2">
@@ -1224,14 +1290,27 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="location_phone">Location Phone</Label>
-                <Input
-                  id="location_phone"
-                  value={locationForm.phone}
-                  onChange={(e) => setLocationForm({ ...locationForm, phone: e.target.value })}
-                  disabled={!isEditing}
-                />
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="md:col-span-2 space-y-2">
+                  <Label htmlFor="location_phone">Location Phone</Label>
+                  <Input
+                    id="location_phone"
+                    value={locationForm.phone}
+                    onChange={(e) => setLocationForm({ ...locationForm, phone: e.target.value })}
+                    disabled={!isEditing}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="location_phone_extension">Extension</Label>
+                  <Input
+                    id="location_phone_extension"
+                    value={locationForm.phone_extension}
+                    onChange={(e) => setLocationForm({ ...locationForm, phone_extension: e.target.value })}
+                    disabled={!isEditing}
+                    placeholder="x123"
+                    maxLength={20}
+                  />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="service_zip_codes">Service ZIP Codes</Label>
@@ -1635,6 +1714,13 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
         </CardContent>
       </Card>
 
+      <SlaSettingsCard
+        providerId={provider.id}
+        slaHours={(provider as any).sla_hours ?? 24}
+        slaReminderHours={(provider as any).sla_reminder_hours ?? 48}
+        canEdit={canEdit}
+      />
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Contact Preferences</CardTitle>
@@ -1807,14 +1893,40 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
         </CardContent>
       </Card>
 
+      <DescriptionReviewCard
+        providerId={provider.id}
+        nextReviewAt={provider.next_description_review_at}
+        lastReviewAt={provider.last_description_review_at}
+        isSiteAdmin={currentUser?.profile?.role === 'site_admin'}
+      />
+
       {/* Freeze Dialog */}
       {freezeDialogOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-background rounded-lg shadow-lg p-6 w-full max-w-md space-y-4">
             <h3 className="text-lg font-semibold">Freeze Provider</h3>
             <p className="text-sm text-muted-foreground">
-              Frozen providers will not receive new referrals.
+              Frozen providers will not appear in search results or receive new referrals.
             </p>
+
+            {/* Pending referral warning */}
+            {isCheckingReferrals && (
+              <div className="rounded-md border border-muted bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
+                Checking for pending referrals...
+              </div>
+            )}
+            {!isCheckingReferrals && pendingReferralCount !== null && pendingReferralCount > 0 && (
+              <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 space-y-1">
+                <p className="text-sm font-medium text-amber-800">
+                  {pendingReferralCount} pending referral{pendingReferralCount !== 1 ? 's' : ''} must be cleared first
+                </p>
+                <p className="text-xs text-amber-700">
+                  Please resolve or transfer all pending referrals before freezing your account.
+                  You can manage them in the Referrals tab.
+                </p>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label>Reason *</Label>
               <Select value={freezeReason} onValueChange={setFreezeReason}>
@@ -1822,7 +1934,9 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
                   <SelectValue placeholder="Select reason..." />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="Vacation / time off">Vacation / time off</SelectItem>
                   <SelectItem value="Capacity full">Capacity full</SelectItem>
+                  <SelectItem value="Waiting for funding">Waiting for funding</SelectItem>
                   <SelectItem value="Seasonal closure">Seasonal closure</SelectItem>
                   <SelectItem value="Staff shortage">Staff shortage</SelectItem>
                   <SelectItem value="Under review">Under review</SelectItem>
@@ -1840,8 +1954,11 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
               />
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setFreezeDialogOpen(false)}>Cancel</Button>
-              <Button onClick={handleFreeze} disabled={!freezeReason || isFreezing}>
+              <Button variant="outline" onClick={() => { setFreezeDialogOpen(false); setFreezeReason(''); setFreezeReturnDate(''); setPendingReferralCount(null) }}>Cancel</Button>
+              <Button
+                onClick={handleFreeze}
+                disabled={!freezeReason || isFreezing || (!isCheckingReferrals && pendingReferralCount !== null && pendingReferralCount > 0)}
+              >
                 {isFreezing ? 'Freezing...' : 'Freeze Provider'}
               </Button>
             </div>
@@ -1974,7 +2091,7 @@ function ContactsTab({ provider }: { provider: ProviderDetail }) {
                   <TableCell className="text-muted-foreground">
                     {contact.user?.email || '-'}
                   </TableCell>
-                  <TableCell>{contact.phone || '-'}</TableCell>
+                  <TableCell>{contact.phone ? formatPhoneWithExt(contact.phone, contact.phone_extension) : '-'}</TableCell>
                   <TableCell>{contact.job_title || '-'}</TableCell>
                   <TableCell>
                     <Badge variant={contact.provider_role === 'admin' ? 'default' : 'secondary'}>
@@ -2340,7 +2457,7 @@ function ReferralsTab({ provider: initialProvider }: { provider: ProviderDetail 
 
               {ticket.client_phone && (
                 <div className="text-sm">
-                  <span className="font-medium">Phone:</span> {ticket.client_phone}
+                  <span className="font-medium">Phone:</span> {formatPhoneWithExt(ticket.client_phone, null)}
                 </div>
               )}
               {ticket.client_email && (
@@ -2367,6 +2484,8 @@ function EventsTab({ provider }: { provider: ProviderDetail }) {
     description: '',
     event_date: '',
     location: '',
+    address: '',
+    need_id: '',
     is_public: false,
     recurrence_rule: '' as string,
   })
@@ -2374,12 +2493,14 @@ function EventsTab({ provider }: { provider: ProviderDetail }) {
   const createEvent = useCreateProviderEvent(provider.id)
   const updateEvent = useUpdateProviderEvent(provider.id)
   const deleteEvent = useDeleteProviderEvent(provider.id)
+  const { data: needCategories } = useNeedCategories()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     const payload = {
       ...formData,
+      need_id: formData.need_id || null,
       recurrence_rule: formData.recurrence_rule || null,
     }
     if (editingEvent) {
@@ -2390,7 +2511,7 @@ function EventsTab({ provider }: { provider: ProviderDetail }) {
       setIsAdding(false)
     }
 
-    setFormData({ title: '', description: '', event_date: '', location: '', is_public: false, recurrence_rule: '' })
+    setFormData({ title: '', description: '', event_date: '', location: '', address: '', need_id: '', is_public: false, recurrence_rule: '' })
   }
 
   const handleEdit = (event: ProviderEvent) => {
@@ -2400,6 +2521,8 @@ function EventsTab({ provider }: { provider: ProviderDetail }) {
       description: event.description || '',
       event_date: event.event_date.split('T')[0],
       location: event.location || '',
+      address: event.address || '',
+      need_id: event.need_id || '',
       is_public: event.is_public,
       recurrence_rule: event.recurrence_rule || '',
     })
@@ -2479,12 +2602,44 @@ function EventsTab({ provider }: { provider: ProviderDetail }) {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="location">Location</Label>
+                <Label htmlFor="need_id">Service Category *</Label>
+                <Select
+                  value={formData.need_id || 'none'}
+                  onValueChange={(val) => setFormData({ ...formData, need_id: val === 'none' ? '' : val })}
+                >
+                  <SelectTrigger id="need_id">
+                    <SelectValue placeholder="Select a service category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none" disabled>Select a service category</SelectItem>
+                    {needCategories?.map((cat) => (
+                      cat.needs?.map((need) => (
+                        <SelectItem key={need.id} value={need.id}>
+                          {cat.name} — {need.name}
+                        </SelectItem>
+                      ))
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="address">Address *</Label>
+                <Input
+                  id="address"
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  placeholder="123 Main St, City, FL 32065"
+                  required
+                />
+                <p className="text-xs text-muted-foreground">Full address used for proximity-based search matching</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="location">Location Name</Label>
                 <Input
                   id="location"
                   value={formData.location}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  placeholder="123 Main St, City, State"
+                  placeholder="Community Center, Room 204"
                 />
               </div>
               <div className="space-y-2">
@@ -2534,7 +2689,7 @@ function EventsTab({ provider }: { provider: ProviderDetail }) {
                   onClick={() => {
                     setIsAdding(false)
                     setEditingEvent(null)
-                    setFormData({ title: '', description: '', event_date: '', location: '', is_public: false, recurrence_rule: '' })
+                    setFormData({ title: '', description: '', event_date: '', location: '', address: '', need_id: '', is_public: false, recurrence_rule: '' })
                   }}
                 >
                   Cancel
@@ -2563,6 +2718,11 @@ function EventsTab({ provider }: { provider: ProviderDetail }) {
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-semibold">{event.title}</h3>
                         <Badge className={statusColors[event.status]}>{event.status}</Badge>
+                        {event.need && (
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                            {event.need.category?.name ? `${event.need.category.name} — ` : ''}{event.need.name}
+                          </Badge>
+                        )}
                         {event.is_public && <Badge variant="outline">Public</Badge>}
                         {recurrenceLabel && (
                           <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
@@ -2579,6 +2739,9 @@ function EventsTab({ provider }: { provider: ProviderDetail }) {
                           day: 'numeric',
                         })}
                       </p>
+                      {event.address && (
+                        <p className="text-sm text-muted-foreground">{event.address}</p>
+                      )}
                       {event.location && (
                         <p className="text-sm text-muted-foreground">{event.location}</p>
                       )}

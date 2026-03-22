@@ -48,8 +48,8 @@ const TEMPLATE_KEYS = [
   },
   {
     key: 'ticket_status_update',
-    name: 'Ticket Status Update',
-    description: 'Sent to the client when their ticket status changes',
+    name: 'Referral Status Update',
+    description: 'Sent to the client when their referral status changes',
     variables: [
       'app_name',
       'client_name',

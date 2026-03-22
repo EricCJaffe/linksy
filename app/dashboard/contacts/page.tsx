@@ -21,8 +21,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Search, ChevronLeft, ChevronRight, Users, ExternalLink, Download, ArrowUpDown } from 'lucide-react'
+import { Search, ChevronLeft, ChevronRight, Users, ExternalLink, Download, ArrowUpDown, CalendarDays, X, MapPin } from 'lucide-react'
 import { convertToCSV, downloadCSV } from '@/lib/utils/csv'
+import { formatPhoneWithExt } from '@/lib/utils/phone'
 
 const LIMIT = 50
 
@@ -34,6 +35,7 @@ interface Contact {
   full_name: string | null
   job_title: string | null
   phone: string | null
+  phone_extension: string | null
   contact_type: string
   provider_role: string
   is_primary_contact: boolean
@@ -54,7 +56,7 @@ interface ContactsResponse {
   pagination: { total: number; offset: number; limit: number }
 }
 
-type SortField = 'name' | 'email' | 'organization' | 'role' | 'date_added'
+type SortField = 'name' | 'email' | 'phone' | 'organization' | 'job_title' | 'role' | 'status' | 'date_added'
 type SortDir = 'asc' | 'desc'
 
 export default function ContactsPage() {
@@ -65,6 +67,9 @@ export default function ContactsPage() {
   const [statusFilter, setStatusFilter] = useState('active')
   const [providerFilter, setProviderFilter] = useState('')
   const [roleFilter, setRoleFilter] = useState('')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [zipFilter, setZipFilter] = useState('')
   const [offset, setOffset] = useState(0)
   const [providers, setProviders] = useState<Array<{ id: string; name: string }>>([])
   const [sortField, setSortField] = useState<SortField>('name')
@@ -93,6 +98,9 @@ export default function ContactsPage() {
       if (search) params.set('q', search)
       if (providerFilter) params.set('provider_id', providerFilter)
       if (roleFilter) params.set('role', roleFilter)
+      if (dateFrom) params.set('date_from', dateFrom)
+      if (dateTo) params.set('date_to', dateTo)
+      if (zipFilter) params.set('zip', zipFilter)
 
       const res = await fetch(`/api/contacts?${params.toString()}`)
       if (res.ok) {
@@ -103,7 +111,7 @@ export default function ContactsPage() {
     } finally {
       setLoading(false)
     }
-  }, [offset, search, statusFilter, providerFilter, roleFilter])
+  }, [offset, search, statusFilter, providerFilter, roleFilter, dateFrom, dateTo, zipFilter])
 
   useEffect(() => {
     fetchContacts()
@@ -118,8 +126,11 @@ export default function ContactsPage() {
     switch (sortField) {
       case 'name': return (a.display_name || '').localeCompare(b.display_name || '') * dir
       case 'email': return (a.display_email || '').localeCompare(b.display_email || '') * dir
+      case 'phone': return (a.phone || '').localeCompare(b.phone || '') * dir
       case 'organization': return (a.provider?.name || '').localeCompare(b.provider?.name || '') * dir
+      case 'job_title': return (a.job_title || '').localeCompare(b.job_title || '') * dir
       case 'role': return (a.provider_role || '').localeCompare(b.provider_role || '') * dir
+      case 'status': return (a.status || '').localeCompare(b.status || '') * dir
       case 'date_added': return ((a.created_at || '').localeCompare(b.created_at || '')) * dir
       default: return 0
     }
@@ -238,7 +249,10 @@ export default function ContactsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Providers</SelectItem>
-                  {providers.map((p) => (
+                  {providers
+                    .slice()
+                    .sort((a, b) => a.name.localeCompare(b.name))
+                    .map((p) => (
                     <SelectItem key={p.id} value={p.id}>
                       {p.name}
                     </SelectItem>
@@ -263,6 +277,57 @@ export default function ContactsPage() {
               </Select>
             </div>
           </div>
+          <div className="flex flex-wrap items-center gap-2 mt-3">
+            <div className="relative">
+              <MapPin className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Filter by zip..."
+                value={zipFilter}
+                onChange={(e) => {
+                  setZipFilter(e.target.value)
+                  setOffset(0)
+                }}
+                className="w-[140px] pl-9"
+                maxLength={10}
+              />
+            </div>
+            <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
+            <Input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => {
+                setDateFrom(e.target.value)
+                setOffset(0)
+              }}
+              className="w-[150px]"
+              aria-label="From date"
+            />
+            <span className="text-sm text-muted-foreground">to</span>
+            <Input
+              type="date"
+              value={dateTo}
+              onChange={(e) => {
+                setDateTo(e.target.value)
+                setOffset(0)
+              }}
+              className="w-[150px]"
+              aria-label="To date"
+            />
+            {(dateFrom || dateTo) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setDateFrom('')
+                  setDateTo('')
+                  setOffset(0)
+                }}
+              >
+                <X className="h-4 w-4 mr-1" />
+                Clear dates
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {loading && !data ? (
@@ -282,11 +347,11 @@ export default function ContactsPage() {
                   <TableRow>
                     <SortableHeader field="name">Name</SortableHeader>
                     <SortableHeader field="email">Email</SortableHeader>
-                    <TableHead>Phone</TableHead>
+                    <SortableHeader field="phone">Phone</SortableHeader>
                     <SortableHeader field="organization">Organization</SortableHeader>
-                    <TableHead>Job Title</TableHead>
+                    <SortableHeader field="job_title">Job Title</SortableHeader>
                     <SortableHeader field="role">Role</SortableHeader>
-                    <TableHead>Status</TableHead>
+                    <SortableHeader field="status">Status</SortableHeader>
                     <SortableHeader field="date_added">Date Added</SortableHeader>
                   </TableRow>
                 </TableHeader>
@@ -314,7 +379,7 @@ export default function ContactsPage() {
                         {contact.display_email || '—'}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {contact.phone || '—'}
+                        {contact.phone ? formatPhoneWithExt(contact.phone, contact.phone_extension) : '—'}
                       </TableCell>
                       <TableCell>
                         {contact.provider ? (

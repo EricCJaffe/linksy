@@ -24,6 +24,7 @@ export async function GET() {
         name,
         slug,
         phone,
+        phone_extension,
         email,
         website,
         address,

@@ -47,6 +47,7 @@ export async function PATCH(
     name: body.name,
     settings: body.settings,
     branding: body.branding,
+    is_active: body.is_active,
   }
 
   // Remove undefined fields

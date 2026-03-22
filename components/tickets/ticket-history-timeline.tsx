@@ -56,7 +56,7 @@ const EVENT_LABELS = {
   created: 'Created',
   assigned: 'Assigned',
   reassigned: 'Reassigned',
-  forwarded: 'Forwarded',
+  forwarded: 'Transferred',
   status_changed: 'Status Changed',
   comment_added: 'Comment Added',
   updated: 'Updated',

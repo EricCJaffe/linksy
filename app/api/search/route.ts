@@ -18,6 +18,7 @@ export async function GET(request: Request) {
 
   if (!query || query.trim().length === 0) {
     return NextResponse.json({
+      providers: [],
       users: [],
       modules: [],
       settings: [],
@@ -49,7 +50,7 @@ export async function GET(request: Request) {
   const serviceSupabase = await createServiceClient()
 
   // Run all searches in parallel
-  const [usersResult, modulesResult, ticketsResult, contactsResult] = await Promise.all([
+  const [usersResult, modulesResult, ticketsResult, contactsResult, providersResult] = await Promise.all([
     // Search users in the tenant
     supabase
       .from('tenant_users')
@@ -101,9 +102,20 @@ export async function GET(request: Request) {
     // Search provider contacts by name, email, or phone
     serviceSupabase
       .from('linksy_provider_contacts')
-      .select('id, user_id, provider_id, provider_role, status, linksy_providers(name)')
+      .select('id, user_id, provider_id, provider_role, phone, status, linksy_providers(name)')
       .eq('status', 'active')
       .limit(50),
+
+    // Search providers by name, phone, or email
+    serviceSupabase
+      .from('linksy_providers')
+      .select('id, name, slug, phone, email, provider_status, sector')
+      .or(
+        `name.ilike.%${sanitizedQuery}%,phone.ilike.%${sanitizedQuery}%,email.ilike.%${sanitizedQuery}%`
+      )
+      .eq('is_active', true)
+      .order('name')
+      .limit(10),
   ])
 
   const filteredUsers = usersResult.data || []
@@ -111,23 +123,45 @@ export async function GET(request: Request) {
   const tickets = ticketsResult.data || []
 
   // Filter contacts in app layer since we need to join with auth users for name/email
-  // Get user details for contacts
+  // Also match contacts by their phone field directly
   const rawContacts = contactsResult.data || []
+  const providers = providersResult.data || []
   let filteredContacts: any[] = []
   if (rawContacts.length > 0) {
-    const userIds = Array.from(new Set(rawContacts.map((c: any) => c.user_id)))
+    const lowerQuery = sanitizedQuery.toLowerCase()
+
+    // Contacts that match by phone directly on the contact record
+    const phoneMatchedContacts = rawContacts.filter(
+      (c: any) => c.phone && c.phone.toLowerCase().includes(lowerQuery)
+    )
+    const phoneMatchedUserIds = new Set(phoneMatchedContacts.map((c: any) => c.user_id))
+
+    // Get user details for all contacts to search by name/email
+    const userIds = Array.from(new Set(rawContacts.map((c: any) => c.user_id).filter(Boolean)))
     const { data: contactUsers } = await serviceSupabase
       .from('users')
       .select('id, email, full_name')
       .in('id', userIds)
-      .or(`email.ilike.%${sanitizedQuery}%,full_name.ilike.%${sanitizedQuery}%`)
-      .limit(10)
 
-    const matchedUserIds = new Set((contactUsers || []).map((u: any) => u.id))
     const userMap = new Map((contactUsers || []).map((u: any) => [u.id, u]))
 
+    // Find users matching by name or email
+    const nameEmailMatchedUserIds = new Set(
+      (contactUsers || [])
+        .filter(
+          (u: any) =>
+            u.email?.toLowerCase().includes(lowerQuery) ||
+            u.full_name?.toLowerCase().includes(lowerQuery)
+        )
+        .map((u: any) => u.id)
+    )
+
+    // Combine phone matches and name/email matches
     filteredContacts = rawContacts
-      .filter((c: any) => matchedUserIds.has(c.user_id))
+      .filter(
+        (c: any) =>
+          phoneMatchedUserIds.has(c.user_id) || nameEmailMatchedUserIds.has(c.user_id)
+      )
       .slice(0, 10)
       .map((c: any) => ({
         ...c,
@@ -240,21 +274,38 @@ export async function GET(request: Request) {
     title: c._user?.full_name || c._user?.email || 'Unknown',
     subtitle: c._user?.email || '',
     description: (c.linksy_providers as any)?.name || '',
-    url: `/dashboard/providers`,
-    icon: 'user',
+    url: c.provider_id ? `/dashboard/providers/${c.provider_id}` : '/dashboard/contacts',
+    icon: 'contact',
     metadata: {
       provider_role: c.provider_role,
       provider_id: c.provider_id,
+      phone: c.phone,
+    },
+  }))
+
+  const formattedProviders = providers.map((p: any) => ({
+    id: p.id,
+    type: 'provider',
+    title: p.name,
+    subtitle: [p.phone, p.email].filter(Boolean).join(' · '),
+    description: `${p.sector} · ${p.provider_status}`,
+    url: `/dashboard/providers/${p.id}`,
+    icon: 'building',
+    metadata: {
+      provider_status: p.provider_status,
+      sector: p.sector,
     },
   }))
 
   return NextResponse.json({
+    providers: formattedProviders,
     users: formattedUsers,
     modules: formattedModules,
     settings: formattedSettings,
     tickets: formattedTickets,
     contacts: formattedContacts,
     total:
+      formattedProviders.length +
       formattedUsers.length +
       formattedModules.length +
       formattedSettings.length +

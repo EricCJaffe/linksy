@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { CheckCircle, ArrowLeft, ArrowRight, Plus, Trash2 } from 'lucide-react'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
+import { formatPhoneWithExt } from '@/lib/utils/phone'
 
 /* ─── Types ─── */
 
@@ -504,14 +505,14 @@ export default function ProviderOnboardingPage() {
             </section>
           )}
 
-          {/* Step 3: Services / Needs */}
+          {/* Step 3: Services */}
           {step === 3 && (
             <section className="space-y-4">
               <h2 className="text-base font-semibold text-gray-900 mb-4 pb-2 border-b">
-                Services &amp; Needs
+                Services
               </h2>
               <p className="text-sm text-gray-500 mb-4">
-                Select all the services or needs your organization addresses:
+                Select all the services your organization provides:
               </p>
 
               {categories.length === 0 && (
@@ -637,7 +638,7 @@ export default function ProviderOnboardingPage() {
                   {form.phone && (
                     <>
                       <dt className="text-gray-400">Phone</dt>
-                      <dd className="text-gray-900">{form.phone}{form.phone_extension ? ` ext. ${form.phone_extension}` : ''}</dd>
+                      <dd className="text-gray-900">{formatPhoneWithExt(form.phone, form.phone_extension)}</dd>
                     </>
                   )}
                   {form.website && (
@@ -765,7 +766,7 @@ export default function ProviderOnboardingPage() {
         </div>
 
         <p className="text-xs text-gray-400 text-center mt-4">
-          We&apos;ll review your application and follow up via email within 2–3 business days.
+          We&apos;ll review your application and follow-up via email within 2–3 business days.
         </p>
       </main>
     </div>

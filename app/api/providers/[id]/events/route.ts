@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/middleware/auth'
+import { geocodeAddress } from '@/lib/utils/geocode'
 
 /**
  * GET /api/providers/[id]/events
@@ -18,7 +19,10 @@ export async function GET(
 
   const { data: events, error: eventsError } = await supabase
     .from('linksy_provider_events')
-    .select('*')
+    .select(`
+      *,
+      need:linksy_needs(name, category:linksy_need_categories(name))
+    `)
     .eq('provider_id', id)
     .order('event_date', { ascending: true })
 
@@ -43,13 +47,36 @@ export async function POST(
 
   const { id: providerId } = params
   const body = await request.json()
-  const { title, description, event_date, location, is_public, recurrence_rule } = body
+  const { title, description, event_date, location, address, need_id, is_public, recurrence_rule } = body
 
   if (!title || !event_date) {
     return NextResponse.json(
       { error: 'Title and event date are required' },
       { status: 400 }
     )
+  }
+
+  if (!address) {
+    return NextResponse.json(
+      { error: 'Address is required' },
+      { status: 400 }
+    )
+  }
+
+  if (!need_id) {
+    return NextResponse.json(
+      { error: 'Service category is required' },
+      { status: 400 }
+    )
+  }
+
+  // Geocode the address for proximity search
+  let latitude: number | null = null
+  let longitude: number | null = null
+  const geo = await geocodeAddress(address)
+  if (geo) {
+    latitude = geo.latitude
+    longitude = geo.longitude
   }
 
   const supabase = await createServiceClient()
@@ -62,12 +89,19 @@ export async function POST(
       description: description || null,
       event_date,
       location: location || null,
+      address,
+      latitude,
+      longitude,
+      need_id,
       is_public: is_public || false,
       recurrence_rule: recurrence_rule || null,
       created_by: auth.user.id,
       status: 'pending',
     })
-    .select()
+    .select(`
+      *,
+      need:linksy_needs(name, category:linksy_need_categories(name))
+    `)
     .single()
 
   if (createError) {

@@ -163,11 +163,12 @@ export function SearchBar({
 
   // Keyboard navigation
   const allResults: SearchResult[] = useMemo(() => [
+    ...(results?.providers || []),
+    ...(results?.contacts || []),
+    ...(results?.tickets || []),
     ...(results?.users || []),
     ...(results?.modules || []),
     ...(results?.settings || []),
-    ...(results?.tickets || []),
-    ...(results?.contacts || []),
   ], [results])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

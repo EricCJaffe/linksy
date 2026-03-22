@@ -9,7 +9,8 @@ These must be set for the app to function:
 | `NEXT_PUBLIC_SUPABASE_URL` | `lib/supabase/client.ts`, `lib/supabase/server.ts` | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `lib/supabase/client.ts`, `lib/supabase/server.ts` | Public/anon key (safe for browser) |
 | `SUPABASE_SERVICE_ROLE_KEY` | `lib/supabase/server.ts` | **Secret.** Bypasses RLS. Server-only. |
-| `OPENAI_API_KEY` | `app/api/linksy/search/route.ts`, `scripts/generate-embeddings.js` | Required for AI search and embedding generation. |
+| `OPENAI_API_KEY` | `app/api/linksy/search/route.ts`, `app/api/cron/description-review/route.ts`, `scripts/generate-embeddings.js` | Required for AI search, embedding generation, and description reviews. |
+| `CRON_SECRET` | `app/api/cron/description-review/route.ts` | Secret token for authenticating Vercel cron job requests. |
 
 ## Recommended Env Vars
 

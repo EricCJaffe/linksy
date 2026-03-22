@@ -46,6 +46,7 @@ export type TicketStatus =
   | 'unable_to_assist'
   | 'client_unresponsive'
   | 'transferred_another_provider'
+  | 'transferred_pending'
 export type ProviderStatusEnum = 'active' | 'paused' | 'inactive' | 'pending_approval'
 export type ProviderSource = 'CC' | 'UW' | 'IW' | 'Self-Registered' | 'Other'
 export type ApplicationStatus = 'pending' | 'approved' | 'rejected'
@@ -128,6 +129,12 @@ export interface Provider {
   host_searches_this_month: number
   host_monthly_token_budget: number | null
   host_usage_reset_at: string | null
+  // SLA configuration
+  sla_hours: number
+  sla_reminder_hours: number
+  // Description review
+  next_description_review_at: string | null
+  last_description_review_at: string | null
   // AI / search
   llm_context_card: string | null
   // Aggregated counts from list query
@@ -145,6 +152,7 @@ export interface ProviderLocation {
   state: string | null
   postal_code: string | null
   phone: string | null
+  phone_extension: string | null
   is_primary: boolean
   latitude: number | null
   longitude: number | null
@@ -202,6 +210,7 @@ export interface ProviderContact {
   job_title: string | null
   contact_type: string | null
   phone: string | null
+  phone_extension: string | null
   provider_role: ProviderContactRole
   status: ProviderContactStatus
   is_primary_contact: boolean
@@ -219,6 +228,10 @@ export interface ProviderEvent {
   description: string | null
   event_date: string
   location: string | null
+  address: string | null
+  latitude: number | null
+  longitude: number | null
+  need_id: string | null
   status: EventStatus
   is_public: boolean
   recurrence_rule: string | null
@@ -230,6 +243,7 @@ export interface ProviderEvent {
   provider?: { name: string }
   creator?: { full_name: string | null; email: string }
   approver?: { full_name: string | null; email: string }
+  need?: { name: string; category: { name: string } | null }
 }
 
 export interface NeedCategory {
@@ -271,6 +285,7 @@ export interface Ticket {
   source: string | null
   search_session_id: string | null
   sla_due_at: string | null
+  sla_reminder_sent_at: string | null
   custom_data?: Record<string, any>
   // Assignment tracking
   assigned_to: string | null
@@ -281,7 +296,7 @@ export interface Ticket {
   created_at: string
   updated_at: string
   need?: Need
-  provider?: { name: string }
+  provider?: { name: string; phone?: string | null }
   comments?: TicketComment[]
 }
 
@@ -359,6 +374,7 @@ export interface TicketFilters {
   date_to?: string
   client_email?: string
   client_phone?: string
+  zip?: string
   limit?: number
   offset?: number
 }
@@ -487,6 +503,7 @@ export interface ProviderApplication {
   services: string | null
   website: string | null
   phone: string | null
+  phone_extension: string | null
   hours: string | null
   address: string | null
   city: string | null
@@ -495,6 +512,7 @@ export interface ProviderApplication {
   contact_name: string
   contact_email: string
   contact_phone: string | null
+  contact_phone_extension: string | null
   status: ApplicationStatus
   reviewer_id: string | null
   reviewed_at: string | null
@@ -514,6 +532,8 @@ export interface CallLog {
   caller_name: string | null
   call_type: CallType
   duration_minutes: number | null
+  started_at: string | null
+  ended_at: string | null
   notes: string | null
   created_by: string | null
   created_at: string
@@ -529,6 +549,24 @@ export interface Survey {
   rating: number | null
   feedback_text: string | null
   completed_at: string | null
+  created_at: string
+}
+
+// Description review (quarterly AI scan)
+export type DescriptionReviewStatus = 'pending' | 'accepted_current' | 'accepted_ai' | 'edited' | 'expired' | 'error'
+
+export interface DescriptionReview {
+  id: string
+  provider_id: string
+  current_description: string | null
+  ai_suggested_description: string | null
+  status: DescriptionReviewStatus
+  action_token: string
+  triggered_at: string
+  responded_at: string | null
+  triggered_by: string
+  error_message: string | null
+  batch_id: string | null
   created_at: string
 }
 
@@ -600,6 +638,8 @@ export interface ProviderFilters {
   organization_type?: 'all' | 'parent' | 'child' | 'standalone'
   source?: ProviderSource | 'all'
   zip?: string
+  date_from?: string
+  date_to?: string
   limit?: number
   offset?: number
 }

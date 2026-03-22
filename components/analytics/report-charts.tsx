@@ -67,6 +67,7 @@ export function StatusPieChart({ data }: { data: { status: string; count: number
     unable_to_assist: 'Unable to Assist',
     client_unresponsive: 'Unresponsive',
     transferred_another_provider: 'Transferred',
+    transferred_pending: 'Transferred Pending',
   }
 
   const chartData = data.map((d) => ({

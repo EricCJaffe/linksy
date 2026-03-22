@@ -8,6 +8,8 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select'
+import { DateRangeFilter } from '@/components/filters/date-range-filter'
+import { ZipCodeFilter } from '@/components/filters/zip-code-filter'
 import type { ProviderFilters } from '@/lib/types/linksy'
 
 interface ProviderFiltersBarProps {
@@ -17,91 +19,97 @@ interface ProviderFiltersBarProps {
 
 export function ProviderFiltersBar({ filters, onChange }: ProviderFiltersBarProps) {
   return (
-    <div className="flex flex-wrap items-center gap-3">
-      <Input
-        placeholder="Search providers..."
-        value={filters.q || ''}
-        onChange={(e) => onChange({ q: e.target.value, offset: 0 })}
-        className="w-64"
-      />
-      <Select
-        value={filters.sector || 'all'}
-        onValueChange={(value) => onChange({ sector: value as any, offset: 0 })}
-      >
-        <SelectTrigger className="w-40">
-          <SelectValue placeholder="Sector" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All Sectors</SelectItem>
-          <SelectItem value="nonprofit">Nonprofit</SelectItem>
-          <SelectItem value="faith_based">Faith Based</SelectItem>
-          <SelectItem value="government">Government</SelectItem>
-          <SelectItem value="business">Business</SelectItem>
-        </SelectContent>
-      </Select>
-      <Select
-        value={filters.status || 'active'}
-        onValueChange={(value) => onChange({ status: value as any, offset: 0 })}
-      >
-        <SelectTrigger className="w-36">
-          <SelectValue placeholder="Status" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All Status</SelectItem>
-          <SelectItem value="active">Active</SelectItem>
-          <SelectItem value="paused">Paused</SelectItem>
-          <SelectItem value="inactive">Inactive</SelectItem>
-          <SelectItem value="frozen">Frozen</SelectItem>
-        </SelectContent>
-      </Select>
-      <Select
-        value={filters.referral_type || 'all'}
-        onValueChange={(value) => onChange({ referral_type: value as any, offset: 0 })}
-      >
-        <SelectTrigger className="w-44">
-          <SelectValue placeholder="Referral Type" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All Referral Types</SelectItem>
-          <SelectItem value="standard">Standard</SelectItem>
-          <SelectItem value="contact_directly">Contact Directly</SelectItem>
-        </SelectContent>
-      </Select>
-      <Select
-        value={filters.organization_type || 'all'}
-        onValueChange={(value) => onChange({ organization_type: value as any, offset: 0 })}
-      >
-        <SelectTrigger className="w-48">
-          <SelectValue placeholder="Organization Type" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All Organizations</SelectItem>
-          <SelectItem value="parent">Parent Organizations</SelectItem>
-          <SelectItem value="child">Child Locations</SelectItem>
-          <SelectItem value="standalone">Standalone</SelectItem>
-        </SelectContent>
-      </Select>
-      <Select
-        value={filters.source || 'all'}
-        onValueChange={(value) => onChange({ source: value as any, offset: 0 })}
-      >
-        <SelectTrigger className="w-40">
-          <SelectValue placeholder="Source" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All Sources</SelectItem>
-          <SelectItem value="CC">Clay County</SelectItem>
-          <SelectItem value="UW">United Way</SelectItem>
-          <SelectItem value="IW">Impact Works</SelectItem>
-          <SelectItem value="Self-Registered">Self-Registered</SelectItem>
-          <SelectItem value="Other">Other</SelectItem>
-        </SelectContent>
-      </Select>
-      <Input
-        placeholder="Filter by zip..."
-        value={filters.zip || ''}
-        onChange={(e) => onChange({ zip: e.target.value, offset: 0 })}
-        className="w-32"
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <Input
+          placeholder="Search providers..."
+          value={filters.q || ''}
+          onChange={(e) => onChange({ q: e.target.value, offset: 0 })}
+          className="w-64"
+        />
+        <Select
+          value={filters.sector || 'all'}
+          onValueChange={(value) => onChange({ sector: value as any, offset: 0 })}
+        >
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="Sector" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Sectors</SelectItem>
+            <SelectItem value="nonprofit">Nonprofit</SelectItem>
+            <SelectItem value="faith_based">Faith Based</SelectItem>
+            <SelectItem value="government">Government</SelectItem>
+            <SelectItem value="business">Business</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select
+          value={filters.status || 'active'}
+          onValueChange={(value) => onChange({ status: value as any, offset: 0 })}
+        >
+          <SelectTrigger className="w-36">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="paused">Paused</SelectItem>
+            <SelectItem value="inactive">Inactive</SelectItem>
+            <SelectItem value="frozen">Frozen</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select
+          value={filters.referral_type || 'all'}
+          onValueChange={(value) => onChange({ referral_type: value as any, offset: 0 })}
+        >
+          <SelectTrigger className="w-44">
+            <SelectValue placeholder="Referral Type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Referral Types</SelectItem>
+            <SelectItem value="standard">Standard</SelectItem>
+            <SelectItem value="contact_directly">Contact Directly</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select
+          value={filters.organization_type || 'all'}
+          onValueChange={(value) => onChange({ organization_type: value as any, offset: 0 })}
+        >
+          <SelectTrigger className="w-48">
+            <SelectValue placeholder="Organization Type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Organizations</SelectItem>
+            <SelectItem value="parent">Parent Organizations</SelectItem>
+            <SelectItem value="child">Child Locations</SelectItem>
+            <SelectItem value="standalone">Standalone</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select
+          value={filters.source || 'all'}
+          onValueChange={(value) => onChange({ source: value as any, offset: 0 })}
+        >
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="Source" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Sources</SelectItem>
+            <SelectItem value="CC">Clay County</SelectItem>
+            <SelectItem value="UW">United Way</SelectItem>
+            <SelectItem value="IW">Impact Works</SelectItem>
+            <SelectItem value="Self-Registered">Self-Registered</SelectItem>
+            <SelectItem value="Other">Other</SelectItem>
+          </SelectContent>
+        </Select>
+        <ZipCodeFilter
+          value={filters.zip}
+          onChange={(zip) => onChange({ zip, offset: 0 })}
+        />
+      </div>
+      <DateRangeFilter
+        dateFrom={filters.date_from}
+        dateTo={filters.date_to}
+        onDateFromChange={(date_from) => onChange({ date_from, offset: 0 })}
+        onDateToChange={(date_to) => onChange({ date_to, offset: 0 })}
       />
     </div>
   )

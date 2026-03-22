@@ -202,6 +202,7 @@ export async function POST(request: Request) {
       name,
       description,
       phone,
+      phone_extension,
       email,
       website,
       hours_of_operation,
@@ -233,6 +234,7 @@ export async function POST(request: Request) {
       .from('linksy_providers')
       .select(providerSelect)
       .eq('provider_status', 'active')
+      .eq('is_frozen', false)
       .in('provider_needs.need_id', needIds)
       .limit(10)
 
@@ -300,12 +302,14 @@ export async function POST(request: Request) {
       })
     }
 
-    // Step 4b: Fetch upcoming events from matched providers
-    const matchedProviderIds = resultsWithDistance.map((p: any) => p.id)
+    // Step 4b: Fetch upcoming events matching the same needs + proximity
     let upcomingEvents: any[] = []
-    if (matchedProviderIds.length > 0) {
-      const { data: events } = await supabase.rpc('linksy_search_events_by_providers', {
-        p_provider_ids: matchedProviderIds,
+    if (needIds.length > 0) {
+      const { data: events } = await supabase.rpc('linksy_search_events_by_needs', {
+        p_need_ids: needIds,
+        p_lat: resolvedLocation?.lat ?? null,
+        p_lng: resolvedLocation?.lng ?? null,
+        p_radius_miles: searchRadiusMiles ?? 50,
         p_limit: 5,
       })
       upcomingEvents = events || []
@@ -459,7 +463,10 @@ async function generateConversationalResponse(
             month: 'short',
             day: 'numeric',
           })
-          return `- "${e.title}" by ${e.provider_name} on ${date}${e.location ? ` at ${e.location}` : ''}`
+          const locationPart = e.address || e.location || ''
+          const distancePart = e.distance_miles != null ? ` (${e.distance_miles} mi away)` : ''
+          const categoryPart = e.category_name ? ` [${e.category_name}${e.need_name ? `: ${e.need_name}` : ''}]` : ''
+          return `- "${e.title}" by ${e.provider_name} on ${date}${locationPart ? ` at ${locationPart}` : ''}${distancePart}${categoryPart}`
         })
         eventsContext = `\n\nUpcoming related events:\n${eventLines.join('\n')}`
       }

@@ -20,7 +20,8 @@ export async function GET(request: Request) {
     .from('linksy_provider_events')
     .select(`
       *,
-      provider:linksy_providers(name)
+      provider:linksy_providers(name),
+      need:linksy_needs(name, category:linksy_need_categories(name))
     `)
     .order('event_date', { ascending: true })
     .limit(limit)

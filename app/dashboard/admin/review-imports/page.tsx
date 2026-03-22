@@ -15,7 +15,11 @@ import {
   TableCell,
 } from '@/components/ui/table'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { CheckCircle, XCircle, RefreshCw, Clock, AlertCircle, CheckSquare } from 'lucide-react'
+import { CheckCircle, XCircle, RefreshCw, Clock, AlertCircle, CheckSquare, ArrowUpDown } from 'lucide-react'
+import { formatPhone } from '@/lib/utils/phone'
+
+type SortField = 'name' | 'sector' | 'contact' | 'source' | 'imported'
+type SortDir = 'asc' | 'desc'
 
 interface PendingProvider {
   id: string
@@ -38,6 +42,8 @@ export default function ReviewImportsPage() {
   const [processing, setProcessing] = useState(false)
   const [total, setTotal] = useState(0)
   const [offset, setOffset] = useState(0)
+  const [sortField, setSortField] = useState<SortField>('imported')
+  const [sortDir, setSortDir] = useState<SortDir>('desc')
 
   const fetchPendingProviders = useCallback(async () => {
     setLoading(true)
@@ -117,6 +123,36 @@ export default function ReviewImportsPage() {
       return next
     })
   }
+
+  const sortedProviders = [...providers].sort((a, b) => {
+    const dir = sortDir === 'asc' ? 1 : -1
+    switch (sortField) {
+      case 'name': return dir * (a.name || '').localeCompare(b.name || '')
+      case 'sector': return dir * (a.sector || '').localeCompare(b.sector || '')
+      case 'contact': return dir * (a.email || a.phone || '').localeCompare(b.email || b.phone || '')
+      case 'source': return dir * (a.import_source || '').localeCompare(b.import_source || '')
+      case 'imported': return dir * (new Date(a.imported_at || a.created_at).getTime() - new Date(b.imported_at || b.created_at).getTime())
+      default: return 0
+    }
+  })
+
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortDir(field === 'imported' ? 'desc' : 'asc')
+    }
+  }
+
+  const SortableHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
+    <TableHead>
+      <button onClick={() => toggleSort(field)} className="flex items-center gap-1 hover:text-foreground">
+        {children}
+        <ArrowUpDown className={`h-3 w-3 ${sortField === field ? 'text-foreground' : 'text-muted-foreground/50'}`} />
+      </button>
+    </TableHead>
+  )
 
   const allSelected = providers.length > 0 && selectedIds.size === providers.length
   const someSelected = selectedIds.size > 0
@@ -217,16 +253,16 @@ export default function ReviewImportsPage() {
                         aria-label="Select all"
                       />
                     </TableHead>
-                    <TableHead>Provider Name</TableHead>
-                    <TableHead>Sector</TableHead>
-                    <TableHead>Contact</TableHead>
-                    <TableHead>Import Source</TableHead>
-                    <TableHead>Imported</TableHead>
+                    <SortableHeader field="name">Provider Name</SortableHeader>
+                    <SortableHeader field="sector">Sector</SortableHeader>
+                    <SortableHeader field="contact">Contact</SortableHeader>
+                    <SortableHeader field="source">Import Source</SortableHeader>
+                    <SortableHeader field="imported">Imported</SortableHeader>
                     <TableHead className="w-[200px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {providers.map((provider) => (
+                  {sortedProviders.map((provider) => (
                     <TableRow key={provider.id} className={selectedIds.has(provider.id) ? 'bg-muted/50' : ''}>
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <Checkbox
@@ -240,7 +276,7 @@ export default function ReviewImportsPage() {
                         <Badge variant="outline">{provider.sector}</Badge>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {provider.email || provider.phone || 'N/A'}
+                        {provider.email || (provider.phone ? formatPhone(provider.phone) : null) || 'N/A'}
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
@@ -289,29 +325,32 @@ export default function ReviewImportsPage() {
             </div>
           )}
 
-          {total > LIMIT && (
+          {total > 0 && (
             <div className="flex items-center justify-between mt-4">
               <p className="text-sm text-muted-foreground">
                 Showing {offset + 1}–{Math.min(offset + LIMIT, total)} of {total} record{total !== 1 ? 's' : ''}
+                {selectedIds.size > 0 && ` · ${selectedIds.size} selected`}
               </p>
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setOffset(Math.max(0, offset - LIMIT))}
-                  disabled={offset === 0}
-                >
-                  Previous
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setOffset(offset + LIMIT)}
-                  disabled={offset + LIMIT >= total}
-                >
-                  Next
-                </Button>
-              </div>
+              {total > LIMIT && (
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setOffset(Math.max(0, offset - LIMIT))}
+                    disabled={offset === 0}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setOffset(offset + LIMIT)}
+                    disabled={offset + LIMIT >= total}
+                  >
+                    Next
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </CardContent>

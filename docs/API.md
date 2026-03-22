@@ -511,6 +511,36 @@ GET /api/search?q=john
 - `403 Forbidden` - User not associated with a tenant
 - `500 Internal Server Error` - Server error
 
+## Description Review (Quarterly Auto-Update)
+
+### `POST /api/cron/description-review`
+
+Quarterly cron job that scans provider websites via OpenAI and sends description review emails. Authenticated via `CRON_SECRET` bearer token. Can also accept `{ provider_ids: string[] }` for manual triggering.
+
+**Response:** `{ processed, emailed, skipped, errors }`
+
+### `GET /api/description-review/respond`
+
+Token-based endpoint for provider email action links. No login required.
+
+**Query params:** `token` (UUID), `action` (`accept_current` | `accept_ai`)
+
+**Response:** HTML page confirming the action.
+
+### `GET /api/admin/description-review`
+
+Returns review history for a provider (`?provider_id=...`) or aggregate stats. Requires site admin.
+
+### `POST /api/admin/description-review`
+
+Manually triggers description review for specific providers. Body: `{ provider_ids: string[] }`. Requires site admin.
+
+### `PATCH /api/admin/description-review`
+
+Override next review date for a provider. Body: `{ provider_id, next_review_at }`. Requires site admin.
+
+---
+
 ## Error Responses
 
 All API errors follow this structure:

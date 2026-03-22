@@ -42,7 +42,7 @@ export async function POST(request: Request) {
   let query = supabase
     .from('linksy_providers')
     .select(`
-      id, name, description, sector, phone, email, website,
+      id, name, description, sector, phone, phone_extension, email, website,
       hours_of_operation, referral_type, referral_instructions,
       provider_needs:linksy_provider_needs(
         need:linksy_needs(id, name)
@@ -88,6 +88,7 @@ function buildContextCard(provider: {
   description: string | null
   sector: string
   phone: string | null
+  phone_extension: string | null
   email: string | null
   website: string | null
   hours_of_operation: string | null
@@ -131,7 +132,7 @@ function buildContextCard(provider: {
   }
 
   // Contact
-  if (provider.phone) lines.push(`**Phone:** ${provider.phone}`)
+  if (provider.phone) lines.push(`**Phone:** ${provider.phone}${provider.phone_extension ? ` ext. ${provider.phone_extension}` : ''}`)
   if (provider.email) lines.push(`**Email:** ${provider.email}`)
   if (provider.website) lines.push(`**Website:** ${provider.website}`)
 

@@ -86,12 +86,33 @@ export async function GET(request: Request) {
     case 'search':
       return handleSearchReport(supabase, dataScope, providerIds)
 
+    case 'repeat-clients':
+      // Only site admins can see admin reports
+      if (!auth.isSiteAdmin) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
+      return handleRepeatClientsReport(supabase, searchParams, includeTest)
+
+    case 'status-by-provider':
+      // Only site admins can see admin reports
+      if (!auth.isSiteAdmin) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
+      return handleStatusByProviderReport(supabase, searchParams, includeTest)
+
     case 'reassignments':
       // Only site admins can see reassignments
       if (!auth.isSiteAdmin) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
       }
       return handleReassignmentsReport(supabase)
+
+    case 'service-gaps':
+      // Only site admins can see service gap analysis
+      if (!auth.isSiteAdmin) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
+      return handleServiceGapsReport(supabase)
 
     default:
       return NextResponse.json({ error: 'Invalid report type' }, { status: 400 })
@@ -118,7 +139,8 @@ async function handleReferralsReport(
       need_id,
       source,
       legacy_id,
-      provider:linksy_providers!provider_id(id, name),
+      client_name,
+      provider:linksy_providers!provider_id(id, name, referral_type),
       need:linksy_needs!need_id(id, name, category:linksy_need_categories!category_id(name))
     `)
 
@@ -146,14 +168,33 @@ async function handleReferralsReport(
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  // Aggregate data
-  const referralsByStatus = aggregateByField(tickets, 'status')
-  const referralsByCategory = aggregateByCategory(tickets)
-  const referralsBySource = aggregateByField(tickets, 'source')
-  const topReferrers = aggregateTopProviders(tickets)
-  const monthlyTrends = aggregateMonthlyTrends(tickets)
-  const recentActivity = calculateRecentActivity(tickets)
-  const timeToResolution = calculateTimeToResolution(tickets)
+  // Split tickets into referral vs non-referral (contact_directly) providers
+  const referralTickets = tickets.filter(
+    (t: any) => t.provider?.referral_type !== 'contact_directly'
+  )
+  const nonReferralTickets = tickets.filter(
+    (t: any) => t.provider?.referral_type === 'contact_directly'
+  )
+
+  // Aggregate data (referral providers only)
+  const referralsByStatus = aggregateByField(referralTickets, 'status')
+  const referralsByCategory = aggregateByCategory(referralTickets)
+  const referralsBySource = aggregateByField(referralTickets, 'source')
+  const topReferrers = aggregateTopProvidersWithServices(referralTickets)
+  const monthlyTrends = aggregateMonthlyTrends(referralTickets)
+  const recentActivity = calculateRecentActivity(referralTickets)
+  const timeToResolution = calculateTimeToResolution(referralTickets)
+
+  // Non-referral summary
+  const nonReferralSummary = {
+    total: nonReferralTickets.length,
+    byStatus: aggregateByField(nonReferralTickets, 'status'),
+    byCategory: aggregateByCategory(nonReferralTickets),
+    topProviders: aggregateTopProvidersWithServices(nonReferralTickets),
+  }
+
+  // Unique client count (exclude test names like "Mega Coolmint")
+  const uniqueClients = calculateUniqueClients(tickets)
 
   return NextResponse.json({
     referralsByStatus,
@@ -163,6 +204,9 @@ async function handleReferralsReport(
     monthlyTrends,
     recentActivity,
     timeToResolution,
+    nonReferralSummary,
+    uniqueClients,
+    totalIncludingNR: tickets.length,
   })
 }
 
@@ -339,6 +383,290 @@ async function handleReassignmentsReport(supabase: any) {
   })
 }
 
+async function handleRepeatClientsReport(
+  supabase: any,
+  searchParams: URLSearchParams,
+  includeTest: boolean
+) {
+  const dateFrom = searchParams.get('date_from')
+  const dateTo = searchParams.get('date_to')
+
+  let ticketsQuery = supabase
+    .from('linksy_tickets')
+    .select(`
+      id,
+      client_name,
+      client_email,
+      client_phone,
+      status,
+      created_at,
+      provider_id,
+      need_id,
+      provider:linksy_providers!provider_id(id, name),
+      need:linksy_needs!need_id(id, name, category:linksy_need_categories!category_id(name))
+    `)
+
+  if (!includeTest) {
+    ticketsQuery = ticketsQuery.or('is_test.is.null,is_test.eq.false')
+  }
+  if (dateFrom) {
+    ticketsQuery = ticketsQuery.gte('created_at', dateFrom)
+  }
+  if (dateTo) {
+    // Add end-of-day to dateTo
+    ticketsQuery = ticketsQuery.lte('created_at', dateTo + 'T23:59:59.999Z')
+  }
+
+  const { data: tickets, error } = await ticketsQuery
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  // Group tickets by client identity (email > phone > name) and need category
+  // A "repeat client" = same person with >1 referral for the same need category
+  const clientMap = new Map<string, {
+    clientKey: string
+    clientName: string | null
+    clientEmail: string | null
+    clientPhone: string | null
+    referralsByNeed: Map<string, {
+      needName: string
+      tickets: {
+        id: string
+        status: string
+        created_at: string
+        providerName: string
+        needName: string
+      }[]
+    }>
+  }>()
+
+  tickets.forEach((t: any) => {
+    const clientName = t.client_name?.trim()?.toLowerCase() || null
+    const clientEmail = t.client_email?.trim()?.toLowerCase() || null
+    const clientPhone = t.client_phone?.trim() || null
+
+    // Skip blank/test names with no other identifier
+    if (!clientEmail && !clientPhone && !clientName) return
+    if (isTestClientName(t.client_name) && !clientEmail && !clientPhone) return
+
+    // Identity key: prefer email, then phone, then name
+    const clientKey = clientEmail || clientPhone || clientName || ''
+    if (!clientKey) return
+
+    if (!clientMap.has(clientKey)) {
+      clientMap.set(clientKey, {
+        clientKey,
+        clientName: t.client_name,
+        clientEmail: t.client_email,
+        clientPhone: t.client_phone,
+        referralsByNeed: new Map(),
+      })
+    }
+
+    const client = clientMap.get(clientKey)!
+    // Update display info with most recent non-null values
+    if (t.client_name) client.clientName = t.client_name
+    if (t.client_email) client.clientEmail = t.client_email
+    if (t.client_phone) client.clientPhone = t.client_phone
+
+    const needName = t.need?.category?.name || t.need?.name || 'Unknown'
+    if (!client.referralsByNeed.has(needName)) {
+      client.referralsByNeed.set(needName, { needName, tickets: [] })
+    }
+
+    client.referralsByNeed.get(needName)!.tickets.push({
+      id: t.id,
+      status: t.status,
+      created_at: t.created_at,
+      providerName: t.provider?.name || 'Unknown',
+      needName: t.need?.name || 'Unknown',
+    })
+  })
+
+  // Filter to only clients with >1 referral for the same need
+  const repeatClients: {
+    clientName: string | null
+    clientEmail: string | null
+    clientPhone: string | null
+    totalReferrals: number
+    repeatedNeeds: {
+      needName: string
+      referrals: {
+        id: string
+        status: string
+        created_at: string
+        providerName: string
+        needName: string
+      }[]
+    }[]
+  }[] = []
+
+  clientMap.forEach((client) => {
+    const repeatedNeeds: typeof repeatClients[0]['repeatedNeeds'] = []
+    let totalRepeatReferrals = 0
+
+    client.referralsByNeed.forEach((needData) => {
+      if (needData.tickets.length > 1) {
+        repeatedNeeds.push({
+          needName: needData.needName,
+          referrals: needData.tickets.sort(
+            (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          ),
+        })
+        totalRepeatReferrals += needData.tickets.length
+      }
+    })
+
+    if (repeatedNeeds.length > 0) {
+      repeatClients.push({
+        clientName: client.clientName,
+        clientEmail: client.clientEmail,
+        clientPhone: client.clientPhone,
+        totalReferrals: totalRepeatReferrals,
+        repeatedNeeds,
+      })
+    }
+  })
+
+  // Sort by total referrals descending
+  repeatClients.sort((a, b) => b.totalReferrals - a.totalReferrals)
+
+  // Top 10 repeat clients by month/year
+  const monthlyTopClients = new Map<string, Map<string, number>>()
+
+  repeatClients.forEach((client) => {
+    const key = client.clientEmail || client.clientPhone || client.clientName || ''
+    client.repeatedNeeds.forEach((need) => {
+      need.referrals.forEach((ref) => {
+        const d = new Date(ref.created_at)
+        const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+        if (!monthlyTopClients.has(monthKey)) {
+          monthlyTopClients.set(monthKey, new Map())
+        }
+        const monthMap = monthlyTopClients.get(monthKey)!
+        monthMap.set(key, (monthMap.get(key) || 0) + 1)
+      })
+    })
+  })
+
+  // Build monthly top 10 lists
+  const top10ByMonth: {
+    month: string
+    clients: { name: string; email: string | null; phone: string | null; count: number }[]
+  }[] = []
+
+  const sortedMonths = Array.from(monthlyTopClients.keys()).sort().reverse()
+  sortedMonths.forEach((month) => {
+    const monthMap = monthlyTopClients.get(month)!
+    const sorted = Array.from(monthMap.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([key, count]) => {
+        const client = repeatClients.find(
+          (c) => (c.clientEmail || c.clientPhone || c.clientName || '') === key
+        )
+        return {
+          name: client?.clientName || key,
+          email: client?.clientEmail || null,
+          phone: client?.clientPhone || null,
+          count,
+        }
+      })
+    top10ByMonth.push({ month, clients: sorted })
+  })
+
+  return NextResponse.json({
+    repeatClients: repeatClients.slice(0, 100),
+    totalRepeatClients: repeatClients.length,
+    top10ByMonth,
+  })
+}
+
+async function handleStatusByProviderReport(
+  supabase: any,
+  searchParams: URLSearchParams,
+  includeTest: boolean
+) {
+  const dateFrom = searchParams.get('date_from')
+  const dateTo = searchParams.get('date_to')
+
+  let ticketsQuery = supabase
+    .from('linksy_tickets')
+    .select(`
+      id,
+      status,
+      provider_id,
+      created_at,
+      provider:linksy_providers!provider_id(id, name)
+    `)
+
+  if (!includeTest) {
+    ticketsQuery = ticketsQuery.or('is_test.is.null,is_test.eq.false')
+  }
+  if (dateFrom) {
+    ticketsQuery = ticketsQuery.gte('created_at', dateFrom)
+  }
+  if (dateTo) {
+    ticketsQuery = ticketsQuery.lte('created_at', dateTo + 'T23:59:59.999Z')
+  }
+
+  const { data: tickets, error } = await ticketsQuery
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  // Group by provider, then by status
+  const providerMap = new Map<string, {
+    providerId: string
+    providerName: string
+    statusCounts: Map<string, number>
+    total: number
+  }>()
+
+  tickets.forEach((t: any) => {
+    const providerId = t.provider_id || 'unknown'
+    const providerName = t.provider?.name || 'Unknown Provider'
+
+    if (!providerMap.has(providerId)) {
+      providerMap.set(providerId, {
+        providerId,
+        providerName,
+        statusCounts: new Map(),
+        total: 0,
+      })
+    }
+
+    const entry = providerMap.get(providerId)!
+    entry.total++
+    const status = t.status || 'unknown'
+    entry.statusCounts.set(status, (entry.statusCounts.get(status) || 0) + 1)
+  })
+
+  // Convert to array
+  const providers = Array.from(providerMap.values())
+    .sort((a, b) => b.total - a.total)
+    .map((p) => ({
+      providerId: p.providerId,
+      providerName: p.providerName,
+      total: p.total,
+      statusCounts: Object.fromEntries(p.statusCounts),
+    }))
+
+  // All statuses that appear in the data
+  const allStatuses = Array.from(
+    new Set(tickets.map((t: any) => t.status || 'unknown'))
+  ).sort()
+
+  return NextResponse.json({
+    providers,
+    allStatuses,
+    totalTickets: tickets.length,
+  })
+}
+
 // Helper functions
 function aggregateByField(items: any[], field: string) {
   const counts = new Map<string, number>()
@@ -381,6 +709,98 @@ function aggregateTopProviders(tickets: any[]) {
   return Array.from(providerCounts.values())
     .sort((a, b) => b.count - a.count)
     .slice(0, 10)
+}
+
+function aggregateTopProvidersWithServices(tickets: any[]) {
+  const providerMap = new Map<string, {
+    id: string
+    name: string
+    referralType: string
+    count: number
+    services: Map<string, number>
+  }>()
+
+  tickets.forEach((ticket: any) => {
+    if (!ticket.provider) return
+    const key = ticket.provider.id
+
+    if (!providerMap.has(key)) {
+      providerMap.set(key, {
+        id: ticket.provider.id,
+        name: ticket.provider.name,
+        referralType: ticket.provider.referral_type || 'standard',
+        count: 0,
+        services: new Map(),
+      })
+    }
+
+    const entry = providerMap.get(key)!
+    entry.count++
+
+    const serviceName = ticket.need?.name
+    if (serviceName) {
+      entry.services.set(serviceName, (entry.services.get(serviceName) || 0) + 1)
+    }
+  })
+
+  return Array.from(providerMap.values())
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10)
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      referralType: p.referralType,
+      count: p.count,
+      topServices: Array.from(p.services.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([name, count]) => ({ name, count })),
+    }))
+}
+
+const TEST_NAME_PATTERNS = [
+  /mega\s*coolmint/i,
+  /test\s*(user|client|referral|person)/i,
+  /^test$/i,
+]
+
+function isTestClientName(name: string | null): boolean {
+  if (!name || !name.trim()) return true
+  return TEST_NAME_PATTERNS.some((pattern) => pattern.test(name.trim()))
+}
+
+function calculateUniqueClients(tickets: any[]) {
+  const allClients = new Set<string>()
+  const realClients = new Set<string>()
+  let blankCount = 0
+  let testNameCount = 0
+
+  tickets.forEach((ticket: any) => {
+    const name = ticket.client_name?.trim()?.toLowerCase()
+    if (!name) {
+      blankCount++
+      return
+    }
+
+    allClients.add(name)
+
+    if (isTestClientName(ticket.client_name)) {
+      testNameCount++
+    } else {
+      realClients.add(name)
+    }
+  })
+
+  return {
+    totalReferrals: tickets.length,
+    uniqueClients: realClients.size,
+    uniqueClientsIncludingTest: allClients.size,
+    blankNameCount: blankCount,
+    testNameCount,
+    utilizationRatio: realClients.size > 0
+      ? Math.round((tickets.length / realClients.size) * 10) / 10
+      : 0,
+  }
 }
 
 function aggregateMonthlyTrends(items: any[]) {
@@ -506,5 +926,149 @@ async function getTopProvidersByInteraction(supabase: any, sessionIds: string[])
       name: provider?.name || 'Unknown',
       count: providerCounts.get(id) || 0,
     }
+  })
+}
+
+// Clay County zip codes
+const CLAY_COUNTY_ZIP_CODES = ['32003', '32043', '32065', '32068', '32073', '32091', '32656', '32666']
+
+async function handleServiceGapsReport(supabase: any) {
+  // Get all active providers with their locations and needs/categories
+  const { data: providers, error: provErr } = await supabase
+    .from('linksy_providers')
+    .select(`
+      id,
+      name,
+      is_active,
+      locations:linksy_locations!provider_id(postal_code, is_active),
+      provider_needs:linksy_provider_needs!provider_id(
+        need:linksy_needs!need_id(
+          id,
+          name,
+          category:linksy_need_categories!category_id(id, name)
+        )
+      )
+    `)
+    .eq('is_active', true)
+
+  if (provErr) {
+    return NextResponse.json({ error: provErr.message }, { status: 500 })
+  }
+
+  // Get all active categories
+  const { data: allCategories, error: catErr } = await supabase
+    .from('linksy_need_categories')
+    .select('id, name')
+    .eq('is_active', true)
+    .order('sort_order', { ascending: true })
+
+  if (catErr) {
+    return NextResponse.json({ error: catErr.message }, { status: 500 })
+  }
+
+  // Build a map: zip code → set of category IDs that have providers
+  const zipCategoryMap = new Map<string, Map<string, string[]>>()
+  // Also build: category ID → set of zip codes that have providers
+  const categoryZipMap = new Map<string, Map<string, string[]>>()
+
+  // Initialize maps
+  for (const zip of CLAY_COUNTY_ZIP_CODES) {
+    zipCategoryMap.set(zip, new Map())
+  }
+  for (const cat of allCategories) {
+    categoryZipMap.set(cat.id, new Map())
+  }
+
+  // Populate maps from provider data
+  for (const provider of providers) {
+    // Get this provider's zip codes (only active locations in Clay County)
+    const providerZips = new Set<string>()
+    for (const loc of provider.locations || []) {
+      if (loc.is_active !== false && loc.postal_code && CLAY_COUNTY_ZIP_CODES.includes(loc.postal_code)) {
+        providerZips.add(loc.postal_code)
+      }
+    }
+
+    // Get this provider's categories
+    const providerCategories = new Set<string>()
+    for (const pn of provider.provider_needs || []) {
+      if (pn.need?.category?.id) {
+        providerCategories.add(pn.need.category.id)
+      }
+    }
+
+    // Cross-reference: each zip × each category for this provider
+    const zipsArr = Array.from(providerZips)
+    const catsArr = Array.from(providerCategories)
+
+    for (const zip of zipsArr) {
+      const zipMap = zipCategoryMap.get(zip)
+      if (zipMap) {
+        for (const catId of catsArr) {
+          if (!zipMap.has(catId)) {
+            zipMap.set(catId, [])
+          }
+          zipMap.get(catId)!.push(provider.name)
+        }
+      }
+    }
+
+    for (const catId of catsArr) {
+      const catMap = categoryZipMap.get(catId)
+      if (catMap) {
+        for (const zip of zipsArr) {
+          if (!catMap.has(zip)) {
+            catMap.set(zip, [])
+          }
+          catMap.get(zip)!.push(provider.name)
+        }
+      }
+    }
+  }
+
+  // Build report: by zip code
+  const byZipCode = CLAY_COUNTY_ZIP_CODES.map((zip) => {
+    const zipMap = zipCategoryMap.get(zip)!
+    const categories = allCategories.map((cat: any) => {
+      const providerNames = zipMap.get(cat.id) || []
+      return {
+        categoryId: cat.id,
+        categoryName: cat.name,
+        providerCount: providerNames.length,
+        providers: providerNames,
+        hasGap: providerNames.length === 0,
+      }
+    })
+    const gapCount = categories.filter((c: any) => c.hasGap).length
+    return { zipCode: zip, categories, gapCount, totalCategories: allCategories.length }
+  })
+
+  // Build report: by category
+  const byCategory = allCategories.map((cat: any) => {
+    const catMap = categoryZipMap.get(cat.id)!
+    const zipCodes = CLAY_COUNTY_ZIP_CODES.map((zip) => {
+      const providerNames = catMap.get(zip) || []
+      return {
+        zipCode: zip,
+        providerCount: providerNames.length,
+        providers: providerNames,
+        hasGap: providerNames.length === 0,
+      }
+    })
+    const gapCount = zipCodes.filter((z: any) => z.hasGap).length
+    return { categoryId: cat.id, categoryName: cat.name, zipCodes, gapCount, totalZipCodes: CLAY_COUNTY_ZIP_CODES.length }
+  })
+
+  return NextResponse.json({
+    zipCodes: CLAY_COUNTY_ZIP_CODES,
+    categories: allCategories.map((c: any) => ({ id: c.id, name: c.name })),
+    byZipCode,
+    byCategory,
+    summary: {
+      totalZipCodes: CLAY_COUNTY_ZIP_CODES.length,
+      totalCategories: allCategories.length,
+      totalGaps: byZipCode.reduce((sum: number, z: any) => sum + z.gapCount, 0),
+      totalCells: CLAY_COUNTY_ZIP_CODES.length * allCategories.length,
+    },
   })
 }

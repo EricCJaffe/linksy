@@ -73,8 +73,8 @@ provider portal).
 
 Provider Summary tab state (current):
 - Contact + address editing is consolidated on Summary.
-- `Needs Addressed` uses active taxonomy categories and needs.
-- Edit mode supports multi-select category + needs; view mode groups needs under categories.
+- `Services Provided` uses active taxonomy categories and services.
+- Edit mode supports multi-select category + services; view mode groups services under categories.
 
 ## Auth and Membership
 

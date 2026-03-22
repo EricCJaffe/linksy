@@ -100,8 +100,8 @@ export function NeedFormDialog({
   }
 
   const title = isEditing
-    ? `Edit ${mode === 'category' ? 'Category' : 'Need'}`
-    : `Add ${mode === 'category' ? 'Category' : 'Need'}`
+    ? `Edit ${mode === 'category' ? 'Category' : 'Service'}`
+    : `Add ${mode === 'category' ? 'Category' : 'Service'}`
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

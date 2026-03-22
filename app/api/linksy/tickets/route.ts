@@ -35,6 +35,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Provider is required' }, { status: 400 })
     }
 
+    if (!need_id) {
+      return NextResponse.json({ error: 'A service selection is required' }, { status: 400 })
+    }
+
     if (!client_phone && !client_email) {
       return NextResponse.json(
         { error: 'Please provide either a phone number or email address' },
@@ -85,14 +89,36 @@ export async function POST(request: Request) {
       }
     }
 
-    // Check if provider is frozen
+    // Check if provider is eligible to receive referrals
     if (!isTestReferral(client_name)) {
       const { data: providerCheck } = await supabase
         .from('linksy_providers')
-        .select('is_frozen')
+        .select('is_frozen, provider_status, accepting_referrals')
         .eq('id', provider_id)
         .single()
-      if (providerCheck?.is_frozen) {
+
+      if (!providerCheck) {
+        return NextResponse.json(
+          { error: 'Provider not found.' },
+          { status: 404 }
+        )
+      }
+
+      if (providerCheck.provider_status !== 'active') {
+        return NextResponse.json(
+          { error: 'This provider is not currently active.' },
+          { status: 400 }
+        )
+      }
+
+      if (!providerCheck.accepting_referrals) {
+        return NextResponse.json(
+          { error: 'This provider is not currently accepting referrals.' },
+          { status: 400 }
+        )
+      }
+
+      if (providerCheck.is_frozen) {
         return NextResponse.json(
           { error: 'This provider is currently not accepting referrals.' },
           { status: 400 }
@@ -106,7 +132,7 @@ export async function POST(request: Request) {
     let capQuery = supabase
       .from('linksy_tickets')
       .select('id, ticket_number, provider_id, created_at', { count: 'exact', head: false })
-      .in('status', ['pending', 'in_process'])  // Count pending and in-process tickets
+      .in('status', ['pending', 'in_process', 'transferred_pending'])  // Count active tickets
 
     // Match by email OR phone (whichever is provided)
     const orConditions: string[] = []
@@ -128,6 +154,32 @@ export async function POST(request: Request) {
         message: `You have reached the maximum of ${MAX_REFERRALS_PER_CLIENT} active referrals. Please wait for your existing referrals to be processed before requesting more help.`,
         existingTicketsCount: totalCount,
       }, { status: 429 })
+    }
+
+    // Daily referral cap: max 2 referrals per client per day
+    // Prevents clients from spamming providers with excessive referrals
+    if (!isTestReferral(client_name) && (client_email || client_phone)) {
+      const MAX_REFERRALS_PER_DAY = 2
+      const todayStart = new Date()
+      todayStart.setUTCHours(0, 0, 0, 0)
+      const todayISO = todayStart.toISOString()
+
+      const dailyOrConditions: string[] = []
+      if (client_email) dailyOrConditions.push(`client_email.eq.${client_email}`)
+      if (client_phone) dailyOrConditions.push(`client_phone.eq.${client_phone}`)
+
+      const { count: dailyCount } = await supabase
+        .from('linksy_tickets')
+        .select('id', { count: 'exact', head: true })
+        .gte('created_at', todayISO)
+        .or(dailyOrConditions.join(','))
+
+      if ((dailyCount ?? 0) >= MAX_REFERRALS_PER_DAY) {
+        return NextResponse.json({
+          error: 'Daily referral limit reached',
+          message: `You can submit a maximum of ${MAX_REFERRALS_PER_DAY} referral requests per day. Please try again tomorrow.`,
+        }, { status: 429 })
+      }
     }
 
     // Duplicate referral detection (TASK-029)
@@ -175,7 +227,7 @@ export async function POST(request: Request) {
       .insert({
         site_id: SITE_ID,
         provider_id,
-        need_id: need_id || null,
+        need_id,
         ticket_number: ticketNumber,
         client_name: client_name || null,
         client_phone: client_phone || null,
@@ -222,7 +274,7 @@ export async function POST(request: Request) {
           status: 'pending',
           source: 'public_search',
           provider_id,
-          need_id: need_id || null,
+          need_id,
           client_name: client_name || null,
           created_at: new Date().toISOString(),
         },

@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
         ? ticketData.reduce((sum, t) => sum + t.reassignment_count, 0) / ticketData.length
         : 0
 
-    // 4. Top forwarding providers (from events metadata)
+    // 4. Top transferring providers (from events metadata)
     const { data: forwardingEvents } = await supabase
       .from('linksy_ticket_events')
       .select(`

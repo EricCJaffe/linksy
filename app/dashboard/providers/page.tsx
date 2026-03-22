@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Plus, Download, CheckSquare, AlertTriangle, Building2, Network } from 'lucide-react'
+import { Plus, Download, CheckSquare, AlertTriangle, Building2, Network, ArrowUpDown } from 'lucide-react'
 import {
   Table,
   TableHeader,
@@ -22,6 +22,10 @@ import {
 import { usePendingApplicationCount } from '@/lib/hooks/useProviderApplications'
 import Link from 'next/link'
 import type { ProviderFilters } from '@/lib/types/linksy'
+import { formatPhone } from '@/lib/utils/phone'
+
+type SortField = 'name' | 'sector' | 'phone' | 'locations' | 'status' | 'source' | 'referral_type'
+type SortDir = 'asc' | 'desc'
 
 const LIMIT = 50
 
@@ -77,6 +81,8 @@ export default function ProvidersPage() {
   })
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [isBulkUpdating, setIsBulkUpdating] = useState(false)
+  const [sortField, setSortField] = useState<SortField>('name')
+  const [sortDir, setSortDir] = useState<SortDir>('asc')
 
   const debouncedQ = useDebounce(filters.q, 300)
   const queryFilters = { ...filters, q: debouncedQ }
@@ -92,6 +98,38 @@ export default function ProvidersPage() {
   const currentPage = Math.floor((filters.offset || 0) / LIMIT) + 1
   const totalPages = data ? Math.ceil(data.pagination.total / LIMIT) : 0
   const providers = data?.providers || []
+
+  const sortedProviders = [...providers].sort((a, b) => {
+    const dir = sortDir === 'asc' ? 1 : -1
+    switch (sortField) {
+      case 'name': return dir * (a.name || '').localeCompare(b.name || '')
+      case 'sector': return dir * (a.sector || '').localeCompare(b.sector || '')
+      case 'phone': return dir * (a.phone || '').localeCompare(b.phone || '')
+      case 'locations': return dir * ((a.location_count || 0) - (b.location_count || 0))
+      case 'status': return dir * (a.provider_status || '').localeCompare(b.provider_status || '')
+      case 'source': return dir * ((a as any).source || '').localeCompare((b as any).source || '')
+      case 'referral_type': return dir * (a.referral_type || '').localeCompare(b.referral_type || '')
+      default: return 0
+    }
+  })
+
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortDir('asc')
+    }
+  }
+
+  const SortableHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
+    <TableHead>
+      <button onClick={() => toggleSort(field)} className="flex items-center gap-1 hover:text-foreground">
+        {children}
+        <ArrowUpDown className={`h-3 w-3 ${sortField === field ? 'text-foreground' : 'text-muted-foreground/50'}`} />
+      </button>
+    </TableHead>
+  )
 
   const allOnPageSelected = providers.length > 0 && providers.every((p) => selectedIds.has(p.id))
   const someSelected = selectedIds.size > 0
@@ -152,7 +190,7 @@ export default function ProvidersPage() {
       const rows = selected.map((p) => [
         p.name,
         sectorLabels[p.sector] || p.sector,
-        p.phone || '',
+        p.phone ? formatPhone(p.phone) : '',
         p.provider_status === 'active' ? 'Active' : p.provider_status === 'paused' ? 'Paused' : 'Inactive',
         (p as any).source ? (sourceLabels[(p as any).source] || (p as any).source) : '',
         p.referral_type === 'contact_directly' ? 'Contact Directly' : 'Standard',
@@ -265,13 +303,13 @@ export default function ProvidersPage() {
                   />
                 </TableHead>
               )}
-              <TableHead>Name</TableHead>
-              <TableHead>Sector</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>Locations</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Source</TableHead>
-              <TableHead>Referral Type</TableHead>
+              <SortableHeader field="name">Name</SortableHeader>
+              <SortableHeader field="sector">Sector</SortableHeader>
+              <SortableHeader field="phone">Phone</SortableHeader>
+              <SortableHeader field="locations">Locations</SortableHeader>
+              <SortableHeader field="status">Status</SortableHeader>
+              <SortableHeader field="source">Source</SortableHeader>
+              <SortableHeader field="referral_type">Referral Type</SortableHeader>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -295,7 +333,7 @@ export default function ProvidersPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              providers.map((provider) => (
+              sortedProviders.map((provider) => (
                 <TableRow
                   key={provider.id}
                   className={`cursor-pointer ${selectedIds.has(provider.id) ? 'bg-muted/50' : ''}`}
@@ -327,7 +365,7 @@ export default function ProvidersPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {provider.phone || '-'}
+                    {provider.phone ? formatPhone(provider.phone) : '-'}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {provider.location_count}
@@ -383,6 +421,7 @@ export default function ProvidersPage() {
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
             Showing {(filters.offset || 0) + 1}–{Math.min((filters.offset || 0) + LIMIT, data.pagination.total)} of {data.pagination.total} provider{data.pagination.total !== 1 ? 's' : ''}
+            {selectedIds.size > 0 && ` · ${selectedIds.size} selected`}
           </p>
           {totalPages > 1 && (
             <div className="flex items-center gap-3">

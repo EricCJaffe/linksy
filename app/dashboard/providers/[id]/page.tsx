@@ -7,12 +7,13 @@ import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
 import { ProviderDetailTabs } from '@/components/providers/provider-detail-tabs'
 import { PurgeProviderDialog } from '@/components/providers/purge-provider-dialog'
 import { SendTestReferralDialog } from '@/components/providers/send-test-referral-dialog'
+import { ProviderPublicPreview } from '@/components/providers/provider-public-preview'
 import { ProviderBreadcrumbs } from '@/components/providers/provider-breadcrumbs'
 import { ProviderQuickSwitcher } from '@/components/providers/provider-quick-switcher'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { formatPhone, phoneToTel } from '@/lib/utils/phone'
+import { formatPhoneWithExt, phoneToTel } from '@/lib/utils/phone'
 
 const sectorLabels: Record<string, string> = {
   nonprofit: 'Nonprofit',
@@ -122,6 +123,7 @@ export default function ProviderDetailPage({
               <PurgeProviderDialog providerId={provider.id} providerName={provider.name} />
             </>
           )}
+          <ProviderPublicPreview provider={provider} />
           <Button size="sm" asChild>
             <Link href="/dashboard/support">Linksy Support</Link>
           </Button>
@@ -132,7 +134,7 @@ export default function ProviderDetailPage({
         {provider.phone && (
           <a href={`tel:${phoneToTel(provider.phone)}`} className="inline-flex items-center gap-1 hover:text-foreground">
             <Phone className="h-4 w-4" />
-            {formatPhone(provider.phone)}
+            {formatPhoneWithExt(provider.phone, provider.phone_extension)}
           </a>
         )}
         {provider.email && (

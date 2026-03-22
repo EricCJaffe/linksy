@@ -13,6 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { ArrowLeft, ArrowRight, Check, Plus, Trash2 } from 'lucide-react'
+import { formatPhoneWithExt } from '@/lib/utils/phone'
 import { useNeedCategories } from '@/lib/hooks/useProviders'
 import type { Sector, ProjectStatus, ReferralType } from '@/lib/types/linksy'
 
@@ -478,11 +479,11 @@ export default function NewProviderPage() {
             </div>
           )}
 
-          {/* Step 3: Services/Needs */}
+          {/* Step 3: Services */}
           {currentStep === 3 && (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Select all the services or needs this provider addresses:
+                Select all the services this provider offers:
               </p>
               {categories?.map((category) => (
                 <div key={category.id} className="space-y-2">
@@ -579,7 +580,7 @@ export default function NewProviderPage() {
                   <dt className="text-muted-foreground">Website:</dt>
                   <dd>{formData.website || 'N/A'}</dd>
                   <dt className="text-muted-foreground">Phone:</dt>
-                  <dd>{formData.phone ? `${formData.phone}${formData.phone_extension ? ` ext. ${formData.phone_extension}` : ''}` : 'N/A'}</dd>
+                  <dd>{formData.phone ? formatPhoneWithExt(formData.phone, formData.phone_extension) : 'N/A'}</dd>
                 </dl>
               </div>
 

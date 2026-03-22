@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -14,13 +14,15 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select'
-import { Globe, Lock, Phone, Plus, Trash2, ArrowRight, UserCheck, Clock, Pencil, X as XIcon } from 'lucide-react'
+import { Globe, Lock, Phone, Plus, Trash2, ArrowRight, UserCheck, Clock, Pencil, X as XIcon, Timer, Square, Play, PhoneIncoming, PhoneOutgoing } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useUpdateTicket, useCreateTicketComment, useUpdateCommentPrivacy, useUpdateComment } from '@/lib/hooks/useTickets'
 import { useCallLogs, useCreateCallLog, useDeleteCallLog } from '@/lib/hooks/useCallLogs'
 import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
+import { useUndoableAction } from '@/lib/hooks/useUndoableAction'
 import type { Ticket, TicketStatus } from '@/lib/types/linksy'
+import { formatPhone } from '@/lib/utils/phone'
 import { ForwardTicketDialog } from './forward-ticket-dialog'
 import { AssignInternallyDialog } from './assign-internally-dialog'
 import { TicketHistoryTimeline } from './ticket-history-timeline'
@@ -39,6 +41,7 @@ const ticketStatusLabels: Record<TicketStatus, string> = {
   unable_to_assist: 'Unable to Assist',
   client_unresponsive: 'Unresponsive',
   transferred_another_provider: 'Transferred',
+  transferred_pending: 'Transferred Pending',
 }
 
 const ticketStatusVariant: Record<TicketStatus, string> = {
@@ -51,6 +54,7 @@ const ticketStatusVariant: Record<TicketStatus, string> = {
   unable_to_assist: 'destructive',
   client_unresponsive: 'secondary',
   transferred_another_provider: 'secondary',
+  transferred_pending: 'default',
 }
 
 const ticketStatusClass: Record<string, string> = {
@@ -58,6 +62,7 @@ const ticketStatusClass: Record<string, string> = {
   customer_need_addressed: 'border-green-500 text-green-700 bg-green-50',
   wrong_organization_referred: 'border-orange-500 text-orange-700 bg-orange-50',
   transferred_another_provider: 'border-gray-500 text-gray-700 bg-gray-50',
+  transferred_pending: 'border-blue-500 text-blue-700 bg-blue-50',
 }
 
 function StatusBadge({ status }: { status: TicketStatus }) {
@@ -84,9 +89,19 @@ export function TicketDetailPanel({ ticket }: TicketDetailPanelProps) {
   const [showForwardDialog, setShowForwardDialog] = useState(false)
   const [showAssignDialog, setShowAssignDialog] = useState(false)
   const [showHistoryDialog, setShowHistoryDialog] = useState(false)
+  const { execute: undoableAction } = useUndoableAction()
 
   const handleStatusChange = (newStatus: string) => {
-    updateTicket.mutate({ id: ticket.id, status: newStatus as TicketStatus })
+    const previousStatus = ticket.status
+    undoableAction({
+      description: `Status changed to ${ticketStatusLabels[newStatus as TicketStatus] || newStatus}`,
+      action: () => {
+        updateTicket.mutate({ id: ticket.id, status: newStatus as TicketStatus })
+      },
+      undoAction: () => {
+        updateTicket.mutate({ id: ticket.id, status: previousStatus })
+      },
+    })
   }
 
   const handleAddComment = () => {
@@ -140,7 +155,7 @@ export function TicketDetailPanel({ ticket }: TicketDetailPanelProps) {
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2">
-            {/* Forward button - available to provider contacts */}
+            {/* Transfer button - available to provider contacts */}
             {ticket.provider_id && (
               <Button
                 variant="outline"
@@ -149,7 +164,7 @@ export function TicketDetailPanel({ ticket }: TicketDetailPanelProps) {
                 className="flex items-center gap-2"
               >
                 <ArrowRight className="h-4 w-4" />
-                Forward Referral
+                Transfer Referral
               </Button>
             )}
 
@@ -193,7 +208,7 @@ export function TicketDetailPanel({ ticket }: TicketDetailPanelProps) {
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Phone</span>
-              <span>{ticket.client_phone || '-'}</span>
+              <span>{ticket.client_phone ? formatPhone(ticket.client_phone) : '-'}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Email</span>
@@ -212,7 +227,7 @@ export function TicketDetailPanel({ ticket }: TicketDetailPanelProps) {
               <span>{ticket.provider?.name || '-'}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Need</span>
+              <span className="text-muted-foreground">Service</span>
               <span>{ticket.need?.name || '-'}</span>
             </div>
             <div className="flex justify-between">
@@ -327,10 +342,22 @@ export function TicketDetailPanel({ ticket }: TicketDetailPanelProps) {
                         <button
                           type="button"
                           onClick={() =>
-                            updateCommentPrivacy.mutate({
-                              ticketId: ticket.id,
-                              commentId: comment.id,
-                              is_private: !comment.is_private,
+                            undoableAction({
+                              description: `Comment marked as ${comment.is_private ? 'public' : 'private'}`,
+                              action: () => {
+                                updateCommentPrivacy.mutate({
+                                  ticketId: ticket.id,
+                                  commentId: comment.id,
+                                  is_private: !comment.is_private,
+                                })
+                              },
+                              undoAction: () => {
+                                updateCommentPrivacy.mutate({
+                                  ticketId: ticket.id,
+                                  commentId: comment.id,
+                                  is_private: !!comment.is_private,
+                                })
+                              },
                             })
                           }
                           title={comment.is_private ? 'Make public' : 'Make private'}
@@ -388,6 +415,8 @@ export function TicketDetailPanel({ ticket }: TicketDetailPanelProps) {
       <ForwardTicketDialog
         ticketId={ticket.id}
         ticketNumber={ticket.ticket_number}
+        reassignmentCount={ticket.reassignment_count}
+        isSiteAdmin={isSiteAdmin}
         open={showForwardDialog}
         onOpenChange={setShowForwardDialog}
       />
@@ -412,34 +441,125 @@ export function TicketDetailPanel({ ticket }: TicketDetailPanelProps) {
   )
 }
 
+function formatElapsed(seconds: number): string {
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const s = seconds % 60
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+  return `${m}:${String(s).padStart(2, '0')}`
+}
+
+function formatDuration(minutes: number | null): string {
+  if (!minutes) return ''
+  if (minutes < 60) return `${minutes} min`
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return m > 0 ? `${h}h ${m}m` : `${h}h`
+}
+
 function CallLogSection({ ticketId, providerId }: { ticketId: string; providerId?: string }) {
   const { data, isLoading } = useCallLogs(ticketId)
   const createCallLog = useCreateCallLog()
   const deleteCallLog = useDeleteCallLog()
+
+  // Form state
   const [isAdding, setIsAdding] = useState(false)
+  const [entryMode, setEntryMode] = useState<'timer' | 'manual'>('timer')
   const [form, setForm] = useState({
     caller_name: '',
-    call_type: 'outbound' as 'inbound' | 'outbound',
-    duration_minutes: '',
+    call_type: '' as '' | 'inbound' | 'outbound',
     notes: '',
+    // Manual entry fields
+    manual_start: '',
+    manual_end: '',
   })
 
+  // Timer state
+  const [timerRunning, setTimerRunning] = useState(false)
+  const [timerStartedAt, setTimerStartedAt] = useState<Date | null>(null)
+  const [elapsed, setElapsed] = useState(0)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Clean up interval on unmount
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current)
+    }
+  }, [])
+
+  // Timer tick
+  useEffect(() => {
+    if (timerRunning && timerStartedAt) {
+      intervalRef.current = setInterval(() => {
+        setElapsed(Math.floor((Date.now() - timerStartedAt.getTime()) / 1000))
+      }, 1000)
+      return () => {
+        if (intervalRef.current) clearInterval(intervalRef.current)
+      }
+    }
+  }, [timerRunning, timerStartedAt])
+
+  const startTimer = useCallback((callType: 'inbound' | 'outbound') => {
+    const now = new Date()
+    setForm((prev) => ({ ...prev, call_type: callType }))
+    setTimerStartedAt(now)
+    setElapsed(0)
+    setTimerRunning(true)
+    setIsAdding(true)
+    setEntryMode('timer')
+  }, [])
+
+  const endTimer = useCallback(() => {
+    setTimerRunning(false)
+    if (intervalRef.current) clearInterval(intervalRef.current)
+  }, [])
+
+  const resetForm = useCallback(() => {
+    setForm({ caller_name: '', call_type: '', notes: '', manual_start: '', manual_end: '' })
+    setTimerRunning(false)
+    setTimerStartedAt(null)
+    setElapsed(0)
+    if (intervalRef.current) clearInterval(intervalRef.current)
+    setIsAdding(false)
+  }, [])
+
+  // Calculate duration from manual start/end
+  const manualDurationMinutes = (() => {
+    if (!form.manual_start || !form.manual_end) return null
+    const start = new Date(form.manual_start).getTime()
+    const end = new Date(form.manual_end).getTime()
+    if (isNaN(start) || isNaN(end) || end <= start) return null
+    return Math.round((end - start) / 60000)
+  })()
+
   const handleSubmit = () => {
+    const callType = form.call_type || 'outbound'
+    let startedAt: string | undefined
+    let endedAt: string | undefined
+    let durationMinutes: number | undefined
+
+    if (entryMode === 'timer' && timerStartedAt) {
+      startedAt = timerStartedAt.toISOString()
+      endedAt = new Date().toISOString()
+      durationMinutes = Math.max(1, Math.round(elapsed / 60))
+    } else if (entryMode === 'manual' && form.manual_start && form.manual_end) {
+      startedAt = new Date(form.manual_start).toISOString()
+      endedAt = new Date(form.manual_end).toISOString()
+      durationMinutes = manualDurationMinutes ?? undefined
+    }
+
     createCallLog.mutate(
       {
         ticket_id: ticketId,
         provider_id: providerId,
         caller_name: form.caller_name || undefined,
-        call_type: form.call_type,
-        duration_minutes: form.duration_minutes ? parseInt(form.duration_minutes, 10) : undefined,
+        call_type: callType,
+        duration_minutes: durationMinutes,
+        started_at: startedAt,
+        ended_at: endedAt,
         notes: form.notes || undefined,
       },
-      {
-        onSuccess: () => {
-          setForm({ caller_name: '', call_type: 'outbound', duration_minutes: '', notes: '' })
-          setIsAdding(false)
-        },
-      }
+      { onSuccess: resetForm }
     )
   }
 
@@ -453,16 +573,171 @@ function CallLogSection({ ticketId, providerId }: { ticketId: string; providerId
             <Phone className="h-4 w-4" />
             Call Logs {callLogs.length > 0 && `(${callLogs.length})`}
           </CardTitle>
-          <Button size="sm" variant="outline" onClick={() => setIsAdding(!isAdding)}>
-            <Plus className="h-4 w-4 mr-1" />
-            Log Call
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* Quick-start timer buttons */}
+            {!timerRunning && !isAdding && (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => startTimer('inbound')}
+                  className="flex items-center gap-1.5"
+                >
+                  <PhoneIncoming className="h-4 w-4" />
+                  Inbound
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => startTimer('outbound')}
+                  className="flex items-center gap-1.5"
+                >
+                  <PhoneOutgoing className="h-4 w-4" />
+                  Outbound
+                </Button>
+              </>
+            )}
+            {!timerRunning && !isAdding && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setIsAdding(true)
+                  setEntryMode('manual')
+                }}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Manual
+              </Button>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Active timer banner */}
+        {timerRunning && (
+          <div className="flex items-center justify-between rounded-md border-2 border-green-500 bg-green-50 p-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500 text-white animate-pulse">
+                <Timer className="h-4 w-4" />
+              </div>
+              <div>
+                <div className="text-sm font-medium text-green-800">
+                  {form.call_type === 'inbound' ? 'Inbound' : 'Outbound'} Call in Progress
+                </div>
+                <div className="font-mono text-2xl font-bold text-green-900">
+                  {formatElapsed(elapsed)}
+                </div>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={endTimer}
+              className="flex items-center gap-1.5"
+            >
+              <Square className="h-3 w-3" />
+              End Call
+            </Button>
+          </div>
+        )}
+
+        {/* Form (shown when adding or when timer stopped with data) */}
         {isAdding && (
           <div className="space-y-3 rounded-md border p-3">
-            <div className="grid gap-3 md:grid-cols-3">
+            {/* Entry mode tabs */}
+            {!timerRunning && !timerStartedAt && (
+              <div className="flex gap-1 rounded-md bg-muted p-1 w-fit">
+                <button
+                  type="button"
+                  onClick={() => setEntryMode('timer')}
+                  className={`rounded px-3 py-1 text-sm font-medium transition-colors ${
+                    entryMode === 'timer' ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Timer className="h-3.5 w-3.5 inline mr-1" />
+                  Timer
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEntryMode('manual')}
+                  className={`rounded px-3 py-1 text-sm font-medium transition-colors ${
+                    entryMode === 'manual' ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Clock className="h-3.5 w-3.5 inline mr-1" />
+                  Manual
+                </button>
+              </div>
+            )}
+
+            {/* Timer mode - start buttons when no timer yet */}
+            {entryMode === 'timer' && !timerRunning && !timerStartedAt && (
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => startTimer('inbound')}
+                  className="flex items-center gap-1.5"
+                >
+                  <Play className="h-3.5 w-3.5" />
+                  <PhoneIncoming className="h-3.5 w-3.5" />
+                  Start Inbound
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => startTimer('outbound')}
+                  className="flex items-center gap-1.5"
+                >
+                  <Play className="h-3.5 w-3.5" />
+                  <PhoneOutgoing className="h-3.5 w-3.5" />
+                  Start Outbound
+                </Button>
+              </div>
+            )}
+
+            {/* Timer stopped - show computed duration */}
+            {entryMode === 'timer' && !timerRunning && timerStartedAt && (
+              <div className="flex items-center gap-2 text-sm">
+                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">
+                  <Clock className="h-3 w-3 mr-1" />
+                  Duration: {formatElapsed(elapsed)} ({Math.max(1, Math.round(elapsed / 60))} min)
+                </Badge>
+              </div>
+            )}
+
+            {/* Manual mode - start/end time inputs */}
+            {entryMode === 'manual' && (
+              <div className="grid gap-3 md:grid-cols-3">
+                <div>
+                  <Label>Start Time</Label>
+                  <Input
+                    type="datetime-local"
+                    value={form.manual_start}
+                    onChange={(e) => setForm({ ...form, manual_start: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label>End Time</Label>
+                  <Input
+                    type="datetime-local"
+                    value={form.manual_end}
+                    onChange={(e) => setForm({ ...form, manual_end: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label>Duration</Label>
+                  <div className="flex h-10 items-center rounded-md border bg-muted/50 px-3 text-sm">
+                    {manualDurationMinutes != null
+                      ? formatDuration(manualDurationMinutes)
+                      : <span className="text-muted-foreground">Auto-calculated</span>
+                    }
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Shared fields */}
+            <div className="grid gap-3 md:grid-cols-2">
               <div>
                 <Label>Caller Name</Label>
                 <Input
@@ -471,25 +746,21 @@ function CallLogSection({ ticketId, providerId }: { ticketId: string; providerId
                   placeholder="Caller name"
                 />
               </div>
-              <div>
-                <Label>Type</Label>
-                <Select value={form.call_type} onValueChange={(v) => setForm({ ...form, call_type: v as any })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="inbound">Inbound</SelectItem>
-                    <SelectItem value="outbound">Outbound</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Duration (min)</Label>
-                <Input
-                  type="number"
-                  value={form.duration_minutes}
-                  onChange={(e) => setForm({ ...form, duration_minutes: e.target.value })}
-                  placeholder="Minutes"
-                />
-              </div>
+              {entryMode === 'manual' && (
+                <div>
+                  <Label>Type</Label>
+                  <Select
+                    value={form.call_type || undefined}
+                    onValueChange={(v) => setForm({ ...form, call_type: v as 'inbound' | 'outbound' })}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="inbound">Inbound</SelectItem>
+                      <SelectItem value="outbound">Outbound</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
             <div>
               <Label>Notes</Label>
@@ -500,9 +771,18 @@ function CallLogSection({ ticketId, providerId }: { ticketId: string; providerId
               />
             </div>
             <div className="flex gap-2 justify-end">
-              <Button size="sm" variant="outline" onClick={() => setIsAdding(false)}>Cancel</Button>
-              <Button size="sm" onClick={handleSubmit} disabled={createCallLog.isPending}>
-                {createCallLog.isPending ? 'Saving...' : 'Save'}
+              <Button size="sm" variant="outline" onClick={resetForm}>Cancel</Button>
+              <Button
+                size="sm"
+                onClick={handleSubmit}
+                disabled={
+                  createCallLog.isPending ||
+                  timerRunning ||
+                  (!form.call_type && entryMode === 'manual') ||
+                  (entryMode === 'manual' && (!form.manual_start || !form.manual_end || manualDurationMinutes === null))
+                }
+              >
+                {createCallLog.isPending ? 'Saving...' : 'Save Call Log'}
               </Button>
             </div>
           </div>
@@ -516,15 +796,30 @@ function CallLogSection({ ticketId, providerId }: { ticketId: string; providerId
           <div className="space-y-3">
             {callLogs.map((log) => (
               <div key={log.id} className="rounded-md border p-3 text-sm">
-                <div className="mb-1 flex items-center gap-2">
+                <div className="mb-1 flex items-center gap-2 flex-wrap">
                   <Badge variant={log.call_type === 'inbound' ? 'default' : 'secondary'}>
-                    {log.call_type === 'inbound' ? 'Inbound' : 'Outbound'}
+                    {log.call_type === 'inbound' ? (
+                      <><PhoneIncoming className="h-3 w-3 mr-1" />Inbound</>
+                    ) : (
+                      <><PhoneOutgoing className="h-3 w-3 mr-1" />Outbound</>
+                    )}
                   </Badge>
                   {log.caller_name && <span className="font-medium">{log.caller_name}</span>}
-                  {log.duration_minutes && (
-                    <span className="text-muted-foreground">{log.duration_minutes} min</span>
+                  {log.duration_minutes != null && log.duration_minutes > 0 && (
+                    <Badge variant="outline" className="font-mono text-xs">
+                      <Clock className="h-3 w-3 mr-1" />
+                      {formatDuration(log.duration_minutes)}
+                    </Badge>
                   )}
-                  <span className="text-muted-foreground ml-auto">
+                  {log.started_at && (
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(log.started_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {log.ended_at && (
+                        <> – {new Date(log.ended_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</>
+                      )}
+                    </span>
+                  )}
+                  <span className="text-muted-foreground ml-auto text-xs">
                     {log.creator?.full_name || log.creator?.email || 'Unknown'} — {new Date(log.created_at).toLocaleString()}
                   </span>
                   <Button

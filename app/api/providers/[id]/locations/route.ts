@@ -69,6 +69,7 @@ export async function POST(
       state: body.state || null,
       postal_code: body.postal_code || body.zip || null,
       phone: body.phone || null,
+      phone_extension: body.phone_extension || null,
       is_primary: body.is_primary ?? false,
       ...geocodeFields,
     })

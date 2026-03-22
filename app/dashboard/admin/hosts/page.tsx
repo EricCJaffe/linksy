@@ -1,9 +1,18 @@
 'use client'
 
+import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   Table,
   TableBody,
@@ -12,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Copy, ExternalLink, Zap, Settings } from 'lucide-react'
+import { Copy, ExternalLink, Zap, Settings, Search } from 'lucide-react'
 import Link from 'next/link'
 import type { Provider } from '@/lib/types/linksy'
 
@@ -30,6 +39,8 @@ function useHosts() {
 
 export default function HostsPage() {
   const { data: hosts, isLoading } = useHosts()
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
 
   function copyEmbedUrl(slug: string) {
     const url = `${window.location.origin}/find-help/${slug}`
@@ -42,8 +53,25 @@ export default function HostsPage() {
     navigator.clipboard.writeText(snippet)
   }
 
+  const filteredHosts = useMemo(() => {
+    if (!hosts) return []
+    return hosts.filter((host) => {
+      const q = search.toLowerCase()
+      if (q && !host.name.toLowerCase().includes(q) && !host.slug?.toLowerCase().includes(q)) return false
+
+      if (statusFilter === 'active' && (!host.is_active || !host.host_embed_active)) return false
+      if (statusFilter === 'inactive' && host.is_active && host.host_embed_active) return false
+      if (statusFilter === 'over_budget') {
+        const overBudget = host.host_monthly_token_budget != null &&
+          host.host_tokens_used_this_month >= host.host_monthly_token_budget
+        if (!overBudget) return false
+      }
+
+      return true
+    })
+  }, [hosts, search, statusFilter])
+
   const activeHosts = (hosts ?? []).filter((h) => h.is_active && h.host_embed_active)
-  const inactiveHosts = (hosts ?? []).filter((h) => !h.is_active || !h.host_embed_active)
   const totalSearches = (hosts ?? []).reduce((sum, h) => sum + (h.host_searches_this_month ?? 0), 0)
   const totalTokens = (hosts ?? []).reduce((sum, h) => sum + (h.host_tokens_used_this_month ?? 0), 0)
   const hostsWithBudget = (hosts ?? []).filter((h) => h.host_monthly_token_budget != null)
@@ -114,15 +142,41 @@ export default function HostsPage() {
         </Card>
       </div>
 
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search hosts..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 w-[220px]"
+          />
+        </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue placeholder="All Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="inactive">Inactive / Disabled</SelectItem>
+            <SelectItem value="over_budget">Over Budget</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       {/* Hosts Table */}
       {isLoading ? (
         <div className="animate-pulse space-y-2">
           {[1, 2, 3].map((i) => <div key={i} className="h-12 rounded bg-muted" />)}
         </div>
-      ) : hosts?.length === 0 ? (
+      ) : filteredHosts.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
-            No hosts configured yet. Open a provider&apos;s detail page and enable host mode in the Host Settings tab.
+            {hosts?.length === 0
+              ? "No hosts configured yet. Open a provider's detail page and enable host mode in the Host Settings tab."
+              : 'No hosts match the current filters.'}
           </CardContent>
         </Card>
       ) : (
@@ -141,7 +195,7 @@ export default function HostsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(hosts ?? []).map((host) => {
+              {filteredHosts.map((host) => {
                 const widgetUrl = `/find-help/${host.slug}`
                 const overBudget =
                   host.host_monthly_token_budget != null &&
@@ -186,7 +240,7 @@ export default function HostsPage() {
                     <TableCell className="text-right text-sm text-muted-foreground">
                       {host.host_monthly_token_budget != null
                         ? host.host_monthly_token_budget.toLocaleString()
-                        : '∞'}
+                        : '\u221E'}
                     </TableCell>
                     <TableCell className="text-right text-sm">
                       {utilizationPct != null ? `${utilizationPct}%` : '-'}

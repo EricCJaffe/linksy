@@ -85,8 +85,8 @@ Migration written: `20260303000002_rls_security_hardening.sql`. **Needs to be ap
 - [ ] Verify Resend domain authentication
 - [ ] **[TASK-034] Migrate From email address** — Current: Linksy@impactclay.org → Linksy@impact-works.org (confirm with IT Assist: rename mailbox or create new + forward). Update all templates, From/Reply-To fields, provider-facing contact info.
 
-#### 0.8 Impact Clay Archival [CLARIFY]
-- [ ] **[TASK-037] Remove "Impact Clay" as active option while preserving history** — Decisions needed: (a) Archive as read-only or delete from active dropdowns? (b) Keep historical referrals attributed to Impact Clay or migrate to Impact Works?
+#### 0.8 Impact Clay Archival [DONE]
+- [x] **[TASK-037] Archive "Impact Clay" tenant as read-only** — Archived via `is_active` flag on tenants table. Historical referrals remain attributed to Impact Clay. Tenant hidden from active dropdowns but visible (read-only) in admin tenant list. Reversible via "Restore Tenant" in edit dialog. See ADR-0015.
 
 ---
 
@@ -112,25 +112,23 @@ Core features that users and admins need on day one, plus remaining quality fixe
   - Verify `ticket.reassigned` webhook fires correctly
   - Test from provider portal view (not just admin)
 
-#### 1.3 Events Visibility for End Users
-- [ ] **Decide where events appear for public users** — Options:
-  - **(a) In chatbot results** — Show relevant events alongside providers
-  - **(b) Dedicated `/events` public page** — Standalone calendar/list
-  - **(c) On public provider directory** — Events on provider profiles
-  - **(d) Combination** — Chatbot results AND dedicated page
-  - **Decision needed:** Which approach? Does this vary by host?
-- [ ] Implement chosen approach
-- [ ] Ensure only `published` events shown publicly
+#### 1.3 Events Visibility for End Users — COMPLETE
+- [x] **Decision: Events appear in chatbot search results** — Events shown alongside providers when they match the user's need and are nearby. COMPLETED 2026-03-09.
+- [x] Implemented in find-help page and host-embedded widget
+- [x] Only approved, public, future events shown publicly (enforced by `linksy_search_events_by_needs` RPC)
 
-#### 1.4 AI Search Includes Events
-- [ ] **Extend AI search pipeline to include event listings** — Currently searches only provider services/needs. Need to:
-  - Include upcoming published events in vector search or as supplemental results
-  - Add event data to LLM context (name, date, time, location, description, provider)
-  - Generate embeddings for events (or match via `linksy_provider_needs`)
-  - LLM mentions relevant events naturally
-  - Filter to future events only
-- [ ] Update search API response to include event cards
-- [ ] Widget UI: display event result cards
+#### 1.4 AI Search Includes Events — COMPLETE
+- [x] **Extended AI search pipeline to include event listings** — COMPLETED 2026-03-09. Changes:
+  - Added `need_id` (service category), `address`, `latitude`, `longitude` columns to `linksy_provider_events` (migration `20260309000001`)
+  - Service category and address are mandatory for new events
+  - Created `linksy_search_events_by_needs()` RPC: matches events by need ID + proximity (radius-based PostGIS filter)
+  - Events geocoded on creation/update via Google Maps API
+  - LLM context includes event category, address, and distance
+  - Falls back to provider-based matching for legacy untagged events
+- [x] Search API returns events with `need_name`, `category_name`, `distance_miles`
+- [x] EventCard shows service category badge and distance in find-help page + widget
+- [x] Admin events page shows service category badges
+- [x] Event creation/edit form: mandatory Service Category dropdown and Address field
 
 #### 1.5 Host Danger Word Filtering
 - [ ] **Verify crisis detection in host-embedded widgets** — System has global `linksy_crisis_keywords` with detection + emergency banners. Verify:
@@ -159,14 +157,14 @@ Core features that users and admins need on day one, plus remaining quality fixe
   - "Tickets" → "Referrals" (bulk actions, error messages, dialogs, aria labels)
   - "Need Addressed" → "Service Provided" (all 6 status label maps + report charts)
   - "Needs Addressed" → "Services Provided" (provider detail card title)
-  - "Forward Ticket" → "Forward Referral", "Reassign Ticket" → "Reassign Referral"
+  - "Forward Ticket" → "Transfer Referral", "Reassign Ticket" → "Reassign Referral"
   - "Ticket Actions/Info" → "Referral Actions/Info"
   - Landing page: "referral tickets" → "referrals"
 - [x] Applies to: frontend labels, exported reports, dropdown text. **Not** database column names. *(Remaining: email templates still use old terms — ties to 0.6.)*
 
 #### 1.8 Referral Workflow Enhancements (Program Review)
 - [x] **[TASK-014] Add status values: "In Process" and "Transferred Another Provider"** — COMPLETED 2026-03-06. Added `in_process` (yellow) and `transferred_another_provider` (gray) to enum type, all 6 UI status label/color maps, bulk update validation, export groupings (open includes in_process, closed includes transferred), stats overview, referral cap (in_process counts toward cap), and database migration. Email templates updated 2026-03-07: status label map now includes all 9 statuses, status-specific template keys (`ticket_status_in_process`, `ticket_status_transferred`) with fallback to generic. *(Remaining: auto-set transferred on forward action — ties to TASK-026.)*
-- [ ] **[TASK-026] Referral transfer workflow** — On transfer: auto-set original to "Transferred Another Provider". Modal: select new provider, transfer notes, editable email templates (client + new provider). New provider sees "Transferred Pending". Append suffix -T1/-T2 to referral number. Max 2 transfers → admin override. Both providers see transfer history. *(Extends existing 1.2 reassignment feature.)*
+- [x] **[TASK-026] Referral transfer workflow** — COMPLETED 2026-03-12. Forward-to-provider auto-sets status to `transferred_pending` (new DB enum value, migration `20260312000002`). Forward-to-admin auto-sets `transferred_another_provider`. Max 2 transfers enforced in API with 422 response; site admins can override via `admin_override` flag (logged in audit trail). Updated forward dialog: shows transfer count indicator, admin override checkbox, status change preview. New status added to all 10+ status label/color maps, email templates, bulk validation, export groupings (transferred_pending = open), referral cap, and stats overview. Same referral number maintained throughout chain. `forwarded_from_provider_id` preserved for transfer history tracking.
 - [x] **[TASK-029] Duplicate referral detection** — COMPLETED 2026-03-07. Detection logic with three cases (B: exact duplicate, A: high volume, C: consecutive day). Applied to both APIs. `duplicate_flag_type` column + indexes. Admin "Potential Duplicates" report page at `/dashboard/admin/duplicates` with API, summary cards, and clickable table.
 - [x] **[TASK-018] Test referral flagging** — COMPLETED 2026-03-07. `is_test` column + migration, auto-flag "Mega Coolmint", TEST badge in list/detail, excluded from analytics by default. Admin "Include Test Referrals" toggle button on Reports page. `include_test` param supported on `/api/reports`, `/api/stats/overview`, `/api/stats/reports`.
 - [x] **[TASK-017] "Send Test Referral" button** — AlertDialog on provider detail page header (site admin only). Pre-populates Mega Coolmint, Linksy@impactworks.org, 1-904-330-1848. Auto-flagged is_test. Test referrals bypass duplicate detection, rate limiting, and referral cap. COMPLETED 2026-03-06.
@@ -183,9 +181,9 @@ Core features that users and admins need on day one, plus remaining quality fixe
 - [x] **[TASK-028] Private/public note toggle** — COMPLETED 2026-03-06. Inline lock/globe toggle button on provider notes (timeline + Notes tab) and ticket comments. Amber background on private items. PATCH endpoint for comment privacy (admin only). Server-side filtering: private notes hidden from non-admin users in provider API. Org-scoped visibility COMPLETED 2026-03-07: `created_by_tenant_id` column + migration, note creation stores tenant ID, private notes now visible only to creating org + site admins (legacy notes fallback to tenant admin/contact visibility).
 
 #### 1.11 Provider & Contact Enhancements (Program Review)
-- [ ] **[TASK-023] Services access control (admin only for add/edit)** — Only admins add/edit service categories. Providers can view and remove from own profile. Permission error on Provider attempts. Synonyms also admin-only.
+- [x] **[TASK-023] Services access control (admin only for add/edit)** — COMPLETED 2026-03-12. Taxonomy APIs (categories, needs, synonyms) restricted to site_admin only (`requireSiteAdmin()`). Provider needs endpoints (`/api/providers/[id]/needs`) enforce provider-level access: site admin, tenant admin, or active contact of the provider. Providers can manage which existing services they offer but cannot modify the taxonomy.
 - [ ] **[TASK-035] Welcome email for new providers** — Auto-send on approval. Template: welcome message, video link, support info, Helps & Docs reference. Editable in Admin Console. Test send button. *(Ties to 0.6 email templates.)*
-- [ ] **[TASK-033] Support tickets: visible tab** — Move support ticket access to main navigation (under Referrals or top-level). Show open + in-progress, color-coded. Admins see all, providers see own.
+- [x] **[TASK-033] Support tickets: visible tab** — COMPLETED 2026-03-12. Already in main navigation with color-coded badge (blue for open, yellow for in-progress). Provider portal has "Submit Support Ticket" link. Badge count shows open + in-progress total.
 - [x] **[TASK-013] Add Contacts to dashboard nav panel** — Already exists in sidebar (sidebar.tsx line 47). VERIFIED 2026-03-06.
 
 #### 1.12 Needs Stakeholder Decisions (Program Review) [CLARIFY FIRST]
@@ -275,7 +273,7 @@ All 8 LOW findings resolved.
 - [ ] Spanish (es) language support / multi-language i18n
 - [ ] Two-factor authentication (2FA) for admins
 - [ ] SSO integration (SAML)
-- [ ] Autoupdates for provider description every 90 days
+- [x] Autoupdates for provider description every 90 days — COMPLETED 2026-03-21. Quarterly cron job (Jan/Apr/Jul/Oct) scans provider websites via OpenAI, compares descriptions, emails provider contacts with accept/edit links. Admin can override timing per provider. Email template editable in Admin Console.
 - [ ] Enhanced notification workflows beyond baseline
 - [ ] Host-specific email template customization (tenant/host-level overrides)
 - [ ] Host custom form builder for pre-proposal intake
@@ -286,7 +284,7 @@ All 8 LOW findings resolved.
 - [ ] Stronger anti-spam logic beyond current rate/duplicate guards
 
 #### Program Review — Complex Features
-- [ ] **[TASK-002] Undo/redo system-wide** — Undo button (Ctrl+Z) + Redo (Ctrl+Y) on all data entry screens. Last 5 actions per session. Works for field edits, status changes, notes. Tooltip for non-undoable actions.
+- [x] **[TASK-002] Undo/redo (phase 1)** — Rich text editor undo/redo toolbar buttons (Ctrl+Z/Y). Undo toast on instant-save actions (status changes, privacy toggles) via `useUndoableAction` hook. See `docs/SAVE-BEHAVIOR.md`. Phase 2: full action history stack for field edits across all screens.
 - [ ] **[TASK-032] Per-provider SLA timers** — Custom resolution timeframe per provider. Auto-send reminder at due date. Provider can reset, confirm, or transfer. Client notification on transfer.
 
 #### Program Review — Wish List
@@ -319,6 +317,28 @@ Items that need hands-on testing in a live or staging environment:
 - [ ] **Provider user referrals** — Log in as provider user; verify `/dashboard/my-tickets` shows their referrals
 - [ ] **Webhook event coverage** — Verify `ticket.assigned`, `ticket.forwarded`, `ticket.reassigned` fire correctly
 - [ ] **Referral workflow e2e (email leg)** — Outbound email content/delivery verification (needs mailbox capture strategy: MailHog/test inbox)
+
+#### SQL Scripts — Verify / Run in Supabase
+
+Root-level diagnostic/fix scripts (run manually in Supabase SQL Editor as needed):
+
+- [ ] `CHECK_CONTACT_STATUS.sql` — Verify contact status for specific user (diagnostic, read-only)
+- [ ] `FIX_CONTACT_ACCESS.sql` — Fix provider access for specific user (updates contact status/role)
+- [ ] `TROUBLESHOOTING.sql` — Full troubleshooting workflow: contact status check, trigger fix (`link_invited_user_trigger`), manual activation, access function test
+
+Data backfill scripts (run once, safe to re-run):
+
+- [ ] `scripts/backfill-provider-tenants.sql` — Assign all providers to Impact Clay tenant + backfill `tenant_users` from active contacts
+- [ ] `scripts/check-referral-assignments.sql` — Audit default referral handlers and assignment integrity (diagnostic, read-only)
+
+Recent migrations to verify applied (check `supabase_migrations.schema_migrations` table):
+
+- [ ] `20260321000001_add_phone_extension_to_locations_contacts.sql`
+- [ ] `20260321000002_create_description_reviews.sql`
+- [ ] `20260321000003_call_log_timer_fields.sql`
+- [ ] `20260321000004_create_referral_alert_config.sql`
+- [ ] `20260322000001_seed_help_docs.sql`
+- [ ] `20260322000001_add_case_d_duplicate_flag.sql`
 
 ---
 

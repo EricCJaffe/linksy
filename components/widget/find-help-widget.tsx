@@ -9,13 +9,14 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Loader2, MapPin, Phone, Globe, Send, AlertTriangle, X, Navigation, Calendar, Clock, Repeat } from 'lucide-react'
 import type { HostWidgetConfig } from '@/lib/types/linksy'
 import { RichTextDisplay } from '@/components/ui/rich-text-display'
-import { formatPhone, phoneToTel } from '@/lib/utils/phone'
+import { formatPhone, formatPhoneWithExt, phoneToTel } from '@/lib/utils/phone'
 
 interface SearchResult {
   id: string
   name: string
   description: string | null
   phone: string | null
+  phone_extension: string | null
   email: string | null
   website: string | null
   hours_of_operation: string | null
@@ -37,9 +38,13 @@ interface EventResult {
   description: string | null
   event_date: string
   location: string | null
+  address: string | null
   recurrence_rule: string | null
   provider_id: string
   provider_name: string
+  need_name: string | null
+  category_name: string | null
+  distance_miles: number | null
 }
 
 interface Message {
@@ -401,7 +406,7 @@ export function FindHelpWidget({ hostProviderId, hostProviderName, widgetConfig 
                                 style={secondaryColor ? { color: secondaryColor } : undefined}
                               >
                                 <Phone className="h-3 w-3" />
-                                {formatPhone(provider.phone)}
+                                {formatPhoneWithExt(provider.phone, provider.phone_extension)}
                               </a>
                             )}
                             {provider.website && (
@@ -457,10 +462,22 @@ export function FindHelpWidget({ hostProviderId, hostProviderName, widgetConfig 
                       return (
                         <Card key={event.id} className="bg-background border border-emerald-200">
                           <CardContent className="p-2.5">
-                            <p className="font-semibold text-xs">{event.title}</p>
-                            <p className="text-[11px] text-muted-foreground mt-0.5">
-                              by {event.provider_name}
-                            </p>
+                            <div className="flex items-start justify-between gap-1">
+                              <div className="min-w-0 flex-1">
+                                <p className="font-semibold text-xs">{event.title}</p>
+                                <p className="text-[11px] text-muted-foreground mt-0.5">
+                                  by {event.provider_name}
+                                </p>
+                              </div>
+                              {event.distance_miles != null && (
+                                <span className="text-[11px] text-muted-foreground flex-shrink-0">{event.distance_miles} mi</span>
+                              )}
+                            </div>
+                            {event.category_name && (
+                              <span className="inline-block mt-1 text-[10px] bg-blue-50 text-blue-700 border border-blue-200 rounded px-1.5 py-0.5">
+                                {event.category_name}{event.need_name ? ` — ${event.need_name}` : ''}
+                              </span>
+                            )}
                             <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
                               <span className="flex items-center gap-0.5">
                                 <Calendar className="h-3 w-3" />
@@ -470,10 +487,10 @@ export function FindHelpWidget({ hostProviderId, hostProviderName, widgetConfig 
                                 <Clock className="h-3 w-3" />
                                 {timeStr}
                               </span>
-                              {event.location && (
+                              {(event.address || event.location) && (
                                 <span className="flex items-center gap-0.5">
                                   <MapPin className="h-3 w-3" />
-                                  {event.location}
+                                  {event.address || event.location}
                                 </span>
                               )}
                               {event.recurrence_rule && (

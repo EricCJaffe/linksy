@@ -13,6 +13,7 @@ function buildTicketParams(filters: TicketFilters): string {
   if (filters.date_to) params.set('date_to', filters.date_to)
   if (filters.client_email) params.set('client_email', filters.client_email)
   if (filters.client_phone) params.set('client_phone', filters.client_phone)
+  if (filters.zip) params.set('zip', filters.zip)
   if (filters.limit) params.set('limit', String(filters.limit))
   if (filters.offset) params.set('offset', String(filters.offset))
   return params.toString()
@@ -160,6 +161,7 @@ export function useForwardTicket() {
       reason,
       notes,
       new_status,
+      admin_override,
     }: {
       ticketId: string
       action: 'forward_to_admin' | 'forward_to_provider'
@@ -167,15 +169,16 @@ export function useForwardTicket() {
       reason: 'unable_to_assist' | 'wrong_org' | 'capacity' | 'other'
       notes?: string
       new_status?: string
+      admin_override?: boolean
     }) => {
       const res = await fetch(`/api/tickets/${ticketId}/forward`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, target_provider_id, reason, notes, new_status }),
+        body: JSON.stringify({ action, target_provider_id, reason, notes, new_status, admin_override }),
       })
       if (!res.ok) {
         const error = await res.json()
-        throw new Error(error.error || 'Failed to forward ticket')
+        throw new Error(error.error || 'Failed to transfer referral')
       }
       return res.json() as Promise<{ success: boolean; ticket: Ticket }>
     },

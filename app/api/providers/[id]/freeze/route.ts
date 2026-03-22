@@ -3,6 +3,29 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/middleware/auth'
 
 /**
+ * GET /api/providers/[id]/freeze?check=pending
+ * Check pending referral count before freezing
+ */
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { data: auth, error: authError } = await requireAuth()
+  if (authError) return authError
+
+  const { id } = await params
+  const supabase = await createServiceClient()
+
+  const { count } = await supabase
+    .from('linksy_tickets')
+    .select('id', { count: 'exact', head: true })
+    .eq('provider_id', id)
+    .in('status', ['pending', 'in_process'])
+
+  return NextResponse.json({ pending_count: count ?? 0 })
+}
+
+/**
  * POST /api/providers/[id]/freeze
  * Freeze or unfreeze a provider
  */

@@ -12,7 +12,7 @@ export async function PATCH(
   const body = await request.json()
   const supabase = await createServiceClient()
 
-  const allowedFields = ['caller_name', 'call_type', 'duration_minutes', 'notes']
+  const allowedFields = ['caller_name', 'call_type', 'duration_minutes', 'started_at', 'ended_at', 'notes']
   const updates: Record<string, any> = {}
   for (const key of allowedFields) {
     if (key in body) updates[key] = body[key]

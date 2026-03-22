@@ -235,7 +235,7 @@ export async function PATCH(
 
   // Additional fields only admins can edit
   const adminOnlyFields = [
-    'name', 'sector', 'is_active', 'referral_type', 'project_status',
+    'name', 'sector', 'is_active', 'provider_status', 'accepting_referrals', 'referral_type', 'project_status',
     'allow_auto_update',
     // Compatibility with legacy provider schema names.
     'allow_auto_update_description',
@@ -243,6 +243,7 @@ export async function PATCH(
     'parent_account', 'parent_account_name', 'parent_provider_id',
     'is_host', 'host_embed_active', 'host_widget_config', 'host_monthly_token_budget',
     'service_zip_codes',
+    'sla_hours', 'sla_reminder_hours',
   ]
 
   let allowedFields: string[]

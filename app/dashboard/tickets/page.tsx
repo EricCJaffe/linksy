@@ -5,12 +5,15 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useTickets, useUpdateTicket } from '@/lib/hooks/useTickets'
 import { useProviders } from '@/lib/hooks/useProviders'
 import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
+import { useSupportTickets } from '@/lib/hooks/useSupportTickets'
+import { useUndoableAction } from '@/lib/hooks/useUndoableAction'
 import { useDebounce } from '@/lib/hooks/useDebounce'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent } from '@/components/ui/card'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import {
   Select,
   SelectTrigger,
@@ -27,10 +30,12 @@ import {
   TableCell,
 } from '@/components/ui/table'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Globe, Search, Download, CheckSquare, CalendarDays, X, ArrowUpDown } from 'lucide-react'
-import type { TicketFilters, TicketStatus } from '@/lib/types/linksy'
+import { Globe, Search, Download, CheckSquare, CalendarDays, X, ArrowUpDown, Phone, MapPin, LifeBuoy, AlertCircle, Ticket } from 'lucide-react'
+import { cn } from '@/lib/utils/cn'
+import type { TicketFilters, TicketStatus, SupportTicketStatus, SupportTicketPriority } from '@/lib/types/linksy'
+import { formatPhone } from '@/lib/utils/phone'
 
-type SortField = 'ticket_number' | 'client' | 'provider' | 'status' | 'date'
+type SortField = 'ticket_number' | 'client' | 'provider' | 'phone' | 'service' | 'status' | 'date'
 type SortDir = 'asc' | 'desc'
 
 const LIMIT = 50
@@ -45,6 +50,7 @@ const ticketStatusLabels: Record<TicketStatus, string> = {
   unable_to_assist: 'Unable to Assist',
   client_unresponsive: 'Unresponsive',
   transferred_another_provider: 'Transferred',
+  transferred_pending: 'Transferred Pending',
 }
 
 const ticketStatusClass: Record<TicketStatus, string> = {
@@ -57,6 +63,7 @@ const ticketStatusClass: Record<TicketStatus, string> = {
   unable_to_assist: 'border-red-200 bg-red-50 text-red-700',
   client_unresponsive: 'border-violet-200 bg-violet-50 text-violet-700',
   transferred_another_provider: 'border-gray-200 bg-gray-50 text-gray-700',
+  transferred_pending: 'border-blue-200 bg-blue-50 text-blue-700',
 }
 
 function StatusBadge({ status }: { status: TicketStatus }) {
@@ -67,11 +74,33 @@ function StatusBadge({ status }: { status: TicketStatus }) {
   )
 }
 
+const supportStatusLabels: Record<SupportTicketStatus, string> = {
+  open: 'Open',
+  in_progress: 'In Progress',
+  resolved: 'Resolved',
+  closed: 'Closed',
+}
+
+const supportStatusColors: Record<SupportTicketStatus, string> = {
+  open: 'bg-blue-100 text-blue-800',
+  in_progress: 'bg-yellow-100 text-yellow-800',
+  resolved: 'bg-green-100 text-green-800',
+  closed: 'bg-gray-100 text-gray-800',
+}
+
+const supportPriorityColors: Record<SupportTicketPriority, string> = {
+  low: 'bg-gray-100 text-gray-700',
+  medium: 'bg-blue-100 text-blue-700',
+  high: 'bg-orange-100 text-orange-700',
+  urgent: 'bg-red-100 text-red-700',
+}
+
 export default function TicketsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { data: user } = useCurrentUser()
   const updateTicket = useUpdateTicket()
+  const { execute: undoableAction } = useUndoableAction()
   const [filters, setFilters] = useState<TicketFilters>(() => {
     const statusParam = searchParams.get('status')
     const qParam = searchParams.get('q')
@@ -81,6 +110,7 @@ export default function TicketsPage() {
     const dateToParam = searchParams.get('date_to')
     const clientEmailParam = searchParams.get('client_email')
     const clientPhoneParam = searchParams.get('client_phone')
+    const zipParam = searchParams.get('zip')
     return {
       status: (statusParam as TicketStatus | 'all') || 'all',
       q: qParam || undefined,
@@ -90,6 +120,7 @@ export default function TicketsPage() {
       date_to: dateToParam || undefined,
       client_email: clientEmailParam || undefined,
       client_phone: clientPhoneParam || undefined,
+      zip: zipParam || undefined,
       limit: LIMIT,
       offset: 0,
     }
@@ -121,6 +152,17 @@ export default function TicketsPage() {
       .catch(() => {})
   }, [])
   const isSiteAdmin = user?.profile?.role === 'site_admin'
+
+  // Support tickets data
+  const [supportStatusFilter, setSupportStatusFilter] = useState<string>('all')
+  const { data: supportData, isLoading: supportLoading } = useSupportTickets({
+    status: supportStatusFilter !== 'all' ? supportStatusFilter : undefined,
+    limit: 100,
+  })
+  const supportTickets = supportData?.tickets || []
+  const supportOpenCount = supportData?.tickets?.filter(t => t.status === 'open').length ?? 0
+  const supportInProgressCount = supportData?.tickets?.filter(t => t.status === 'in_progress').length ?? 0
+  const supportBadgeCount = supportOpenCount + supportInProgressCount
 
   // Calculate public referral stats
   useEffect(() => {
@@ -165,6 +207,7 @@ export default function TicketsPage() {
       if (next.date_to) params.set('date_to', next.date_to)
       if (next.client_email) params.set('client_email', next.client_email)
       if (next.client_phone) params.set('client_phone', next.client_phone)
+      if (next.zip) params.set('zip', next.zip)
       const paramStr = params.toString()
       router.replace(paramStr ? `?${paramStr}` : '/dashboard/tickets', { scroll: false })
       return next
@@ -189,6 +232,10 @@ export default function TicketsPage() {
         return dir * (a.client_name || '').localeCompare(b.client_name || '')
       case 'provider':
         return dir * (a.provider?.name || '').localeCompare(b.provider?.name || '')
+      case 'phone':
+        return dir * (a.provider?.phone || '').localeCompare(b.provider?.phone || '')
+      case 'service':
+        return dir * (a.need?.name || '').localeCompare(b.need?.name || '')
       case 'status':
         return dir * (a.status || '').localeCompare(b.status || '')
       case 'date':
@@ -294,6 +341,30 @@ export default function TicketsPage() {
         )}
       </div>
 
+      <Tabs defaultValue="referrals" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="referrals" className="gap-2">
+            <Ticket className="h-4 w-4" />
+            Referrals
+          </TabsTrigger>
+          <TabsTrigger value="support" className="gap-2">
+            <LifeBuoy className="h-4 w-4" />
+            Support
+            {supportBadgeCount > 0 && (
+              <span className={cn(
+                'ml-1 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1.5 text-xs font-semibold',
+                supportOpenCount > 0
+                  ? 'bg-blue-100 text-blue-700'
+                  : 'bg-yellow-100 text-yellow-700'
+              )}>
+                {supportBadgeCount}
+              </span>
+            )}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="referrals" className="space-y-6">
+
       {/* Stats Cards */}
       {publicReferralStats.total > 0 && (
         <div className="grid gap-4 md:grid-cols-2">
@@ -357,7 +428,10 @@ export default function TicketsPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Providers</SelectItem>
-            {providersData?.providers.map((provider) => (
+            {providersData?.providers
+              .slice()
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map((provider) => (
               <SelectItem key={provider.id} value={provider.id}>
                 {provider.name}
               </SelectItem>
@@ -373,7 +447,10 @@ export default function TicketsPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Services</SelectItem>
-            {needs.map((need) => (
+            {needs
+              .slice()
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map((need) => (
               <SelectItem key={need.id} value={need.id}>
                 {need.name}
               </SelectItem>
@@ -382,7 +459,7 @@ export default function TicketsPage() {
         </Select>
       </div>
 
-      {/* Email/Phone/Date filters */}
+      {/* Email/Phone/Zip/Date filters */}
       <div className="flex flex-wrap items-center gap-3">
         <Input
           placeholder="Filter by email..."
@@ -396,6 +473,16 @@ export default function TicketsPage() {
           onChange={(e) => handleFilterChange({ client_phone: e.target.value || undefined })}
           className="w-[160px]"
         />
+        <div className="relative">
+          <MapPin className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Filter by zip..."
+            value={filters.zip || ''}
+            onChange={(e) => handleFilterChange({ zip: e.target.value || undefined })}
+            className="w-[140px] pl-9"
+            maxLength={10}
+          />
+        </div>
         <CalendarDays className="h-4 w-4 text-muted-foreground" />
         <Input
           type="date"
@@ -477,10 +564,11 @@ export default function TicketsPage() {
               <SortableHeader field="ticket_number">Referral #</SortableHeader>
               <SortableHeader field="client">Client</SortableHeader>
               <SortableHeader field="provider">Provider</SortableHeader>
-              <TableHead>Need</TableHead>
+              <SortableHeader field="phone">Phone</SortableHeader>
+              <SortableHeader field="service">Service</SortableHeader>
               <SortableHeader field="status">Status</SortableHeader>
               <SortableHeader field="date">Date</SortableHeader>
-              <TableHead className="w-[200px]">Actions</TableHead>
+              <TableHead className="w-[170px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -489,17 +577,18 @@ export default function TicketsPage() {
                 <TableRow key={i}>
                   {isSiteAdmin && <TableCell><Skeleton className="h-4 w-4" /></TableCell>}
                   <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-28" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                  <TableCell><Skeleton className="h-10 w-[180px]" /></TableCell>
+                  <TableCell><Skeleton className="h-10 w-[160px]" /></TableCell>
                 </TableRow>
               ))
             ) : tickets.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={isSiteAdmin ? 8 : 7} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={isSiteAdmin ? 9 : 8} className="h-24 text-center text-muted-foreground">
                   No referrals found.
                 </TableCell>
               </TableRow>
@@ -542,6 +631,12 @@ export default function TicketsPage() {
                     {ticket.provider?.name || '-'}
                   </TableCell>
                   <TableCell
+                    className="text-muted-foreground cursor-pointer whitespace-nowrap"
+                    onClick={() => router.push(`/dashboard/tickets/${ticket.id}`)}
+                  >
+                    {ticket.provider?.phone ? formatPhone(ticket.provider.phone) : '-'}
+                  </TableCell>
+                  <TableCell
                     className="text-muted-foreground cursor-pointer"
                     onClick={() => router.push(`/dashboard/tickets/${ticket.id}`)}
                   >
@@ -570,9 +665,18 @@ export default function TicketsPage() {
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <Select
                       value={ticket.status}
-                      onValueChange={(value) =>
-                        updateTicket.mutate({ id: ticket.id, status: value as TicketStatus })
-                      }
+                      onValueChange={(value) => {
+                        const previousStatus = ticket.status
+                        undoableAction({
+                          description: `Status changed to ${ticketStatusLabels[value as TicketStatus] || value}`,
+                          action: () => {
+                            updateTicket.mutate({ id: ticket.id, status: value as TicketStatus })
+                          },
+                          undoAction: () => {
+                            updateTicket.mutate({ id: ticket.id, status: previousStatus })
+                          },
+                        })
+                      }}
                     >
                       <SelectTrigger className="h-9">
                         <SelectValue />
@@ -630,6 +734,152 @@ export default function TicketsPage() {
           )}
         </div>
       )}
+
+        </TabsContent>
+
+        <TabsContent value="support" className="space-y-6">
+          {/* Support Stats Cards */}
+          <div className="grid gap-4 md:grid-cols-3">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Open</p>
+                    <p className="text-2xl font-bold">{supportOpenCount}</p>
+                  </div>
+                  <AlertCircle className="h-8 w-8 text-blue-500" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">In Progress</p>
+                    <p className="text-2xl font-bold">{supportInProgressCount}</p>
+                  </div>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-100">
+                    <span className="text-sm font-bold text-yellow-700">{supportInProgressCount}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Total</p>
+                    <p className="text-2xl font-bold">{supportTickets.length}</p>
+                  </div>
+                  <LifeBuoy className="h-8 w-8 text-muted-foreground" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Support Filters */}
+          <div className="flex items-center gap-3">
+            <Select value={supportStatusFilter} onValueChange={setSupportStatusFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                {(Object.keys(supportStatusLabels) as SupportTicketStatus[]).map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {supportStatusLabels[s]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {isSiteAdmin && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => router.push('/dashboard/admin/support')}
+              >
+                Manage Support Tickets
+              </Button>
+            )}
+          </div>
+
+          {/* Support Tickets Table */}
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Ticket #</TableHead>
+                  <TableHead>Subject</TableHead>
+                  <TableHead>Provider</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Priority</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Created</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {supportLoading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-48" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : supportTickets.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                      No support tickets found.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  supportTickets.map((ticket) => (
+                    <TableRow
+                      key={ticket.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => router.push(
+                        isSiteAdmin
+                          ? `/dashboard/admin/support/${ticket.id}`
+                          : `/dashboard/support/${ticket.id}`
+                      )}
+                    >
+                      <TableCell className="font-medium font-mono text-sm">
+                        {ticket.ticket_number}
+                      </TableCell>
+                      <TableCell className="max-w-md truncate">
+                        {ticket.subject}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {ticket.provider?.name || ticket.submitter_name || '-'}
+                      </TableCell>
+                      <TableCell className="capitalize text-muted-foreground">
+                        {ticket.category?.replace('_', ' ') || '-'}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={supportPriorityColors[ticket.priority]}>
+                          {ticket.priority}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={supportStatusColors[ticket.status]}>
+                          {supportStatusLabels[ticket.status]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {new Date(ticket.created_at).toLocaleDateString()}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

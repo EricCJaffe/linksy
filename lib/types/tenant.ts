@@ -14,6 +14,7 @@ export interface Tenant {
   country?: string | null
   track_location?: boolean
   primary_contact_id?: string | null
+  is_active: boolean
   created_at: string
   updated_at: string
 }

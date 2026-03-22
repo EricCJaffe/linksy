@@ -98,6 +98,27 @@ export function TenantEditDialog({ tenant }: TenantEditDialogProps) {
     updateTenant.mutate(data)
   }
 
+  const toggleArchive = useMutation({
+    mutationFn: async (isActive: boolean) => {
+      const response = await fetch(`/api/tenants/${tenant.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_active: isActive }),
+      })
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to update tenant status')
+      }
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tenants'] })
+      queryClient.invalidateQueries({ queryKey: ['tenant', tenant.id] })
+      queryClient.invalidateQueries({ queryKey: ['currentTenant'] })
+      setOpen(false)
+    },
+  })
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -230,6 +251,44 @@ export function TenantEditDialog({ tenant }: TenantEditDialogProps) {
                     Enable location tracking features
                   </Label>
                 </div>
+              </div>
+
+              <Separator />
+
+              {/* Archive Status */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold">Status</h3>
+                {tenant.is_active === false ? (
+                  <div className="rounded-md border border-muted p-3 space-y-2">
+                    <p className="text-sm text-muted-foreground">
+                      This tenant is archived. It will not appear in active dropdowns or be selectable for new operations. Historical data is preserved.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => toggleArchive.mutate(true)}
+                      disabled={toggleArchive.isPending}
+                    >
+                      {toggleArchive.isPending ? 'Restoring...' : 'Restore Tenant'}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="rounded-md border border-muted p-3 space-y-2">
+                    <p className="text-sm text-muted-foreground">
+                      Archiving removes this tenant from active dropdowns and selections. Historical data (referrals, providers) is preserved as read-only.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => toggleArchive.mutate(false)}
+                      disabled={toggleArchive.isPending}
+                    >
+                      {toggleArchive.isPending ? 'Archiving...' : 'Archive Tenant'}
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           </ScrollArea>

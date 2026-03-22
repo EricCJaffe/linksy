@@ -37,6 +37,7 @@ export function ContactManagementDialog({
     full_name: '',
     job_title: '',
     phone: '',
+    phone_extension: '',
     contact_type: 'provider_employee' as string,
     provider_role: 'user' as ProviderContactRole,
     is_primary_contact: false,
@@ -52,6 +53,7 @@ export function ContactManagementDialog({
         full_name: contact.user?.full_name || '',
         job_title: contact.job_title || '',
         phone: contact.phone || '',
+        phone_extension: contact.phone_extension || '',
         contact_type: contact.contact_type || 'provider_employee',
         provider_role: contact.provider_role,
         is_primary_contact: contact.is_primary_contact,
@@ -63,6 +65,7 @@ export function ContactManagementDialog({
         full_name: '',
         job_title: '',
         phone: '',
+        phone_extension: '',
         contact_type: 'provider_employee',
         provider_role: 'user',
         is_primary_contact: false,
@@ -164,12 +167,23 @@ export function ContactManagementDialog({
 
             <div className="space-y-2">
               <Label htmlFor="phone">Phone</Label>
-              <Input
-                id="phone"
-                type="tel"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              />
+              <div className="grid grid-cols-3 gap-2">
+                <div className="col-span-2">
+                  <Input
+                    id="phone"
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  />
+                </div>
+                <Input
+                  id="phone_extension"
+                  placeholder="ext."
+                  value={formData.phone_extension}
+                  onChange={(e) => setFormData({ ...formData, phone_extension: e.target.value })}
+                  maxLength={20}
+                />
+              </div>
             </div>
 
             <div className="space-y-2">

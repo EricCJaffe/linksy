@@ -15,6 +15,10 @@
     "app/api/**/*.ts": {
       "memory": 1024,
       "maxDuration": 10
+    },
+    "app/api/cron/**/*.ts": {
+      "memory": 1024,
+      "maxDuration": 300
     }
   },
   "headers": [
@@ -51,5 +55,18 @@
       "destination": "/api/:path*"
     }
   ],
-  "crons": []
+  "crons": [
+    {
+      "path": "/api/cron/description-review",
+      "schedule": "0 8 1 1,4,7,10 *"
+    },
+    {
+      "path": "/api/cron/stale-referral-alerts",
+      "schedule": "0 13 * * *"
+    },
+    {
+      "path": "/api/cron/sla-reminders",
+      "schedule": "0 14 * * *"
+    }
+  ]
 }

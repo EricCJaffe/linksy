@@ -14,6 +14,7 @@ const validStatuses: TicketStatus[] = [
   'unable_to_assist',
   'client_unresponsive',
   'transferred_another_provider',
+  'transferred_pending',
 ]
 
 /**

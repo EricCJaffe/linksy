@@ -37,6 +37,7 @@ export async function PATCH(
   }
   if ('name' in body) updates.name = body.name || null
   if ('phone' in body) updates.phone = body.phone || null
+  if ('phone_extension' in body) updates.phone_extension = body.phone_extension || null
   if ('is_primary' in body) updates.is_primary = body.is_primary
 
   // If any address field changed, re-geocode

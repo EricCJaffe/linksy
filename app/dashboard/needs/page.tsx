@@ -22,6 +22,7 @@ import {
   ArrowUp,
   ArrowDown,
   Download,
+  FileText,
 } from 'lucide-react'
 import type { NeedCategory, Need } from '@/lib/types/linksy'
 
@@ -174,6 +175,14 @@ export default function NeedsPage() {
           >
             <Download className="mr-2 h-4 w-4" />
             Export CSV
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => window.open('/api/admin/export/services/pdf', '_blank')}
+          >
+            <FileText className="mr-2 h-4 w-4" />
+            Export PDF
           </Button>
           <Button variant="outline" onClick={openAddCategory}>
             <Plus className="mr-2 h-4 w-4" />

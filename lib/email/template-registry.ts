@@ -7,6 +7,9 @@ export const EMAIL_TEMPLATE_KEYS = [
   'ticket_forwarded_to_admin',
   'ticket_reassigned_to_provider',
   'ticket_assigned_internally',
+  'description_review',
+  'stale_referral_alert',
+  'sla_reminder',
 ] as const
 
 export type EmailTemplateKey = (typeof EMAIL_TEMPLATE_KEYS)[number]
@@ -28,7 +31,7 @@ export const EMAIL_TEMPLATE_DEFINITIONS: EmailTemplateDefinition[] = [
   {
     key: 'ticket_new_assignment',
     name: 'New Referral Assigned',
-    description: 'Sent to default referral handler when a new referral ticket is assigned.',
+    description: 'Sent to default referral handler when a new referral is assigned.',
     placeholders: [
       'app_name',
       'to',
@@ -44,7 +47,7 @@ export const EMAIL_TEMPLATE_DEFINITIONS: EmailTemplateDefinition[] = [
   {
     key: 'ticket_status_update',
     name: 'Referral Status Update',
-    description: 'Sent to the client when a referral ticket status changes.',
+    description: 'Sent to the client when a referral status changes.',
     placeholders: [
       'app_name',
       'to',
@@ -85,8 +88,8 @@ export const EMAIL_TEMPLATE_DEFINITIONS: EmailTemplateDefinition[] = [
   },
   {
     key: 'ticket_forwarded_to_admin',
-    name: 'Ticket Forwarded to Admin Pool',
-    description: 'Sent to site admins when a provider forwards a ticket to the admin pool.',
+    name: 'Referral Transferred to Admin Pool',
+    description: 'Sent to site admins when a provider transfers a referral to the admin pool.',
     placeholders: [
       'app_name',
       'ticket_number',
@@ -98,8 +101,8 @@ export const EMAIL_TEMPLATE_DEFINITIONS: EmailTemplateDefinition[] = [
   },
   {
     key: 'ticket_reassigned_to_provider',
-    name: 'Ticket Reassigned to Provider',
-    description: 'Sent to the assignee when a ticket is reassigned to a provider.',
+    name: 'Referral Reassigned to Provider',
+    description: 'Sent to the assignee when a referral is reassigned to a provider.',
     placeholders: [
       'app_name',
       'assignee_name',
@@ -114,8 +117,8 @@ export const EMAIL_TEMPLATE_DEFINITIONS: EmailTemplateDefinition[] = [
   },
   {
     key: 'ticket_assigned_internally',
-    name: 'Ticket Assigned Internally',
-    description: 'Sent to the assignee when a ticket is assigned internally within the same provider.',
+    name: 'Referral Assigned Internally',
+    description: 'Sent to the assignee when a referral is assigned internally within the same provider.',
     placeholders: [
       'app_name',
       'assignee_name',
@@ -125,6 +128,53 @@ export const EMAIL_TEMPLATE_DEFINITIONS: EmailTemplateDefinition[] = [
       'assigner_name',
       'notes',
       'client_name',
+    ],
+  },
+  {
+    key: 'description_review',
+    name: 'Provider Description Review',
+    description: 'Sent quarterly to providers asking them to review their description against AI-scanned website content.',
+    placeholders: [
+      'app_name',
+      'contact_name',
+      'provider_name',
+      'current_description',
+      'ai_suggested_description',
+      'accept_current_url',
+      'accept_ai_url',
+      'edit_url',
+      'support_email',
+    ],
+  },
+  {
+    key: 'stale_referral_alert',
+    name: 'Stale Referral Alert',
+    description: 'Sent daily to designated recipients when referrals stay Pending longer than the configured threshold.',
+    placeholders: [
+      'app_name',
+      'total_count',
+      'threshold_hours',
+      'threshold_days',
+      'age_breakdown',
+      'ticket_table',
+      'dashboard_url',
+    ],
+  },
+  {
+    key: 'sla_reminder',
+    name: 'SLA Reminder',
+    description: 'Sent to the provider\'s default referral handler when a referral has been pending past the provider\'s SLA reminder threshold.',
+    placeholders: [
+      'app_name',
+      'contact_name',
+      'provider_name',
+      'ticket_number',
+      'client_name',
+      'need_name',
+      'hours_pending',
+      'days_pending',
+      'sla_hours',
+      'ticket_url',
     ],
   },
 ]
