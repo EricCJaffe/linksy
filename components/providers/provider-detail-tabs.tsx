@@ -893,6 +893,23 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
   const [freezeReason, setFreezeReason] = useState('')
   const [freezeReturnDate, setFreezeReturnDate] = useState('')
   const [isFreezing, setIsFreezing] = useState(false)
+  const [pendingReferralCount, setPendingReferralCount] = useState<number | null>(null)
+  const [isCheckingReferrals, setIsCheckingReferrals] = useState(false)
+
+  const openFreezeDialog = async () => {
+    setFreezeDialogOpen(true)
+    setIsCheckingReferrals(true)
+    setPendingReferralCount(null)
+    try {
+      const res = await fetch(`/api/providers/${provider.id}/freeze?check=pending`)
+      if (res.ok) {
+        const data = await res.json()
+        setPendingReferralCount(data.pending_count ?? 0)
+      }
+    } catch { /* silent */ } finally {
+      setIsCheckingReferrals(false)
+    }
+  }
 
   const handleFreeze = async () => {
     if (!freezeReason) return
@@ -967,7 +984,7 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
             !isEditing ? (
               <div className="flex gap-2">
                 {!provider.is_frozen && (
-                  <Button variant="outline" size="sm" onClick={() => setFreezeDialogOpen(true)}>
+                  <Button variant="outline" size="sm" onClick={openFreezeDialog}>
                     Freeze
                   </Button>
                 )}
@@ -1881,8 +1898,27 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
           <div className="bg-background rounded-lg shadow-lg p-6 w-full max-w-md space-y-4">
             <h3 className="text-lg font-semibold">Freeze Provider</h3>
             <p className="text-sm text-muted-foreground">
-              Frozen providers will not receive new referrals.
+              Frozen providers will not appear in search results or receive new referrals.
             </p>
+
+            {/* Pending referral warning */}
+            {isCheckingReferrals && (
+              <div className="rounded-md border border-muted bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
+                Checking for pending referrals...
+              </div>
+            )}
+            {!isCheckingReferrals && pendingReferralCount !== null && pendingReferralCount > 0 && (
+              <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 space-y-1">
+                <p className="text-sm font-medium text-amber-800">
+                  {pendingReferralCount} pending referral{pendingReferralCount !== 1 ? 's' : ''} must be cleared first
+                </p>
+                <p className="text-xs text-amber-700">
+                  Please resolve or transfer all pending referrals before freezing your account.
+                  You can manage them in the Referrals tab.
+                </p>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label>Reason *</Label>
               <Select value={freezeReason} onValueChange={setFreezeReason}>
@@ -1890,7 +1926,9 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
                   <SelectValue placeholder="Select reason..." />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="Vacation / time off">Vacation / time off</SelectItem>
                   <SelectItem value="Capacity full">Capacity full</SelectItem>
+                  <SelectItem value="Waiting for funding">Waiting for funding</SelectItem>
                   <SelectItem value="Seasonal closure">Seasonal closure</SelectItem>
                   <SelectItem value="Staff shortage">Staff shortage</SelectItem>
                   <SelectItem value="Under review">Under review</SelectItem>
@@ -1908,8 +1946,11 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
               />
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setFreezeDialogOpen(false)}>Cancel</Button>
-              <Button onClick={handleFreeze} disabled={!freezeReason || isFreezing}>
+              <Button variant="outline" onClick={() => { setFreezeDialogOpen(false); setFreezeReason(''); setFreezeReturnDate(''); setPendingReferralCount(null) }}>Cancel</Button>
+              <Button
+                onClick={handleFreeze}
+                disabled={!freezeReason || isFreezing || (!isCheckingReferrals && pendingReferralCount !== null && pendingReferralCount > 0)}
+              >
                 {isFreezing ? 'Freezing...' : 'Freeze Provider'}
               </Button>
             </div>

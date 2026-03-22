@@ -234,6 +234,7 @@ export async function POST(request: Request) {
       .from('linksy_providers')
       .select(providerSelect)
       .eq('provider_status', 'active')
+      .eq('is_frozen', false)
       .in('provider_needs.need_id', needIds)
       .limit(10)
 
