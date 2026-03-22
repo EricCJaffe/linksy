@@ -318,6 +318,28 @@ Items that need hands-on testing in a live or staging environment:
 - [ ] **Webhook event coverage** — Verify `ticket.assigned`, `ticket.forwarded`, `ticket.reassigned` fire correctly
 - [ ] **Referral workflow e2e (email leg)** — Outbound email content/delivery verification (needs mailbox capture strategy: MailHog/test inbox)
 
+#### SQL Scripts — Verify / Run in Supabase
+
+Root-level diagnostic/fix scripts (run manually in Supabase SQL Editor as needed):
+
+- [ ] `CHECK_CONTACT_STATUS.sql` — Verify contact status for specific user (diagnostic, read-only)
+- [ ] `FIX_CONTACT_ACCESS.sql` — Fix provider access for specific user (updates contact status/role)
+- [ ] `TROUBLESHOOTING.sql` — Full troubleshooting workflow: contact status check, trigger fix (`link_invited_user_trigger`), manual activation, access function test
+
+Data backfill scripts (run once, safe to re-run):
+
+- [ ] `scripts/backfill-provider-tenants.sql` — Assign all providers to Impact Clay tenant + backfill `tenant_users` from active contacts
+- [ ] `scripts/check-referral-assignments.sql` — Audit default referral handlers and assignment integrity (diagnostic, read-only)
+
+Recent migrations to verify applied (check `supabase_migrations.schema_migrations` table):
+
+- [ ] `20260321000001_add_phone_extension_to_locations_contacts.sql`
+- [ ] `20260321000002_create_description_reviews.sql`
+- [ ] `20260321000003_call_log_timer_fields.sql`
+- [ ] `20260321000004_create_referral_alert_config.sql`
+- [ ] `20260322000001_seed_help_docs.sql`
+- [ ] `20260322000001_add_case_d_duplicate_flag.sql`
+
 ---
 
 ## Backlog (Future)
