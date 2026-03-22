@@ -267,13 +267,19 @@ export async function POST(request: Request) {
 
   let ticketNumber = body.ticket_number
   if (!ticketNumber) {
-    const { count } = await supabase
-      .from('linksy_tickets')
-      .select('*', { count: 'exact', head: true })
+    // Generate ticket number atomically via PostgreSQL sequence (prevents race conditions)
+    const { data: seqResult, error: seqError } = await supabase.rpc(
+      'linksy_next_ticket_number' as any
+    )
 
-    const sequenceNumber = 2000 + (count || 0) + 1
-    const suffix = String(Math.floor(Math.random() * 100)).padStart(2, '0')
-    ticketNumber = `R-${sequenceNumber}-${suffix}`
+    if (seqError || seqResult == null) {
+      console.warn('Ticket sequence unavailable, using timestamp fallback:', seqError?.message)
+      const fallbackSeq = Date.now() % 1000000
+      const suffix = String(Math.floor(Math.random() * 100)).padStart(2, '0')
+      ticketNumber = `R-${fallbackSeq}-${suffix}`
+    } else {
+      ticketNumber = seqResult as string
+    }
   }
 
   const { data: ticket, error: insertError } = await supabase

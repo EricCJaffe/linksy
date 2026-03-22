@@ -266,7 +266,10 @@ function ColorPicker({ editor }: { editor: Editor }) {
       <button
         type="button"
         title="Text Color"
-        onClick={() => setOpen((prev) => !prev)}
+        onMouseDown={(e) => {
+          e.preventDefault()
+          setOpen((prev) => !prev)
+        }}
         className="inline-flex h-7 w-7 items-center justify-center rounded text-sm transition-colors hover:bg-accent text-muted-foreground"
       >
         <Palette className="h-4 w-4" />
@@ -277,7 +280,8 @@ function ColorPicker({ editor }: { editor: Editor }) {
             <button
               key={color}
               type="button"
-              onClick={() => {
+              onMouseDown={(e) => {
+                e.preventDefault()
                 editor.chain().focus().setColor(color).run()
                 setOpen(false)
               }}
@@ -288,7 +292,8 @@ function ColorPicker({ editor }: { editor: Editor }) {
           ))}
           <button
             type="button"
-            onClick={() => {
+            onMouseDown={(e) => {
+              e.preventDefault()
               editor.chain().focus().unsetColor().run()
               setOpen(false)
             }}
