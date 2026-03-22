@@ -5,12 +5,14 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useTickets, useUpdateTicket } from '@/lib/hooks/useTickets'
 import { useProviders } from '@/lib/hooks/useProviders'
 import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
+import { useSupportTickets } from '@/lib/hooks/useSupportTickets'
 import { useDebounce } from '@/lib/hooks/useDebounce'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent } from '@/components/ui/card'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import {
   Select,
   SelectTrigger,
@@ -27,8 +29,9 @@ import {
   TableCell,
 } from '@/components/ui/table'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Globe, Search, Download, CheckSquare, CalendarDays, X, ArrowUpDown, Phone, MapPin } from 'lucide-react'
-import type { TicketFilters, TicketStatus } from '@/lib/types/linksy'
+import { Globe, Search, Download, CheckSquare, CalendarDays, X, ArrowUpDown, Phone, MapPin, LifeBuoy, AlertCircle, Ticket } from 'lucide-react'
+import { cn } from '@/lib/utils/cn'
+import type { TicketFilters, TicketStatus, SupportTicketStatus, SupportTicketPriority } from '@/lib/types/linksy'
 import { formatPhone } from '@/lib/utils/phone'
 
 type SortField = 'ticket_number' | 'client' | 'provider' | 'phone' | 'service' | 'status' | 'date'
@@ -68,6 +71,27 @@ function StatusBadge({ status }: { status: TicketStatus }) {
       {ticketStatusLabels[status] || status}
     </Badge>
   )
+}
+
+const supportStatusLabels: Record<SupportTicketStatus, string> = {
+  open: 'Open',
+  in_progress: 'In Progress',
+  resolved: 'Resolved',
+  closed: 'Closed',
+}
+
+const supportStatusColors: Record<SupportTicketStatus, string> = {
+  open: 'bg-blue-100 text-blue-800',
+  in_progress: 'bg-yellow-100 text-yellow-800',
+  resolved: 'bg-green-100 text-green-800',
+  closed: 'bg-gray-100 text-gray-800',
+}
+
+const supportPriorityColors: Record<SupportTicketPriority, string> = {
+  low: 'bg-gray-100 text-gray-700',
+  medium: 'bg-blue-100 text-blue-700',
+  high: 'bg-orange-100 text-orange-700',
+  urgent: 'bg-red-100 text-red-700',
 }
 
 export default function TicketsPage() {
@@ -126,6 +150,17 @@ export default function TicketsPage() {
       .catch(() => {})
   }, [])
   const isSiteAdmin = user?.profile?.role === 'site_admin'
+
+  // Support tickets data
+  const [supportStatusFilter, setSupportStatusFilter] = useState<string>('all')
+  const { data: supportData, isLoading: supportLoading } = useSupportTickets({
+    status: supportStatusFilter !== 'all' ? supportStatusFilter : undefined,
+    limit: 100,
+  })
+  const supportTickets = supportData?.tickets || []
+  const supportOpenCount = supportData?.tickets?.filter(t => t.status === 'open').length ?? 0
+  const supportInProgressCount = supportData?.tickets?.filter(t => t.status === 'in_progress').length ?? 0
+  const supportBadgeCount = supportOpenCount + supportInProgressCount
 
   // Calculate public referral stats
   useEffect(() => {
@@ -303,6 +338,30 @@ export default function TicketsPage() {
           </Button>
         )}
       </div>
+
+      <Tabs defaultValue="referrals" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="referrals" className="gap-2">
+            <Ticket className="h-4 w-4" />
+            Referrals
+          </TabsTrigger>
+          <TabsTrigger value="support" className="gap-2">
+            <LifeBuoy className="h-4 w-4" />
+            Support
+            {supportBadgeCount > 0 && (
+              <span className={cn(
+                'ml-1 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1.5 text-xs font-semibold',
+                supportOpenCount > 0
+                  ? 'bg-blue-100 text-blue-700'
+                  : 'bg-yellow-100 text-yellow-700'
+              )}>
+                {supportBadgeCount}
+              </span>
+            )}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="referrals" className="space-y-6">
 
       {/* Stats Cards */}
       {publicReferralStats.total > 0 && (
@@ -664,6 +723,152 @@ export default function TicketsPage() {
           )}
         </div>
       )}
+
+        </TabsContent>
+
+        <TabsContent value="support" className="space-y-6">
+          {/* Support Stats Cards */}
+          <div className="grid gap-4 md:grid-cols-3">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Open</p>
+                    <p className="text-2xl font-bold">{supportOpenCount}</p>
+                  </div>
+                  <AlertCircle className="h-8 w-8 text-blue-500" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">In Progress</p>
+                    <p className="text-2xl font-bold">{supportInProgressCount}</p>
+                  </div>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-100">
+                    <span className="text-sm font-bold text-yellow-700">{supportInProgressCount}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Total</p>
+                    <p className="text-2xl font-bold">{supportTickets.length}</p>
+                  </div>
+                  <LifeBuoy className="h-8 w-8 text-muted-foreground" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Support Filters */}
+          <div className="flex items-center gap-3">
+            <Select value={supportStatusFilter} onValueChange={setSupportStatusFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                {(Object.keys(supportStatusLabels) as SupportTicketStatus[]).map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {supportStatusLabels[s]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {isSiteAdmin && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => router.push('/dashboard/admin/support')}
+              >
+                Manage Support Tickets
+              </Button>
+            )}
+          </div>
+
+          {/* Support Tickets Table */}
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Ticket #</TableHead>
+                  <TableHead>Subject</TableHead>
+                  <TableHead>Provider</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Priority</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Created</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {supportLoading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-48" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : supportTickets.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                      No support tickets found.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  supportTickets.map((ticket) => (
+                    <TableRow
+                      key={ticket.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => router.push(
+                        isSiteAdmin
+                          ? `/dashboard/admin/support/${ticket.id}`
+                          : `/dashboard/support/${ticket.id}`
+                      )}
+                    >
+                      <TableCell className="font-medium font-mono text-sm">
+                        {ticket.ticket_number}
+                      </TableCell>
+                      <TableCell className="max-w-md truncate">
+                        {ticket.subject}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {ticket.provider?.name || ticket.submitter_name || '-'}
+                      </TableCell>
+                      <TableCell className="capitalize text-muted-foreground">
+                        {ticket.category?.replace('_', ' ') || '-'}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={supportPriorityColors[ticket.priority]}>
+                          {ticket.priority}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={supportStatusColors[ticket.status]}>
+                          {supportStatusLabels[ticket.status]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {new Date(ticket.created_at).toLocaleDateString()}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }
