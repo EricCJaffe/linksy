@@ -10,12 +10,14 @@ export async function PATCH(
   if (error) return error
 
   const body = await request.json()
-  const { name, subject, body_html, is_active } = body
+  const { name, subject_template, html_template, text_template, description, is_active } = body
 
   const updateData: Record<string, unknown> = {}
   if (name !== undefined) updateData.name = name
-  if (subject !== undefined) updateData.subject = subject
-  if (body_html !== undefined) updateData.body_html = body_html
+  if (subject_template !== undefined) updateData.subject_template = subject_template
+  if (html_template !== undefined) updateData.html_template = html_template
+  if (text_template !== undefined) updateData.text_template = text_template
+  if (description !== undefined) updateData.description = description
   if (is_active !== undefined) updateData.is_active = is_active
 
   if (Object.keys(updateData).length === 0) {
@@ -46,13 +48,13 @@ export async function DELETE(
 
   const supabase = await createServiceClient()
 
-  // Support deletion by ID (UUID) or by slug
+  // Support deletion by ID (UUID) or by template_key
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(params.key)
 
   const query = supabase.from('linksy_email_templates').delete()
   const { error: deleteError } = isUuid
     ? await query.eq('id', params.key)
-    : await query.eq('slug', params.key)
+    : await query.eq('template_key', params.key)
 
   if (deleteError) {
     return NextResponse.json({ error: deleteError.message }, { status: 500 })

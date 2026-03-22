@@ -573,12 +573,14 @@ export interface DescriptionReview {
 // Email templates
 export interface EmailTemplate {
   id: string
-  slug: string
+  template_key: string
   name: string
-  subject: string
-  body_html: string
-  variables: string[]
+  description: string | null
+  subject_template: string
+  html_template: string
+  text_template: string | null
   is_active: boolean
+  updated_by: string | null
   created_at: string
   updated_at: string
 }

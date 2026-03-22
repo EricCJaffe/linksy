@@ -28,8 +28,8 @@ interface InvitationEmailData {
 }
 
 interface EmailTemplateOverride {
-  subject: string
-  body_html: string
+  subject_template: string
+  html_template: string
   is_active: boolean
 }
 
@@ -80,8 +80,8 @@ async function getEmailTemplateOverride(
     const supabase = await createServiceClient()
     const { data, error } = await supabase
       .from('linksy_email_templates')
-      .select('subject, body_html, is_active')
-      .eq('slug', templateKey)
+      .select('subject_template, html_template, is_active')
+      .eq('template_key', templateKey)
       .eq('is_active', true)
       .maybeSingle()
 
@@ -129,8 +129,8 @@ async function resolveEmailTemplate({
 
   // Fall back to system template override
   const override = await getEmailTemplateOverride(templateKey)
-  const subjectTemplate = override?.subject || defaultSubject
-  const htmlTemplate = override?.body_html || defaultHtml
+  const subjectTemplate = override?.subject_template || defaultSubject
+  const htmlTemplate = override?.html_template || defaultHtml
 
   const subject = renderTemplate(subjectTemplate, variables)
   const html = renderTemplate(htmlTemplate, variables)
