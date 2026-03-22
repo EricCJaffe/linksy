@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { AlertCircle, TrendingUp, Users, BarChart3, History, Search, Phone, Globe, AlertTriangle, Navigation, MapPin, Clock, GitMerge, PieChart as PieChartIcon, ArrowRight, FileText, ChevronDown, ChevronUp, Calendar } from 'lucide-react'
+import { AlertCircle, TrendingUp, Users, BarChart3, History, Search, Phone, Globe, AlertTriangle, Navigation, MapPin, Clock, GitMerge, PieChart as PieChartIcon, ArrowRight, FileText, ChevronDown, ChevronUp, Calendar, Download, Map } from 'lucide-react'
 import {
   MonthlyTrendsChart as RechartsMonthlyChart,
   CategoryBreakdownChart,
@@ -125,6 +125,47 @@ interface StatusByProviderData {
   totalTickets: number
 }
 
+interface ServiceGapCategory {
+  categoryId: string
+  categoryName: string
+  providerCount: number
+  providers: string[]
+  hasGap: boolean
+}
+
+interface ServiceGapZipEntry {
+  zipCode: string
+  categories: ServiceGapCategory[]
+  gapCount: number
+  totalCategories: number
+}
+
+interface ServiceGapCategoryEntry {
+  categoryId: string
+  categoryName: string
+  zipCodes: {
+    zipCode: string
+    providerCount: number
+    providers: string[]
+    hasGap: boolean
+  }[]
+  gapCount: number
+  totalZipCodes: number
+}
+
+interface ServiceGapsData {
+  zipCodes: string[]
+  categories: { id: string; name: string }[]
+  byZipCode: ServiceGapZipEntry[]
+  byCategory: ServiceGapCategoryEntry[]
+  summary: {
+    totalZipCodes: number
+    totalCategories: number
+    totalGaps: number
+    totalCells: number
+  }
+}
+
 const statusLabels: Record<string, string> = {
   pending: 'Pending',
   in_process: 'In Process',
@@ -216,8 +257,48 @@ const INTERACTION_LABELS: Record<string, { label: string; icon: React.ReactNode 
   profile_view: { label: 'Profile Views', icon: <Search className="h-3 w-3" /> },
 }
 
+function downloadServiceGapsCsv(data: ServiceGapsData, view: 'by-zip' | 'by-category') {
+  let csv = ''
+
+  if (view === 'by-zip') {
+    // Header: Zip Code, Gaps, Category1, Category2, ...
+    csv += ['Zip Code', 'Gaps', ...data.categories.map((c) => `"${c.name}"`)].join(',') + '\n'
+    for (const row of data.byZipCode) {
+      const cells = [
+        row.zipCode,
+        row.gapCount.toString(),
+        ...row.categories.map((c) =>
+          c.hasGap ? '0 (GAP)' : `${c.providerCount}`
+        ),
+      ]
+      csv += cells.join(',') + '\n'
+    }
+  } else {
+    // Header: Category, Gaps, Zip1, Zip2, ...
+    csv += ['Category', 'Gaps', ...data.zipCodes].join(',') + '\n'
+    for (const row of data.byCategory) {
+      const cells = [
+        `"${row.categoryName}"`,
+        row.gapCount.toString(),
+        ...row.zipCodes.map((z) =>
+          z.hasGap ? '0 (GAP)' : `${z.providerCount}`
+        ),
+      ]
+      csv += cells.join(',') + '\n'
+    }
+  }
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `service-gaps-${view}-${new Date().toISOString().slice(0, 10)}.csv`
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
 export default function ReportsPage() {
-  const [activeTab, setActiveTab] = useState<'referrals' | 'search' | 'charts' | 'reassignments' | 'admin-reports'>('referrals')
+  const [activeTab, setActiveTab] = useState<'referrals' | 'search' | 'charts' | 'reassignments' | 'admin-reports' | 'service-gaps'>('referrals')
   const [expandedProvider, setExpandedProvider] = useState<string | null>(null)
   const [data, setData] = useState<ReportsData | null>(null)
   const [searchData, setSearchData] = useState<SearchAnalyticsData | null>(null)
@@ -227,6 +308,11 @@ export default function ReportsPage() {
   const [error, setError] = useState<string | null>(null)
   const [includeLegacy, setIncludeLegacy] = useState(true)
   const [includeTest, setIncludeTest] = useState(false)
+
+  // Service gaps state
+  const [serviceGapsData, setServiceGapsData] = useState<ServiceGapsData | null>(null)
+  const [serviceGapsLoading, setServiceGapsLoading] = useState(false)
+  const [serviceGapsView, setServiceGapsView] = useState<'by-zip' | 'by-category'>('by-zip')
 
   // Admin reports state
   const [repeatClientsData, setRepeatClientsData] = useState<RepeatClientsData | null>(null)
@@ -328,6 +414,23 @@ export default function ReportsPage() {
     }
     fetchAdminReports()
   }, [activeTab, isSiteAdmin, adminDateFrom, adminDateTo, adminIncludeTest])
+
+  useEffect(() => {
+    const fetchServiceGaps = async () => {
+      if (!isSiteAdmin || activeTab !== 'service-gaps') return
+      if (serviceGapsData) return // already loaded
+      setServiceGapsLoading(true)
+      try {
+        const res = await fetch('/api/reports?type=service-gaps')
+        if (res.ok) setServiceGapsData(await res.json())
+      } catch {
+        // non-fatal
+      } finally {
+        setServiceGapsLoading(false)
+      }
+    }
+    fetchServiceGaps()
+  }, [activeTab, isSiteAdmin, serviceGapsData])
 
   if (error && activeTab === 'referrals') {
     return (
@@ -452,6 +555,19 @@ export default function ReportsPage() {
           >
             <FileText className="h-4 w-4 inline mr-1.5" />
             Admin Reports
+          </button>
+        )}
+        {isSiteAdmin && (
+          <button
+            onClick={() => setActiveTab('service-gaps')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'service-gaps'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Map className="h-4 w-4 inline mr-1.5" />
+            Service Gaps
           </button>
         )}
       </div>
@@ -1687,6 +1803,212 @@ export default function ReportsPage() {
               )}
             </CardContent>
           </Card>
+        </div>
+      )}
+
+      {/* Service Gaps Tab */}
+      {activeTab === 'service-gaps' && isSiteAdmin && (
+        <div className="space-y-6">
+          {/* Summary cards */}
+          {serviceGapsLoading ? (
+            <div className="grid gap-4 md:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, i) => <Skeleton key={`gap-skel-${i}`} className="h-24" />)}
+            </div>
+          ) : serviceGapsData ? (
+            <>
+              <div className="grid gap-4 md:grid-cols-3">
+                <Card className="border-primary/20 bg-gradient-to-b from-primary/5 to-white">
+                  <CardContent className="pt-6">
+                    <p className="text-sm text-muted-foreground">Clay County Zip Codes</p>
+                    <p className="text-4xl font-bold mt-1">{serviceGapsData.summary.totalZipCodes}</p>
+                  </CardContent>
+                </Card>
+                <Card className="border-primary/20 bg-gradient-to-b from-primary/5 to-white">
+                  <CardContent className="pt-6">
+                    <p className="text-sm text-muted-foreground">Service Categories</p>
+                    <p className="text-4xl font-bold mt-1">{serviceGapsData.summary.totalCategories}</p>
+                  </CardContent>
+                </Card>
+                <Card className={serviceGapsData.summary.totalGaps > 0 ? 'border-orange-300 bg-gradient-to-b from-orange-50 to-white' : 'border-green-300 bg-gradient-to-b from-green-50 to-white'}>
+                  <CardContent className="pt-6">
+                    <p className="text-sm text-muted-foreground">Service Gaps Found</p>
+                    <p className={`text-4xl font-bold mt-1 ${serviceGapsData.summary.totalGaps > 0 ? 'text-orange-600' : 'text-green-600'}`}>
+                      {serviceGapsData.summary.totalGaps}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      of {serviceGapsData.summary.totalCells} zip/category combinations
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* View toggle and CSV export */}
+              <div className="flex items-center justify-between">
+                <div className="flex gap-2">
+                  <Button
+                    variant={serviceGapsView === 'by-zip' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setServiceGapsView('by-zip')}
+                  >
+                    <MapPin className="h-4 w-4 mr-1.5" />
+                    By Zip Code
+                  </Button>
+                  <Button
+                    variant={serviceGapsView === 'by-category' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setServiceGapsView('by-category')}
+                  >
+                    <BarChart3 className="h-4 w-4 mr-1.5" />
+                    By Category
+                  </Button>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => downloadServiceGapsCsv(serviceGapsData, serviceGapsView)}
+                >
+                  <Download className="h-4 w-4 mr-1.5" />
+                  Export CSV
+                </Button>
+              </div>
+
+              {/* By Zip Code View */}
+              {serviceGapsView === 'by-zip' && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <MapPin className="h-5 w-5" />
+                      Service Coverage by Zip Code
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      For each Clay County zip code, shows which service categories have providers and where gaps exist
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="sticky left-0 bg-background z-10 min-w-[100px]">Zip Code</TableHead>
+                            <TableHead className="text-center min-w-[80px]">Gaps</TableHead>
+                            {serviceGapsData.categories.map((cat) => (
+                              <TableHead key={cat.id} className="text-center min-w-[120px] text-xs">
+                                {cat.name}
+                              </TableHead>
+                            ))}
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {serviceGapsData.byZipCode.map((zipEntry) => (
+                            <TableRow key={zipEntry.zipCode}>
+                              <TableCell className="sticky left-0 bg-background z-10 font-medium">
+                                {zipEntry.zipCode}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {zipEntry.gapCount > 0 ? (
+                                  <Badge variant="destructive" className="text-xs">
+                                    {zipEntry.gapCount}
+                                  </Badge>
+                                ) : (
+                                  <Badge className="bg-green-100 text-green-800 text-xs">0</Badge>
+                                )}
+                              </TableCell>
+                              {zipEntry.categories.map((cat) => (
+                                <TableCell
+                                  key={cat.categoryId}
+                                  className={`text-center text-sm ${cat.hasGap ? 'bg-red-50' : ''}`}
+                                  title={cat.providers.length > 0 ? cat.providers.join(', ') : 'No providers'}
+                                >
+                                  {cat.hasGap ? (
+                                    <span className="text-red-500 font-semibold">--</span>
+                                  ) : (
+                                    <span className="text-green-700 font-medium">{cat.providerCount}</span>
+                                  )}
+                                </TableCell>
+                              ))}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-3">
+                      Numbers show provider count per zip/category. <span className="text-red-500 font-semibold">--</span> indicates a gap (no providers). Hover over a cell to see provider names.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* By Category View */}
+              {serviceGapsView === 'by-category' && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <BarChart3 className="h-5 w-5" />
+                      Service Coverage by Category
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      For each service category, shows which zip codes have providers and where gaps exist
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="sticky left-0 bg-background z-10 min-w-[200px]">Category</TableHead>
+                            <TableHead className="text-center min-w-[80px]">Gaps</TableHead>
+                            {serviceGapsData.zipCodes.map((zip) => (
+                              <TableHead key={zip} className="text-center min-w-[90px]">
+                                {zip}
+                              </TableHead>
+                            ))}
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {serviceGapsData.byCategory.map((catEntry) => (
+                            <TableRow key={catEntry.categoryId}>
+                              <TableCell className="sticky left-0 bg-background z-10 font-medium text-sm">
+                                {catEntry.categoryName}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {catEntry.gapCount > 0 ? (
+                                  <Badge variant="destructive" className="text-xs">
+                                    {catEntry.gapCount}
+                                  </Badge>
+                                ) : (
+                                  <Badge className="bg-green-100 text-green-800 text-xs">0</Badge>
+                                )}
+                              </TableCell>
+                              {catEntry.zipCodes.map((zipEntry) => (
+                                <TableCell
+                                  key={zipEntry.zipCode}
+                                  className={`text-center text-sm ${zipEntry.hasGap ? 'bg-red-50' : ''}`}
+                                  title={zipEntry.providers.length > 0 ? zipEntry.providers.join(', ') : 'No providers'}
+                                >
+                                  {zipEntry.hasGap ? (
+                                    <span className="text-red-500 font-semibold">--</span>
+                                  ) : (
+                                    <span className="text-green-700 font-medium">{zipEntry.providerCount}</span>
+                                  )}
+                                </TableCell>
+                              ))}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-3">
+                      Numbers show provider count per category/zip. <span className="text-red-500 font-semibold">--</span> indicates a gap (no providers). Hover over a cell to see provider names.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-8">
+              Unable to load service gap data
+            </p>
+          )}
         </div>
       )}
     </div>

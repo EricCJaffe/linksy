@@ -107,6 +107,13 @@ export async function GET(request: Request) {
       }
       return handleReassignmentsReport(supabase)
 
+    case 'service-gaps':
+      // Only site admins can see service gap analysis
+      if (!auth.isSiteAdmin) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
+      return handleServiceGapsReport(supabase)
+
     default:
       return NextResponse.json({ error: 'Invalid report type' }, { status: 400 })
   }
@@ -919,5 +926,149 @@ async function getTopProvidersByInteraction(supabase: any, sessionIds: string[])
       name: provider?.name || 'Unknown',
       count: providerCounts.get(id) || 0,
     }
+  })
+}
+
+// Clay County zip codes
+const CLAY_COUNTY_ZIP_CODES = ['32003', '32043', '32065', '32068', '32073', '32091', '32656', '32666']
+
+async function handleServiceGapsReport(supabase: any) {
+  // Get all active providers with their locations and needs/categories
+  const { data: providers, error: provErr } = await supabase
+    .from('linksy_providers')
+    .select(`
+      id,
+      name,
+      is_active,
+      locations:linksy_locations!provider_id(postal_code, is_active),
+      provider_needs:linksy_provider_needs!provider_id(
+        need:linksy_needs!need_id(
+          id,
+          name,
+          category:linksy_need_categories!category_id(id, name)
+        )
+      )
+    `)
+    .eq('is_active', true)
+
+  if (provErr) {
+    return NextResponse.json({ error: provErr.message }, { status: 500 })
+  }
+
+  // Get all active categories
+  const { data: allCategories, error: catErr } = await supabase
+    .from('linksy_need_categories')
+    .select('id, name')
+    .eq('is_active', true)
+    .order('sort_order', { ascending: true })
+
+  if (catErr) {
+    return NextResponse.json({ error: catErr.message }, { status: 500 })
+  }
+
+  // Build a map: zip code → set of category IDs that have providers
+  const zipCategoryMap = new Map<string, Map<string, string[]>>()
+  // Also build: category ID → set of zip codes that have providers
+  const categoryZipMap = new Map<string, Map<string, string[]>>()
+
+  // Initialize maps
+  for (const zip of CLAY_COUNTY_ZIP_CODES) {
+    zipCategoryMap.set(zip, new Map())
+  }
+  for (const cat of allCategories) {
+    categoryZipMap.set(cat.id, new Map())
+  }
+
+  // Populate maps from provider data
+  for (const provider of providers) {
+    // Get this provider's zip codes (only active locations in Clay County)
+    const providerZips = new Set<string>()
+    for (const loc of provider.locations || []) {
+      if (loc.is_active !== false && loc.postal_code && CLAY_COUNTY_ZIP_CODES.includes(loc.postal_code)) {
+        providerZips.add(loc.postal_code)
+      }
+    }
+
+    // Get this provider's categories
+    const providerCategories = new Set<string>()
+    for (const pn of provider.provider_needs || []) {
+      if (pn.need?.category?.id) {
+        providerCategories.add(pn.need.category.id)
+      }
+    }
+
+    // Cross-reference: each zip × each category for this provider
+    const zipsArr = Array.from(providerZips)
+    const catsArr = Array.from(providerCategories)
+
+    for (const zip of zipsArr) {
+      const zipMap = zipCategoryMap.get(zip)
+      if (zipMap) {
+        for (const catId of catsArr) {
+          if (!zipMap.has(catId)) {
+            zipMap.set(catId, [])
+          }
+          zipMap.get(catId)!.push(provider.name)
+        }
+      }
+    }
+
+    for (const catId of catsArr) {
+      const catMap = categoryZipMap.get(catId)
+      if (catMap) {
+        for (const zip of zipsArr) {
+          if (!catMap.has(zip)) {
+            catMap.set(zip, [])
+          }
+          catMap.get(zip)!.push(provider.name)
+        }
+      }
+    }
+  }
+
+  // Build report: by zip code
+  const byZipCode = CLAY_COUNTY_ZIP_CODES.map((zip) => {
+    const zipMap = zipCategoryMap.get(zip)!
+    const categories = allCategories.map((cat: any) => {
+      const providerNames = zipMap.get(cat.id) || []
+      return {
+        categoryId: cat.id,
+        categoryName: cat.name,
+        providerCount: providerNames.length,
+        providers: providerNames,
+        hasGap: providerNames.length === 0,
+      }
+    })
+    const gapCount = categories.filter((c: any) => c.hasGap).length
+    return { zipCode: zip, categories, gapCount, totalCategories: allCategories.length }
+  })
+
+  // Build report: by category
+  const byCategory = allCategories.map((cat: any) => {
+    const catMap = categoryZipMap.get(cat.id)!
+    const zipCodes = CLAY_COUNTY_ZIP_CODES.map((zip) => {
+      const providerNames = catMap.get(zip) || []
+      return {
+        zipCode: zip,
+        providerCount: providerNames.length,
+        providers: providerNames,
+        hasGap: providerNames.length === 0,
+      }
+    })
+    const gapCount = zipCodes.filter((z: any) => z.hasGap).length
+    return { categoryId: cat.id, categoryName: cat.name, zipCodes, gapCount, totalZipCodes: CLAY_COUNTY_ZIP_CODES.length }
+  })
+
+  return NextResponse.json({
+    zipCodes: CLAY_COUNTY_ZIP_CODES,
+    categories: allCategories.map((c: any) => ({ id: c.id, name: c.name })),
+    byZipCode,
+    byCategory,
+    summary: {
+      totalZipCodes: CLAY_COUNTY_ZIP_CODES.length,
+      totalCategories: allCategories.length,
+      totalGaps: byZipCode.reduce((sum: number, z: any) => sum + z.gapCount, 0),
+      totalCells: CLAY_COUNTY_ZIP_CODES.length * allCategories.length,
+    },
   })
 }
