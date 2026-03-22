@@ -9,6 +9,7 @@ export const EMAIL_TEMPLATE_KEYS = [
   'ticket_assigned_internally',
   'description_review',
   'stale_referral_alert',
+  'sla_reminder',
 ] as const
 
 export type EmailTemplateKey = (typeof EMAIL_TEMPLATE_KEYS)[number]
@@ -157,6 +158,23 @@ export const EMAIL_TEMPLATE_DEFINITIONS: EmailTemplateDefinition[] = [
       'age_breakdown',
       'ticket_table',
       'dashboard_url',
+    ],
+  },
+  {
+    key: 'sla_reminder',
+    name: 'SLA Reminder',
+    description: 'Sent to the provider\'s default referral handler when a referral has been pending past the provider\'s SLA reminder threshold.',
+    placeholders: [
+      'app_name',
+      'contact_name',
+      'provider_name',
+      'ticket_number',
+      'client_name',
+      'need_name',
+      'hours_pending',
+      'days_pending',
+      'sla_hours',
+      'ticket_url',
     ],
   },
 ]

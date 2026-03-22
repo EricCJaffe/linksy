@@ -47,6 +47,7 @@ import { CallLogDisplay } from '@/components/providers/call-log-display'
 import { ParentChildManager } from '@/components/providers/parent-child-manager'
 import { ParentOrgDashboard } from '@/components/providers/parent-org-dashboard'
 import { DescriptionReviewCard } from '@/components/providers/description-review-card'
+import { SlaSettingsCard } from '@/components/providers/sla-settings-card'
 import { useProviderChildren } from '@/lib/hooks/useProviderHierarchy'
 import { ImageUpload } from '@/components/ui/image-upload'
 import { WidgetPreview } from '@/components/widget/widget-preview'
@@ -1712,6 +1713,13 @@ function SummaryTab({ provider }: { provider: ProviderDetail }) {
           )}
         </CardContent>
       </Card>
+
+      <SlaSettingsCard
+        providerId={provider.id}
+        slaHours={(provider as any).sla_hours ?? 24}
+        slaReminderHours={(provider as any).sla_reminder_hours ?? 48}
+        canEdit={canEdit}
+      />
 
       <Card>
         <CardHeader>

@@ -25,6 +25,7 @@ export async function GET() {
     threshold_hours: 48,
     notify_emails: [],
     notify_site_admins: true,
+    sla_reminder_enabled: false,
   })
 }
 
@@ -56,6 +57,7 @@ export async function PUT(request: Request) {
         threshold_hours: thresholdHours,
         notify_emails: notifyEmails,
         notify_site_admins: body.notify_site_admins !== false,
+        sla_reminder_enabled: body.sla_reminder_enabled === true,
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'site_id' }

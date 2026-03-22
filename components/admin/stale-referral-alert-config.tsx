@@ -14,13 +14,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Bell, Mail, Save, X, Plus, Loader2 } from 'lucide-react'
+import { Bell, Clock, Mail, Save, X, Plus, Loader2 } from 'lucide-react'
 
 interface AlertConfig {
   is_enabled: boolean
   threshold_hours: number
   notify_emails: string[]
   notify_site_admins: boolean
+  sla_reminder_enabled: boolean
 }
 
 export function StaleReferralAlertConfig() {
@@ -29,6 +30,7 @@ export function StaleReferralAlertConfig() {
     threshold_hours: 48,
     notify_emails: [],
     notify_site_admins: true,
+    sla_reminder_enabled: false,
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -51,6 +53,7 @@ export function StaleReferralAlertConfig() {
           threshold_hours: data.threshold_hours ?? 48,
           notify_emails: data.notify_emails ?? [],
           notify_site_admins: data.notify_site_admins ?? true,
+          sla_reminder_enabled: data.sla_reminder_enabled ?? false,
         })
       }
     } catch (err) {
@@ -214,6 +217,31 @@ export function StaleReferralAlertConfig() {
         <p className="text-xs text-muted-foreground">
           Checked daily at 8:00 AM ET. Only sends when there are stale referrals.
         </p>
+
+        {/* SLA Reminder Master Switch */}
+        <div className="border-t pt-4 mt-4">
+          <div className="flex items-center justify-between rounded-md border p-3">
+            <div className="space-y-0.5">
+              <Label className="text-sm font-medium flex items-center gap-1.5">
+                <Clock className="h-3.5 w-3.5" />
+                SLA Reminder Emails
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Send per-provider SLA reminder emails to default referral handlers when referrals exceed the provider&apos;s configured reminder threshold. Each provider can set their own SLA and reminder times on their provider page.
+              </p>
+            </div>
+            <Switch
+              checked={config.sla_reminder_enabled}
+              onCheckedChange={(checked) => setConfig((prev) => ({ ...prev, sla_reminder_enabled: checked }))}
+            />
+          </div>
+          {config.sla_reminder_enabled && (
+            <p className="text-xs text-muted-foreground mt-2">
+              Runs daily at 9:00 AM ET. Sends one reminder per referral to the provider&apos;s default referral handler.
+              Providers default to 24-hour SLA / 48-hour reminder, configurable per provider.
+            </p>
+          )}
+        </div>
 
         {/* Save button */}
         <div className="flex items-center gap-2 pt-1">

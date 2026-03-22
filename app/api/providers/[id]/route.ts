@@ -243,6 +243,7 @@ export async function PATCH(
     'parent_account', 'parent_account_name', 'parent_provider_id',
     'is_host', 'host_embed_active', 'host_widget_config', 'host_monthly_token_budget',
     'service_zip_codes',
+    'sla_hours', 'sla_reminder_hours',
   ]
 
   let allowedFields: string[]

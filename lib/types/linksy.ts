@@ -129,6 +129,9 @@ export interface Provider {
   host_searches_this_month: number
   host_monthly_token_budget: number | null
   host_usage_reset_at: string | null
+  // SLA configuration
+  sla_hours: number
+  sla_reminder_hours: number
   // Description review
   next_description_review_at: string | null
   last_description_review_at: string | null
@@ -282,6 +285,7 @@ export interface Ticket {
   source: string | null
   search_session_id: string | null
   sla_due_at: string | null
+  sla_reminder_sent_at: string | null
   custom_data?: Record<string, any>
   // Assignment tracking
   assigned_to: string | null
