@@ -214,6 +214,32 @@ export async function POST(request: Request) {
     }
   }
 
+  // Daily referral cap: max 2 referrals per client per day
+  // Prevents clients from spamming providers with excessive referrals
+  if ((body.client_email || body.client_phone) && !isTest) {
+    const MAX_REFERRALS_PER_DAY = 2
+    const todayStart = new Date()
+    todayStart.setUTCHours(0, 0, 0, 0)
+    const todayISO = todayStart.toISOString()
+
+    const dailyOrConditions: string[] = []
+    if (body.client_email) dailyOrConditions.push(`client_email.eq.${body.client_email}`)
+    if (body.client_phone) dailyOrConditions.push(`client_phone.eq.${body.client_phone}`)
+
+    const { count: dailyCount } = await supabase
+      .from('linksy_tickets')
+      .select('id', { count: 'exact', head: true })
+      .gte('created_at', todayISO)
+      .or(dailyOrConditions.join(','))
+
+    if ((dailyCount ?? 0) >= MAX_REFERRALS_PER_DAY) {
+      return NextResponse.json({
+        error: 'Daily referral limit reached',
+        message: `This client has reached the maximum of ${MAX_REFERRALS_PER_DAY} referral requests per day. Please try again tomorrow.`,
+      }, { status: 429 })
+    }
+  }
+
   // Referral cap: max 4 active referrals per client (identified by email or phone)
   // Only count tickets that are still active (not closed/resolved)
   const MAX_REFERRALS_PER_CLIENT = 4

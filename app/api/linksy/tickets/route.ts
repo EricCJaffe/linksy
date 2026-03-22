@@ -156,6 +156,32 @@ export async function POST(request: Request) {
       }, { status: 429 })
     }
 
+    // Daily referral cap: max 2 referrals per client per day
+    // Prevents clients from spamming providers with excessive referrals
+    if (!isTestReferral(client_name) && (client_email || client_phone)) {
+      const MAX_REFERRALS_PER_DAY = 2
+      const todayStart = new Date()
+      todayStart.setUTCHours(0, 0, 0, 0)
+      const todayISO = todayStart.toISOString()
+
+      const dailyOrConditions: string[] = []
+      if (client_email) dailyOrConditions.push(`client_email.eq.${client_email}`)
+      if (client_phone) dailyOrConditions.push(`client_phone.eq.${client_phone}`)
+
+      const { count: dailyCount } = await supabase
+        .from('linksy_tickets')
+        .select('id', { count: 'exact', head: true })
+        .gte('created_at', todayISO)
+        .or(dailyOrConditions.join(','))
+
+      if ((dailyCount ?? 0) >= MAX_REFERRALS_PER_DAY) {
+        return NextResponse.json({
+          error: 'Daily referral limit reached',
+          message: `You can submit a maximum of ${MAX_REFERRALS_PER_DAY} referral requests per day. Please try again tomorrow.`,
+        }, { status: 429 })
+      }
+    }
+
     // Duplicate referral detection (TASK-029)
     // Test referrals bypass duplicate detection
     let duplicateFlagType: string | null = null
