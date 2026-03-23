@@ -41,7 +41,7 @@ Migration written: `20260303000002_rls_security_hardening.sql`. **Needs to be ap
 - [x] **MEDIUM: `linksy_call_logs` — Overly permissive.** Migration scopes to provider contacts. COMPLETED 2026-03-03 (migration pending apply)
 - [x] **MEDIUM: `linksy_custom_fields` — Unscoped.** Migration scopes to provider admin. COMPLETED 2026-03-03 (migration pending apply)
 - [x] **MEDIUM: `linksy_surveys` — Unrestricted UPDATE.** Migration restricts to admin only. COMPLETED 2026-03-03 (migration pending apply)
-- [ ] **LOW: `linksy_search_sessions` — Anon update has no row filter.** One session could modify another. **Add `id = session_id` filter.**
+- [x] **LOW: `linksy_search_sessions` — Anon update has no row filter.** COMPLETED 2026-03-07. Migration `20260307000004_search_session_token_rls.sql` adds `session_token` UUID column; anon UPDATE policy requires matching token via `current_setting('app.session_token')`. Stronger than simple id filter since token is a separate random UUID.
 
 #### 0.4 User Migration Strategy
 - [ ] **Design auth migration plan for existing users** — ~167+ users in Supabase with `user_id` set as `linksy_provider_contacts` but no passwords. Options:
