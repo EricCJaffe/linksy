@@ -6,6 +6,9 @@ ALTER TABLE linksy_call_logs
   ADD COLUMN IF NOT EXISTS ended_at timestamptz;
 
 -- Add a check: ended_at must be after started_at when both are present
+-- Drop first to make migration idempotent (safe to re-run)
+ALTER TABLE linksy_call_logs
+  DROP CONSTRAINT IF EXISTS call_log_time_order;
 ALTER TABLE linksy_call_logs
   ADD CONSTRAINT call_log_time_order
   CHECK (ended_at IS NULL OR started_at IS NULL OR ended_at >= started_at);
