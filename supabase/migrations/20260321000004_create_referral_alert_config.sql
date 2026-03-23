@@ -21,6 +21,9 @@ COMMENT ON COLUMN linksy_referral_alert_config.notify_site_admins IS 'When true,
 -- RLS: site admins can read/write
 ALTER TABLE linksy_referral_alert_config ENABLE ROW LEVEL SECURITY;
 
+-- Drop first to make migration idempotent
+DROP POLICY IF EXISTS "site_admins_manage_referral_alert_config" ON linksy_referral_alert_config;
+
 CREATE POLICY "site_admins_manage_referral_alert_config"
   ON linksy_referral_alert_config
   FOR ALL
