@@ -290,7 +290,7 @@ All 8 LOW findings resolved.
 #### Program Review — Wish List
 - [ ] Address label printing — Avery 8160 format, by zip/region/county/sector
 - [ ] Envelope printing — #10 envelope with IW return address
-- [ ] **[TASK-021] Admin preview of client-facing Provider listing** — Preview button on Provider screen
+- [x] **[TASK-021] Admin preview of client-facing Provider listing** — COMPLETED. "Public Preview" button (Eye icon) on provider detail page opens modal showing simulated chatbot card with status warnings for missing data.
 - [ ] Phone system VM-to-notes integration (Teams-style voicemail transcription)
 - [ ] Provider relationship tracking — Flag providers needing in-person contact vs. video
 - [ ] Provider satisfaction survey feature
