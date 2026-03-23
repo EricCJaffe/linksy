@@ -15,7 +15,7 @@ export default function EmailTemplatesPage() {
   const [templates, setTemplates] = useState<EmailTemplate[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [editForm, setEditForm] = useState({ name: '', subject: '', body_html: '', is_active: true })
+  const [editForm, setEditForm] = useState({ name: '', subject_template: '', html_template: '', is_active: true })
   const editorApiRef = useRef<RichTextEditorApi | null>(null)
 
   useEffect(() => {
@@ -41,8 +41,8 @@ export default function EmailTemplatesPage() {
     setEditingId(template.id)
     setEditForm({
       name: template.name,
-      subject: template.subject,
-      body_html: template.body_html,
+      subject_template: template.subject_template,
+      html_template: template.html_template,
       is_active: template.is_active,
     })
   }
@@ -57,7 +57,7 @@ export default function EmailTemplatesPage() {
     // Fallback if editor isn't ready yet.
     setEditForm((prev) => ({
       ...prev,
-      body_html: `${prev.body_html}${prev.body_html ? ' ' : ''}${token}`,
+      html_template: `${prev.html_template}${prev.html_template ? ' ' : ''}${token}`,
     }))
   }
 
@@ -99,7 +99,7 @@ export default function EmailTemplatesPage() {
                     <Mail className="h-5 w-5 text-muted-foreground" />
                     <div>
                       <CardTitle className="text-base">{template.name}</CardTitle>
-                      <p className="text-sm text-muted-foreground font-mono">{template.slug}</p>
+                      <p className="text-sm text-muted-foreground font-mono">{template.template_key}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -138,15 +138,15 @@ export default function EmailTemplatesPage() {
                     <div>
                       <Label>Subject Line</Label>
                       <Input
-                        value={editForm.subject}
-                        onChange={(e) => setEditForm({ ...editForm, subject: e.target.value })}
+                        value={editForm.subject_template}
+                        onChange={(e) => setEditForm({ ...editForm, subject_template: e.target.value })}
                       />
                     </div>
                     <div>
                       <Label>Email Body</Label>
                       <RichTextEditor
-                        value={editForm.body_html}
-                        onChange={(html) => setEditForm({ ...editForm, body_html: html })}
+                        value={editForm.html_template}
+                        onChange={(html) => setEditForm({ ...editForm, html_template: html })}
                         onReady={(api) => {
                           editorApiRef.current = editingId === template.id ? api : null
                         }}
@@ -159,37 +159,19 @@ export default function EmailTemplatesPage() {
                       />
                       <Label>Active</Label>
                     </div>
-                    <div>
-                      <Label className="text-muted-foreground">Available Variables</Label>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {(template.variables || []).map((v: string) => (
-                          <button
-                            key={v}
-                            type="button"
-                            onClick={() => insertVariable(v)}
-                            className="inline-flex items-center rounded-full border px-2.5 py-0.5 font-mono text-xs hover:bg-accent"
-                            title={`Insert {{${v}}}`}
-                          >
-                            {`{{${v}}}`}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
                   </div>
                 ) : (
                   <div className="space-y-2 text-sm">
                     <div>
                       <span className="text-muted-foreground">Subject: </span>
-                      <span>{template.subject}</span>
+                      <span>{template.subject_template}</span>
                     </div>
-                    <div>
-                      <span className="text-muted-foreground">Variables: </span>
-                      {(template.variables || []).map((v: string) => (
-                        <Badge key={v} variant="outline" className="font-mono text-xs mr-1">
-                          {v}
-                        </Badge>
-                      ))}
-                    </div>
+                    {template.description && (
+                      <div>
+                        <span className="text-muted-foreground">Description: </span>
+                        <span>{template.description}</span>
+                      </div>
+                    )}
                     <div className="text-xs text-muted-foreground">
                       Last updated: {new Date(template.updated_at).toLocaleString()}
                     </div>

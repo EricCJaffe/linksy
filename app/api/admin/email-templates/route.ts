@@ -24,16 +24,16 @@ export async function POST(request: Request) {
   if (error) return error
 
   const body = await request.json()
-  const { slug, name, subject, body_html, variables } = body
+  const { template_key, name, subject_template, html_template, text_template, description } = body
 
-  if (!slug || !name || !subject || !body_html) {
-    return NextResponse.json({ error: 'slug, name, subject, and body_html are required' }, { status: 400 })
+  if (!template_key || !name || !subject_template || !html_template) {
+    return NextResponse.json({ error: 'template_key, name, subject_template, and html_template are required' }, { status: 400 })
   }
 
   const supabase = await createServiceClient()
   const { data: template, error: insertError } = await supabase
     .from('linksy_email_templates')
-    .insert({ slug, name, subject, body_html, variables: variables || [] })
+    .insert({ template_key, name, description, subject_template, html_template, text_template })
     .select()
     .single()
 
