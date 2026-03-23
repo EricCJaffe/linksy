@@ -2,6 +2,15 @@
 
 ## Recent
 
+- Date: 2026-03-23
+- Summary: SQL migration consolidation + schema completions
+  - Created consolidated rollup migration (`20260323000001_rollup_recent_migrations.sql`) combining 4 individual scripts into one idempotent, transaction-wrapped file
+  - Fixed `duplicate_flag_type` column creation bug: case_d migration assumed column existed from a prior migration that may not have been applied; rollup now creates column before setting constraint
+  - All migrations applied successfully: call log timer fields, referral alert config table, duplicate flag case_d, SLA reminder system, help docs seed
+  - Per-provider SLA system complete: `sla_hours`/`sla_reminder_hours` on providers, `sla_reminder_sent_at` on tickets, master switch on `linksy_referral_alert_config`, SLA trigger updated to use provider-specific hours, backfill applied
+  - Help & Docs seeded: glossary/role definitions, contact entry guide, intake specialist guide, referral lifecycle statuses, referral creation instructions
+  - Updated documentation: TASKS.md (marked TASK-032 complete, updated migration checklist), SUPABASE.md (added 10 new migration entries + 2 new tables), RELEASES.md
+
 - Date: 2026-03-03
 - Summary: Security audit remediation + documentation overhaul
   - Resolved all 4 CRITICAL security vulnerabilities: XSS sanitization (DOMPurify), missing `/api/invitations/accept` endpoint, open redirect in auth callback + login form, ticket numbering race condition (PG sequence + RPC)

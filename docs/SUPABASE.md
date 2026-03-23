@@ -53,6 +53,15 @@
 | `20260223181500_remap_and_cleanup_legacy_need_categories.sql` | Remap legacy categories to active AIRS taxonomy, remove unused inactive categories |
 | `20260225204403_remote_schema.sql` | Remote schema sync (fixed to preserve region model columns) |
 | `20260302_ticket_events_and_sla.sql` | Ticket events audit trail + SLA due date trigger |
+| `20260306000003_add_duplicate_flag_to_tickets.sql` | `duplicate_flag_type` column + detection indexes on tickets |
+| `20260321000001_add_phone_extension_to_locations_contacts.sql` | Phone extension fields on locations and contacts |
+| `20260321000002_create_description_reviews.sql` | Provider description review system |
+| `20260321000003_call_log_timer_fields.sql` | `started_at`/`ended_at` timer on call logs |
+| `20260321000004_create_referral_alert_config.sql` | `linksy_referral_alert_config` table for stale referral alerts |
+| `20260322000001_add_case_d_duplicate_flag.sql` | Extends duplicate flag constraint to include `case_d` |
+| `20260322000002_sla_reminder_system.sql` | Per-provider SLA hours, reminder tracking, master switch |
+| `20260322000003_seed_help_docs.sql` | Seed help articles (glossary, contacts, intake, referrals) |
+| `20260323000001_rollup_recent_migrations.sql` | Consolidated rollup of 0321–0322 migrations (safe to run if originals already applied) |
 
 > Full schema reference with column-level detail: `docs/AUDIT-2026-03-02.md` §Tables
 
@@ -105,6 +114,8 @@
 - `linksy_host_custom_fields` — host-specific intake form fields
 - `linksy_docs` — knowledge base with full-text search (TSVECTOR)
 - `linksy_support_tickets` / `linksy_support_ticket_comments` — internal platform support
+- `linksy_referral_alert_config` — per-site stale referral alert settings + SLA reminder master switch
+- `linksy_description_reviews` — provider description review queue (quarterly auto-update)
 
 ### Migration Hygiene
 

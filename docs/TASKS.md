@@ -1,6 +1,6 @@
 # Tasks
 
-> Last updated: 2026-03-07. See `FEATURES_CHECKLIST.md` for the full feature inventory.
+> Last updated: 2026-03-23. See `FEATURES_CHECKLIST.md` for the full feature inventory.
 > Program review tasks (TASK-001–039) from [Heather Johnston review 2026-03-03](PROGRAM-REVIEW-2026-03-03.md).
 
 ## Go-Live Roadmap
@@ -285,7 +285,7 @@ All 8 LOW findings resolved.
 
 #### Program Review — Complex Features
 - [x] **[TASK-002] Undo/redo (phase 1)** — Rich text editor undo/redo toolbar buttons (Ctrl+Z/Y). Undo toast on instant-save actions (status changes, privacy toggles) via `useUndoableAction` hook. See `docs/SAVE-BEHAVIOR.md`. Phase 2: full action history stack for field edits across all screens.
-- [ ] **[TASK-032] Per-provider SLA timers** — Custom resolution timeframe per provider. Auto-send reminder at due date. Provider can reset, confirm, or transfer. Client notification on transfer.
+- [x] **[TASK-032] Per-provider SLA timers** — COMPLETED 2026-03-23. Per-provider `sla_hours` and `sla_reminder_hours` columns on `linksy_providers`. SLA trigger uses provider-specific hours. Master switch via `sla_reminder_enabled` on `linksy_referral_alert_config`. Backfill applied to existing tickets. Migration: `20260322000002_sla_reminder_system.sql`.
 
 #### Program Review — Wish List
 - [ ] Address label printing — Avery 8160 format, by zip/region/county/sector
@@ -333,12 +333,14 @@ Data backfill scripts (run once, safe to re-run):
 
 Recent migrations to verify applied (check `supabase_migrations.schema_migrations` table):
 
-- [ ] `20260321000001_add_phone_extension_to_locations_contacts.sql`
-- [ ] `20260321000002_create_description_reviews.sql`
-- [ ] `20260321000003_call_log_timer_fields.sql`
-- [ ] `20260321000004_create_referral_alert_config.sql`
-- [ ] `20260322000001_seed_help_docs.sql`
-- [ ] `20260322000001_add_case_d_duplicate_flag.sql`
+- [x] `20260321000001_add_phone_extension_to_locations_contacts.sql`
+- [x] `20260321000002_create_description_reviews.sql`
+- [x] `20260321000003_call_log_timer_fields.sql` — included in rollup
+- [x] `20260321000004_create_referral_alert_config.sql` — included in rollup
+- [x] `20260322000001_add_case_d_duplicate_flag.sql` — included in rollup (fixed: column creation + constraint)
+- [x] `20260322000002_sla_reminder_system.sql` — included in rollup
+- [x] `20260322000003_seed_help_docs.sql` — applied separately
+- [x] `20260323000001_rollup_recent_migrations.sql` — consolidated rollup of the above 4, applied 2026-03-23
 
 ---
 
