@@ -379,6 +379,32 @@ export interface TicketFilters {
   offset?: number
 }
 
+export type SupportTicketTriageStatus = 'pending' | 'analyzing' | 'complete' | 'failed' | 'skipped'
+
+export interface SupportTicketTriage {
+  classification: string
+  severity: 'low' | 'medium' | 'high' | 'critical'
+  affected_areas: string[]
+  root_cause_hypothesis: string
+  suggested_fix: string
+  remediation_prompt: string
+  investigation_steps: string[]
+  confidence: number
+  estimated_complexity: 'trivial' | 'small' | 'medium' | 'large'
+}
+
+export type SupportTicketRemediationStatus = 'none' | 'approved' | 'generating' | 'pr_created' | 'merged' | 'failed'
+
+export interface SupportTicketRemediationResult {
+  files_changed: { path: string; summary: string }[]
+  commit_message: string
+  summary: string
+  model_used: string
+  pr_url?: string
+  branch?: string
+  error?: string
+}
+
 export interface SupportTicket {
   id: string
   ticket_number: string
@@ -395,6 +421,13 @@ export interface SupportTicket {
   created_at: string
   updated_at: string
   resolved_at: string | null
+  ai_triage: SupportTicketTriage | null
+  ai_triage_status: SupportTicketTriageStatus
+  remediation_status: SupportTicketRemediationStatus
+  remediation_pr_url: string | null
+  remediation_branch: string | null
+  remediation_result: SupportTicketRemediationResult | null
+  remediation_approved_at: string | null
   provider?: { name: string }
   comments?: SupportTicketComment[]
 }

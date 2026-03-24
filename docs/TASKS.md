@@ -1,6 +1,6 @@
 # Tasks
 
-> Last updated: 2026-03-07. See `FEATURES_CHECKLIST.md` for the full feature inventory.
+> Last updated: 2026-03-23. See `FEATURES_CHECKLIST.md` for the full feature inventory.
 > Program review tasks (TASK-001–039) from [Heather Johnston review 2026-03-03](PROGRAM-REVIEW-2026-03-03.md).
 
 ## Go-Live Roadmap
@@ -41,7 +41,7 @@ Migration written: `20260303000002_rls_security_hardening.sql`. **Needs to be ap
 - [x] **MEDIUM: `linksy_call_logs` — Overly permissive.** Migration scopes to provider contacts. COMPLETED 2026-03-03 (migration pending apply)
 - [x] **MEDIUM: `linksy_custom_fields` — Unscoped.** Migration scopes to provider admin. COMPLETED 2026-03-03 (migration pending apply)
 - [x] **MEDIUM: `linksy_surveys` — Unrestricted UPDATE.** Migration restricts to admin only. COMPLETED 2026-03-03 (migration pending apply)
-- [ ] **LOW: `linksy_search_sessions` — Anon update has no row filter.** One session could modify another. **Add `id = session_id` filter.**
+- [x] **LOW: `linksy_search_sessions` — Anon update has no row filter.** COMPLETED 2026-03-07. Migration `20260307000004_search_session_token_rls.sql` adds `session_token` UUID column; anon UPDATE policy requires matching token via `current_setting('app.session_token')`. Stronger than simple id filter since token is a separate random UUID.
 
 #### 0.4 User Migration Strategy
 - [ ] **Design auth migration plan for existing users** — ~167+ users in Supabase with `user_id` set as `linksy_provider_contacts` but no passwords. Options:
@@ -268,6 +268,10 @@ All 8 LOW findings resolved.
 
 ### Phase 4 — Deferred / Post-Launch
 
+#### AI-Powered Support Ticket Triage
+- [x] **Support ticket AI triage (Phase 1)** — COMPLETED 2026-03-24. On support ticket creation, OpenAI (gpt-4o-mini) analyzes the issue and generates: classification, severity, affected code areas, root cause hypothesis, suggested fix, investigation steps, and a ready-to-use Claude Code remediation prompt. Results displayed in support ticket detail (both admin and provider views). Admin email notification with full analysis. "Copy Prompt" button for easy paste into Claude Code. Manual "Run AI Triage" / "Re-run" buttons. Migration: `20260324000001_support_ticket_ai_triage.sql`.
+- [x] **Support ticket AI remediation (Phase 2)** — COMPLETED 2026-03-24. "Approve Fix" button on triage card → confirmation dialog → Claude API (claude-sonnet-4-20250514) reads affected files from GitHub, generates fix → creates branch + commit + PR via GitHub API → emails admin with PR link. Remediation status tracked (none → approved → generating → pr_created → merged/failed). Retry on failure. Requires `ANTHROPIC_API_KEY`, `GITHUB_TOKEN`, `GITHUB_OWNER`, `GITHUB_REPO`. Migration: `20260324000002_support_ticket_ai_remediation.sql`.
+
 #### Existing Backlog
 - [ ] Voice input (Whisper) in widget (`/api/linksy/transcribe` + mic UX)
 - [ ] Spanish (es) language support / multi-language i18n
@@ -285,12 +289,12 @@ All 8 LOW findings resolved.
 
 #### Program Review — Complex Features
 - [x] **[TASK-002] Undo/redo (phase 1)** — Rich text editor undo/redo toolbar buttons (Ctrl+Z/Y). Undo toast on instant-save actions (status changes, privacy toggles) via `useUndoableAction` hook. See `docs/SAVE-BEHAVIOR.md`. Phase 2: full action history stack for field edits across all screens.
-- [ ] **[TASK-032] Per-provider SLA timers** — Custom resolution timeframe per provider. Auto-send reminder at due date. Provider can reset, confirm, or transfer. Client notification on transfer.
+- [x] **[TASK-032] Per-provider SLA timers** — COMPLETED 2026-03-23. Per-provider `sla_hours` and `sla_reminder_hours` columns on `linksy_providers`. SLA trigger uses provider-specific hours. Master switch via `sla_reminder_enabled` on `linksy_referral_alert_config`. Backfill applied to existing tickets. Migration: `20260322000002_sla_reminder_system.sql`.
 
 #### Program Review — Wish List
 - [ ] Address label printing — Avery 8160 format, by zip/region/county/sector
 - [ ] Envelope printing — #10 envelope with IW return address
-- [ ] **[TASK-021] Admin preview of client-facing Provider listing** — Preview button on Provider screen
+- [x] **[TASK-021] Admin preview of client-facing Provider listing** — COMPLETED. "Public Preview" button (Eye icon) on provider detail page opens modal showing simulated chatbot card with status warnings for missing data.
 - [ ] Phone system VM-to-notes integration (Teams-style voicemail transcription)
 - [ ] Provider relationship tracking — Flag providers needing in-person contact vs. video
 - [ ] Provider satisfaction survey feature
@@ -333,12 +337,14 @@ Data backfill scripts (run once, safe to re-run):
 
 Recent migrations to verify applied (check `supabase_migrations.schema_migrations` table):
 
-- [ ] `20260321000001_add_phone_extension_to_locations_contacts.sql`
-- [ ] `20260321000002_create_description_reviews.sql`
-- [ ] `20260321000003_call_log_timer_fields.sql`
-- [ ] `20260321000004_create_referral_alert_config.sql`
-- [ ] `20260322000001_seed_help_docs.sql`
-- [ ] `20260322000001_add_case_d_duplicate_flag.sql`
+- [x] `20260321000001_add_phone_extension_to_locations_contacts.sql`
+- [x] `20260321000002_create_description_reviews.sql`
+- [x] `20260321000003_call_log_timer_fields.sql` — included in rollup
+- [x] `20260321000004_create_referral_alert_config.sql` — included in rollup
+- [x] `20260322000001_add_case_d_duplicate_flag.sql` — included in rollup (fixed: column creation + constraint)
+- [x] `20260322000002_sla_reminder_system.sql` — included in rollup
+- [x] `20260322000003_seed_help_docs.sql` — applied separately
+- [x] `20260323000001_rollup_recent_migrations.sql` — consolidated rollup of the above 4, applied 2026-03-23
 
 ---
 

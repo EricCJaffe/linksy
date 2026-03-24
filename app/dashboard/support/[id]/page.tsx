@@ -9,6 +9,7 @@ import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { RichTextDisplay } from '@/components/ui/rich-text-display'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
+import { TriageCard } from '@/components/support/triage-card'
 import { useSupportTicket, useCreateSupportTicketComment } from '@/lib/hooks/useSupportTickets'
 import { AlertCircle, ArrowLeft, Send } from 'lucide-react'
 import type { SupportTicketStatus, SupportTicketPriority } from '@/lib/types/linksy'
@@ -127,6 +128,17 @@ export default function SupportTicketDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* AI Triage Card */}
+      <TriageCard
+        triage={ticket.ai_triage}
+        triageStatus={ticket.ai_triage_status}
+        ticketId={ticketId}
+        remediationStatus={ticket.remediation_status}
+        remediationResult={ticket.remediation_result}
+        remediationPrUrl={ticket.remediation_pr_url}
+        remediationBranch={ticket.remediation_branch}
+      />
 
       <Card>
         <CardHeader>

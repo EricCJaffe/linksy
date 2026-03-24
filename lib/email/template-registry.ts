@@ -10,6 +10,7 @@ export const EMAIL_TEMPLATE_KEYS = [
   'description_review',
   'stale_referral_alert',
   'sla_reminder',
+  'support_ticket_triage',
 ] as const
 
 export type EmailTemplateKey = (typeof EMAIL_TEMPLATE_KEYS)[number]
@@ -174,6 +175,22 @@ export const EMAIL_TEMPLATE_DEFINITIONS: EmailTemplateDefinition[] = [
       'hours_pending',
       'days_pending',
       'sla_hours',
+      'ticket_url',
+    ],
+  },
+  {
+    key: 'support_ticket_triage',
+    name: 'Support Ticket AI Triage',
+    description: 'Sent to the admin when AI triage completes analysis of a support ticket.',
+    placeholders: [
+      'app_name',
+      'ticket_number',
+      'subject',
+      'severity',
+      'classification',
+      'root_cause',
+      'suggested_fix',
+      'remediation_prompt',
       'ticket_url',
     ],
   },

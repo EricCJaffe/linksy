@@ -47,6 +47,17 @@ These must be set for the app to function:
 
 If neither is configured, emails are logged to console in development.
 
+## AI Remediation (Optional — Phase 2)
+
+| Variable | Where Used | Notes |
+|----------|------------|-------|
+| `GITHUB_TOKEN` | `lib/utils/ai-remediate.ts` | GitHub personal access token (PAT) with `repo` scope. Creates branches, commits, and PRs. |
+| `GITHUB_OWNER` | `lib/utils/ai-remediate.ts` | GitHub repo owner (org or username), e.g. `EricCJaffe` |
+| `GITHUB_REPO` | `lib/utils/ai-remediate.ts` | GitHub repo name, e.g. `linksy` |
+| `GITHUB_BASE_BRANCH` | `lib/utils/ai-remediate.ts` | Branch to create PRs against (default: `main`) |
+
+All three GitHub vars + `OPENAI_API_KEY` (already required) are needed for the "Approve Fix" auto-remediation pipeline. Phase 1 (AI triage) works with just `OPENAI_API_KEY`.
+
 ## Error Tracking (Optional)
 
 | Variable | Where Used | Notes |
@@ -86,7 +97,7 @@ The following keys are present in `.env.example` but are not currently read in a
 - **Never commit** `.env.local` — it is gitignored.
 - Copy `.env.example` to `.env.local` for local dev.
 - In Vercel, set env vars in the project dashboard under Settings > Environment Variables.
-- `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, `RESEND_API_KEY`, `SMTP_PASSWORD`, and `SENTRY_AUTH_TOKEN` are server secrets.
+- `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, `GITHUB_TOKEN`, `RESEND_API_KEY`, `SMTP_PASSWORD`, and `SENTRY_AUTH_TOKEN` are server secrets.
 
 ## Local Setup Notes
 

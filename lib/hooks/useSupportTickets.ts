@@ -55,6 +55,56 @@ export function useUpdateSupportTicket() {
   })
 }
 
+export function useTriggerSupportTicketTriage() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (ticketId: string) => {
+      const res = await fetch(`/api/support-tickets/${ticketId}/triage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: 'Triage failed' }))
+        throw new Error(data.error || 'Failed to run AI triage')
+      }
+      return res.json()
+    },
+    onSuccess: (_data, ticketId) => {
+      queryClient.invalidateQueries({ queryKey: ['supportTicket', ticketId] })
+      queryClient.invalidateQueries({ queryKey: ['supportTickets'] })
+    },
+  })
+}
+
+export function useApproveRemediation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (ticketId: string) => {
+      const res = await fetch(`/api/support-tickets/${ticketId}/remediate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: 'Remediation failed' }))
+        throw new Error(data.error || 'Failed to start remediation')
+      }
+      return res.json() as Promise<{
+        status: string
+        pr_url: string
+        branch: string
+        summary: string
+        files_changed: { path: string; summary: string }[]
+      }>
+    },
+    onSuccess: (_data, ticketId) => {
+      queryClient.invalidateQueries({ queryKey: ['supportTicket', ticketId] })
+      queryClient.invalidateQueries({ queryKey: ['supportTickets'] })
+    },
+  })
+}
+
 export function useCreateSupportTicketComment() {
   const queryClient = useQueryClient()
 

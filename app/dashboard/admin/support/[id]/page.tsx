@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
+import { TriageCard } from '@/components/support/triage-card'
 import { useSupportTicket, useUpdateSupportTicket, useCreateSupportTicketComment } from '@/lib/hooks/useSupportTickets'
 import { AlertCircle, ArrowLeft, Send, ShieldAlert } from 'lucide-react'
 import type { SupportTicketStatus, SupportTicketPriority, SupportTicketCategory } from '@/lib/types/linksy'
@@ -152,6 +153,17 @@ export default function AdminSupportTicketDetailPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* AI Triage Card */}
+          <TriageCard
+            triage={ticket.ai_triage}
+            triageStatus={ticket.ai_triage_status}
+            ticketId={ticketId}
+            remediationStatus={ticket.remediation_status}
+            remediationResult={ticket.remediation_result}
+            remediationPrUrl={ticket.remediation_pr_url}
+            remediationBranch={ticket.remediation_branch}
+          />
 
           <Card>
             <CardHeader>
