@@ -49,7 +49,7 @@ export async function POST(
 
   // Check required env vars
   const missing: string[] = []
-  if (!process.env.ANTHROPIC_API_KEY) missing.push('ANTHROPIC_API_KEY')
+  if (!process.env.OPENAI_API_KEY) missing.push('OPENAI_API_KEY')
   if (!process.env.GITHUB_TOKEN) missing.push('GITHUB_TOKEN')
   if (!process.env.GITHUB_OWNER) missing.push('GITHUB_OWNER')
   if (!process.env.GITHUB_REPO) missing.push('GITHUB_REPO')

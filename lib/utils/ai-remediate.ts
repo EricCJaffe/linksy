@@ -1,4 +1,4 @@
-import Anthropic from '@anthropic-ai/sdk'
+import OpenAI from 'openai'
 import { Octokit } from '@octokit/rest'
 import { createServiceClient } from '@/lib/supabase/server'
 import { sendEmail } from '@/lib/utils/email'
@@ -28,10 +28,10 @@ interface RemediationResult {
   branch?: string
 }
 
-function getAnthropic() {
-  const key = process.env.ANTHROPIC_API_KEY
-  if (!key) throw new Error('ANTHROPIC_API_KEY not configured')
-  return new Anthropic({ apiKey: key })
+function getOpenAI() {
+  const key = process.env.OPENAI_API_KEY
+  if (!key) throw new Error('OPENAI_API_KEY not configured')
+  return new OpenAI({ apiKey: key })
 }
 
 function getOctokit() {
@@ -51,7 +51,7 @@ function getRepoConfig() {
 /**
  * Run the full AI remediation pipeline:
  * 1. Read affected files from GitHub
- * 2. Send to Claude with the remediation prompt
+ * 2. Send to OpenAI with the remediation prompt
  * 3. Create a branch + commit + PR on GitHub
  * 4. Update the ticket and notify admin
  */
@@ -72,11 +72,11 @@ export async function remediateSupportTicket(input: RemediationInput): Promise<R
     // 1. Read affected files from GitHub
     const fileContents = await readFilesFromGitHub(octokit, owner, repo, baseBranch, input.triage.affected_areas)
 
-    // 2. Generate fix using Claude
+    // 2. Generate fix using OpenAI
     const { changes, commit_message, summary } = await generateFix(input, fileContents)
 
     if (changes.length === 0) {
-      throw new Error('Claude did not suggest any file changes')
+      throw new Error('OpenAI did not suggest any file changes')
     }
 
     // 3. Create branch, commit, and PR
@@ -90,7 +90,7 @@ export async function remediateSupportTicket(input: RemediationInput): Promise<R
       })),
       commit_message,
       summary,
-      model_used: 'claude-sonnet-4-20250514',
+      model_used: 'gpt-4o',
       pr_url: prUrl,
       branch: branchName,
     }
@@ -151,7 +151,7 @@ async function readFilesFromGitHub(
     } catch (err: unknown) {
       const status = (err as { status?: number }).status
       if (status === 404) {
-        // File doesn't exist — Claude may have guessed wrong, skip it
+        // File doesn't exist — triage may have guessed wrong, skip it
         console.warn(`File not found on GitHub: ${filePath}`)
       } else {
         throw err
@@ -166,22 +166,23 @@ async function generateFix(
   input: RemediationInput,
   fileContents: Map<string, string>
 ): Promise<{ changes: FileChange[]; commit_message: string; summary: string }> {
-  const anthropic = getAnthropic()
+  const openai = getOpenAI()
 
   // Build file context
   const fileContext = Array.from(fileContents.entries())
     .map(([path, content]) => `### File: ${path}\n\`\`\`\n${content}\n\`\`\``)
     .join('\n\n')
 
-  const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 8000,
+  const completion = await openai.chat.completions.create({
+    model: 'gpt-4o',
     messages: [
       {
+        role: 'system',
+        content: `You are an expert software engineer fixing bugs in a Next.js 14 / TypeScript / Supabase codebase called Linksy. You will be given a support ticket, triage analysis, and the current source files. Generate a fix and return ONLY valid JSON.`,
+      },
+      {
         role: 'user',
-        content: `You are fixing a bug/issue in the Linksy platform codebase.
-
-## Support Ticket: ${input.ticketNumber}
+        content: `## Support Ticket: ${input.ticketNumber}
 **Subject:** ${input.subject}
 **Description:** ${input.description}
 
@@ -221,22 +222,17 @@ Rules:
 - Follow existing code patterns and conventions`,
       },
     ],
+    max_tokens: 8000,
+    temperature: 0.3,
+    response_format: { type: 'json_object' },
   })
 
-  // Extract text content from response
-  const textBlock = response.content.find((b) => b.type === 'text')
-  if (!textBlock || textBlock.type !== 'text') {
-    throw new Error('Claude returned no text response')
+  const content = completion.choices[0]?.message?.content
+  if (!content) {
+    throw new Error('OpenAI returned empty response')
   }
 
-  // Parse JSON from the response (handle markdown code blocks)
-  let jsonStr = textBlock.text.trim()
-  const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
-  if (jsonMatch) {
-    jsonStr = jsonMatch[1]
-  }
-
-  const result = JSON.parse(jsonStr) as {
+  const result = JSON.parse(content) as {
     changes: FileChange[]
     commit_message: string
     summary: string
