@@ -43,12 +43,22 @@ export async function POST(
     )
   }
 
-  // Validate not already in progress
+  // Validate not already in progress — but allow retry if stuck for >2 minutes
   if (ticket.remediation_status === 'generating') {
-    return NextResponse.json(
-      { error: 'Remediation is already in progress' },
-      { status: 409 }
-    )
+    const approvedAt = ticket.remediation_approved_at
+      ? new Date(ticket.remediation_approved_at).getTime()
+      : 0
+    const stuckThreshold = 2 * 60 * 1000 // 2 minutes
+    const isStuck = Date.now() - approvedAt > stuckThreshold
+
+    if (!isStuck) {
+      return NextResponse.json(
+        { error: 'Remediation is already in progress' },
+        { status: 409 }
+      )
+    }
+    // If stuck, allow retry — fall through to re-run
+    console.warn(`Remediation for ${id} was stuck in 'generating' state — allowing retry`)
   }
 
   // Check required env vars
