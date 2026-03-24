@@ -379,6 +379,20 @@ export interface TicketFilters {
   offset?: number
 }
 
+export type SupportTicketTriageStatus = 'pending' | 'analyzing' | 'complete' | 'failed' | 'skipped'
+
+export interface SupportTicketTriage {
+  classification: string
+  severity: 'low' | 'medium' | 'high' | 'critical'
+  affected_areas: string[]
+  root_cause_hypothesis: string
+  suggested_fix: string
+  remediation_prompt: string
+  investigation_steps: string[]
+  confidence: number
+  estimated_complexity: 'trivial' | 'small' | 'medium' | 'large'
+}
+
 export interface SupportTicket {
   id: string
   ticket_number: string
@@ -395,6 +409,8 @@ export interface SupportTicket {
   created_at: string
   updated_at: string
   resolved_at: string | null
+  ai_triage: SupportTicketTriage | null
+  ai_triage_status: SupportTicketTriageStatus
   provider?: { name: string }
   comments?: SupportTicketComment[]
 }

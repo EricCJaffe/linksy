@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/middleware/auth'
+import { triageSupportTicket } from '@/lib/utils/ai-triage'
 
 /**
  * GET /api/support-tickets
@@ -106,6 +107,20 @@ export async function POST(request: Request) {
   if (insertError) {
     console.error('Error creating support ticket:', insertError)
     return NextResponse.json({ error: 'Failed to create support ticket' }, { status: 500 })
+  }
+
+  // Fire-and-forget AI triage analysis (runs server-side, no auth needed)
+  if (ticket?.id && process.env.OPENAI_API_KEY) {
+    void triageSupportTicket({
+      id: ticket.id,
+      ticket_number: ticketNumber,
+      subject,
+      description,
+      category: category || 'other',
+      priority: priority || 'medium',
+    }).catch((err) => {
+      console.error('Auto-triage failed (retryable via admin UI):', err)
+    })
   }
 
   return NextResponse.json(ticket, { status: 201 })
