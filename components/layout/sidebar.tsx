@@ -87,11 +87,6 @@ const adminNavItems = [
     icon: LayoutDashboard,
   },
   {
-    title: 'Provider Portal Preview',
-    href: '/dashboard/my-organization',
-    icon: Store,
-  },
-  {
     title: 'Public Search Preview',
     href: '/find-help',
     icon: Search,
