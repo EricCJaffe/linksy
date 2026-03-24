@@ -4,11 +4,17 @@ import { requireSiteAdmin } from '@/lib/middleware/auth'
 import { remediateSupportTicket } from '@/lib/utils/ai-remediate'
 import type { TriageResult } from '@/lib/utils/ai-triage'
 
+// Allow up to 120s for this route (Vercel Pro/Enterprise)
+export const maxDuration = 120
+
 /**
  * POST /api/support-tickets/[id]/remediate
  * Approve and trigger AI remediation for a triaged support ticket.
  * Creates a branch + PR on GitHub with the suggested fix.
  * Site admin only.
+ *
+ * Returns 202 immediately and runs remediation in the background.
+ * The client polls the ticket detail endpoint to detect completion.
  */
 export async function POST(
   request: Request,
@@ -71,28 +77,26 @@ export async function POST(
     })
     .eq('id', id)
 
-  try {
-    const result = await remediateSupportTicket({
-      ticketId: id,
-      ticketNumber: ticket.ticket_number,
-      subject: ticket.subject,
-      description: ticket.description,
-      triage: ticket.ai_triage as TriageResult,
-      approvedBy: auth.user.id,
-    })
+  // Fire-and-forget: run remediation in the background.
+  // The UI polls every 3s via useSupportTicket() and will pick up
+  // the status transition from 'generating' → 'pr_created' or 'failed'.
+  remediateSupportTicket({
+    ticketId: id,
+    ticketNumber: ticket.ticket_number,
+    subject: ticket.subject,
+    description: ticket.description,
+    triage: ticket.ai_triage as TriageResult,
+    approvedBy: auth.user.id,
+  }).catch((err) => {
+    // Error handling is already done inside remediateSupportTicket
+    // (sets remediation_status='failed' in the database).
+    // This catch just prevents unhandled promise rejection.
+    console.error('Background remediation failed:', err)
+  })
 
-    return NextResponse.json({
-      status: 'pr_created',
-      pr_url: result.pr_url,
-      branch: result.branch,
-      summary: result.summary,
-      files_changed: result.files_changed,
-    })
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Remediation failed'
-    return NextResponse.json(
-      { error: message },
-      { status: 500 }
-    )
-  }
+  // Return immediately — client will poll for the result
+  return NextResponse.json({
+    status: 'approved',
+    message: 'Remediation started. The ticket will be updated when the PR is ready.',
+  }, { status: 202 })
 }
