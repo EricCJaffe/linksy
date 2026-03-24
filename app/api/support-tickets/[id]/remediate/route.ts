@@ -1,18 +1,20 @@
 import { NextResponse } from 'next/server'
+import { waitUntil } from '@vercel/functions'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireSiteAdmin } from '@/lib/middleware/auth'
 import { remediateSupportTicket } from '@/lib/utils/ai-remediate'
 import type { TriageResult } from '@/lib/utils/ai-triage'
-
-// Safety net: read files + OpenAI + GitHub PR typically takes 15-30s,
-// but allow up to 60s in case of slow API responses.
-export const maxDuration = 60
 
 /**
  * POST /api/support-tickets/[id]/remediate
  * Approve and trigger AI remediation for a triaged support ticket.
  * Creates a branch + PR on GitHub with the suggested fix.
  * Site admin only.
+ *
+ * Returns 202 immediately. The pipeline runs in the background via
+ * @vercel/functions waitUntil() which continues execution after the
+ * response is sent — avoids function timeout on all Vercel plans.
+ * The UI polls the ticket status every 3s to pick up the result.
  */
 export async function POST(
   request: Request,
@@ -57,7 +59,6 @@ export async function POST(
         { status: 409 }
       )
     }
-    // If stuck, allow retry — fall through to re-run
     console.warn(`Remediation for ${id} was stuck in 'generating' state — allowing retry`)
   }
 
@@ -85,30 +86,27 @@ export async function POST(
     })
     .eq('id', id)
 
-  try {
-    // Run the full pipeline — maxDuration=120 keeps the function alive.
-    // The UI polls every 3s and shows a spinner while this runs.
-    const result = await remediateSupportTicket({
+  // Run the pipeline in the background using waitUntil().
+  // This continues execution after the 202 response is sent,
+  // so the function doesn't timeout waiting for OpenAI + GitHub.
+  // The remediateSupportTicket function updates the ticket status
+  // in the DB — the UI polls every 3s to pick it up.
+  waitUntil(
+    remediateSupportTicket({
       ticketId: id,
       ticketNumber: ticket.ticket_number,
       subject: ticket.subject,
       description: ticket.description,
       triage: ticket.ai_triage as TriageResult,
       approvedBy: auth.user.id,
+    }).catch((err) => {
+      console.error('Background remediation failed:', err)
+      // remediateSupportTicket already sets status to 'failed' in its catch block
     })
+  )
 
-    return NextResponse.json({
-      status: 'pr_created',
-      pr_url: result.pr_url,
-      branch: result.branch,
-      summary: result.summary,
-      files_changed: result.files_changed,
-    })
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Remediation failed'
-    return NextResponse.json(
-      { error: message },
-      { status: 500 }
-    )
-  }
+  return NextResponse.json(
+    { status: 'approved', message: 'Remediation started' },
+    { status: 202 }
+  )
 }

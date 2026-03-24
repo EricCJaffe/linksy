@@ -102,16 +102,17 @@ export function useApproveRemediation() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       })
-      if (!res.ok) {
+      if (!res.ok && res.status !== 202) {
         const data = await res.json().catch(() => ({ error: 'Remediation failed' }))
         throw new Error(data.error || 'Failed to start remediation')
       }
       return res.json() as Promise<{
         status: string
-        pr_url: string
-        branch: string
-        summary: string
-        files_changed: { path: string; summary: string }[]
+        message?: string
+        pr_url?: string
+        branch?: string
+        summary?: string
+        files_changed?: { path: string; summary: string }[]
       }>
     },
     onSuccess: (_data, ticketId) => {
