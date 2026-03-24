@@ -37,6 +37,7 @@ interface NeedFormDialogProps {
   mode: 'category' | 'need'
   editItem?: Category | Need | null
   categories?: Category[]
+  defaultCategoryId?: string
   onSubmit: (data: any) => void
   isLoading?: boolean
 }
@@ -47,6 +48,7 @@ export function NeedFormDialog({
   mode,
   editItem,
   categories,
+  defaultCategoryId,
   onSubmit,
   isLoading,
 }: NeedFormDialogProps) {
@@ -76,10 +78,10 @@ export function NeedFormDialog({
       setDescription('')
       setAirsCode('')
       setIsActive(true)
-      setCategoryId('')
+      setCategoryId(defaultCategoryId || '')
       setSynonymsText('')
     }
-  }, [editItem, mode, open])
+  }, [editItem, mode, open, defaultCategoryId])
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
