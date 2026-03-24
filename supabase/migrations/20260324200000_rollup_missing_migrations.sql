@@ -55,6 +55,113 @@ $$;
 
 
 -- ═══════════════════════════════════════════════════════════════════════════════
+-- SECTION 1b: RECREATE TABLES DROPPED BY remote_schema (20260225204403)
+-- These tables were created by earlier migrations but dropped by remote_schema.
+-- ═══════════════════════════════════════════════════════════════════════════════
+
+-- 1b-i. linksy_host_custom_fields (from 20260224160100, dropped by remote_schema)
+CREATE TABLE IF NOT EXISTS linksy_host_custom_fields (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  host_id UUID NOT NULL REFERENCES linksy_providers(id) ON DELETE CASCADE,
+  field_label VARCHAR(200) NOT NULL,
+  field_type VARCHAR(50) NOT NULL CHECK (field_type IN ('text', 'textarea', 'select', 'checkbox', 'date', 'email', 'phone')),
+  field_options TEXT[] DEFAULT '{}',
+  placeholder VARCHAR(200),
+  help_text VARCHAR(500),
+  is_required BOOLEAN NOT NULL DEFAULT false,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_by UUID REFERENCES auth.users(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_host_custom_fields_host_active
+  ON linksy_host_custom_fields(host_id, is_active, sort_order)
+  WHERE is_active = true;
+
+-- Recreate trigger only if table was just created (safe: DROP IF EXISTS + CREATE)
+DROP TRIGGER IF EXISTS update_host_custom_fields_updated_at ON linksy_host_custom_fields;
+CREATE TRIGGER update_host_custom_fields_updated_at
+  BEFORE UPDATE ON linksy_host_custom_fields
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+ALTER TABLE linksy_host_custom_fields ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Site admins can manage all host custom fields" ON linksy_host_custom_fields;
+CREATE POLICY "Site admins can manage all host custom fields"
+  ON linksy_host_custom_fields FOR ALL TO authenticated
+  USING (EXISTS (SELECT 1 FROM users WHERE users.id = auth.uid() AND users.role = 'site_admin'));
+
+DROP POLICY IF EXISTS "Host admins can manage their own custom fields" ON linksy_host_custom_fields;
+CREATE POLICY "Host admins can manage their own custom fields"
+  ON linksy_host_custom_fields FOR ALL TO authenticated
+  USING (EXISTS (
+    SELECT 1 FROM linksy_provider_contacts
+    WHERE linksy_provider_contacts.provider_id = host_id
+      AND linksy_provider_contacts.user_id = auth.uid()
+      AND linksy_provider_contacts.status = 'active'
+      AND linksy_provider_contacts.contact_type IN ('provider_admin', 'org_admin')
+  ));
+
+DROP POLICY IF EXISTS "Anyone can read active host custom fields" ON linksy_host_custom_fields;
+CREATE POLICY "Anyone can read active host custom fields"
+  ON linksy_host_custom_fields FOR SELECT TO anon, authenticated
+  USING (is_active = true);
+
+-- Ensure custom_data column on tickets (also from this migration)
+ALTER TABLE linksy_tickets
+  ADD COLUMN IF NOT EXISTS custom_data JSONB DEFAULT '{}'::jsonb;
+CREATE INDEX IF NOT EXISTS idx_tickets_custom_data
+  ON linksy_tickets USING GIN (custom_data);
+
+-- 1b-ii. linksy_host_email_templates (from 20260224160000, dropped by remote_schema)
+CREATE TABLE IF NOT EXISTS linksy_host_email_templates (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  host_id UUID NOT NULL REFERENCES linksy_providers(id) ON DELETE CASCADE,
+  template_key VARCHAR(100) NOT NULL,
+  name VARCHAR(200) NOT NULL,
+  subject VARCHAR(500) NOT NULL,
+  body_html TEXT NOT NULL,
+  variables TEXT[] NOT NULL DEFAULT '{}',
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_by UUID REFERENCES auth.users(id),
+  UNIQUE(host_id, template_key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_host_email_templates_host_key
+  ON linksy_host_email_templates(host_id, template_key)
+  WHERE is_active = true;
+
+DROP TRIGGER IF EXISTS update_host_email_templates_updated_at ON linksy_host_email_templates;
+CREATE TRIGGER update_host_email_templates_updated_at
+  BEFORE UPDATE ON linksy_host_email_templates
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+ALTER TABLE linksy_host_email_templates ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Site admins can manage all host email templates" ON linksy_host_email_templates;
+CREATE POLICY "Site admins can manage all host email templates"
+  ON linksy_host_email_templates FOR ALL TO authenticated
+  USING (EXISTS (SELECT 1 FROM users WHERE users.id = auth.uid() AND users.role = 'site_admin'));
+
+DROP POLICY IF EXISTS "Host admins can manage their own email templates" ON linksy_host_email_templates;
+CREATE POLICY "Host admins can manage their own email templates"
+  ON linksy_host_email_templates FOR ALL TO authenticated
+  USING (EXISTS (
+    SELECT 1 FROM linksy_provider_contacts
+    WHERE linksy_provider_contacts.provider_id = host_id
+      AND linksy_provider_contacts.user_id = auth.uid()
+      AND linksy_provider_contacts.status = 'active'
+      AND linksy_provider_contacts.contact_type IN ('provider_admin', 'org_admin')
+  ));
+
+
+-- ═══════════════════════════════════════════════════════════════════════════════
 -- SECTION 2: RLS SECURITY HARDENING (from 20260303000002)
 -- ═══════════════════════════════════════════════════════════════════════════════
 
