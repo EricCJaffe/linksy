@@ -4,9 +4,9 @@ import { requireSiteAdmin } from '@/lib/middleware/auth'
 import { remediateSupportTicket } from '@/lib/utils/ai-remediate'
 import type { TriageResult } from '@/lib/utils/ai-triage'
 
-// The remediation pipeline (fetch tree + read files + OpenAI + GitHub PR)
-// can take 30-90s. Allow up to 120s so it completes without a 504.
-export const maxDuration = 120
+// Safety net: read files + OpenAI + GitHub PR typically takes 15-30s,
+// but allow up to 60s in case of slow API responses.
+export const maxDuration = 60
 
 /**
  * POST /api/support-tickets/[id]/remediate
