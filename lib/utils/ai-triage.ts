@@ -154,10 +154,10 @@ Return ONLY valid JSON with this structure:
 {
   "classification": "One of: bug, feature_request, configuration, data_issue, ui_ux, performance, security, documentation, integration, unknown",
   "severity": "One of: low, medium, high, critical",
-  "affected_areas": ["Array of likely affected file paths or code areas, e.g. 'app/api/tickets/route.ts', 'components/tickets/ticket-detail-panel.tsx'"],
+  "affected_areas": ["Array of likely affected file paths. IMPORTANT: This is a Next.js 14 App Router project — page files are 'page.tsx' (NOT 'index.tsx'), API routes are 'route.ts', layouts are 'layout.tsx'. Use paths like 'app/dashboard/page.tsx', 'app/api/tickets/route.ts', 'components/tickets/ticket-detail-panel.tsx'. These paths will be used to read files from GitHub, so be as accurate as possible."],
   "root_cause_hypothesis": "Brief hypothesis about what might be causing the issue",
   "suggested_fix": "Clear description of the suggested fix approach",
-  "remediation_prompt": "A complete, ready-to-use prompt that can be pasted into Claude Code or an AI coding assistant to investigate and fix this issue. Include specific file paths to look at, what to search for, and what changes to make. Be specific and actionable.",
+  "remediation_prompt": "A complete, ready-to-use prompt for an AI coding assistant. Include specific file paths (using App Router conventions: page.tsx not index.tsx), what to search for, and what changes to make. Mention that this is a Next.js 14 App Router + Tailwind + shadcn/ui project. Be specific and actionable.",
   "investigation_steps": ["Array of ordered steps to investigate and fix this issue"],
   "confidence": 0.0 to 1.0,
   "estimated_complexity": "One of: trivial, small, medium, large"
