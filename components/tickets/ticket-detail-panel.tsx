@@ -18,6 +18,7 @@ import { Globe, Lock, Phone, Plus, Trash2, ArrowRight, UserCheck, Clock, Pencil,
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useUpdateTicket, useCreateTicketComment, useUpdateCommentPrivacy, useUpdateComment } from '@/lib/hooks/useTickets'
+import { useStatusReasons } from '@/lib/hooks/useStatusReasons'
 import { useCallLogs, useCreateCallLog, useDeleteCallLog } from '@/lib/hooks/useCallLogs'
 import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
 import { useUndoableAction } from '@/lib/hooks/useUndoableAction'
@@ -91,17 +92,27 @@ export function TicketDetailPanel({ ticket }: TicketDetailPanelProps) {
   const [showHistoryDialog, setShowHistoryDialog] = useState(false)
   const { execute: undoableAction } = useUndoableAction()
 
+  // Fetch sub-status reasons for statuses that have them (e.g. unable_to_assist)
+  const { data: statusReasons } = useStatusReasons(ticket.status)
+  const hasSubStatuses = statusReasons && statusReasons.length > 0
+
   const handleStatusChange = (newStatus: string) => {
     const previousStatus = ticket.status
+    const previousReasonId = ticket.status_reason_id
     undoableAction({
       description: `Status changed to ${ticketStatusLabels[newStatus as TicketStatus] || newStatus}`,
       action: () => {
-        updateTicket.mutate({ id: ticket.id, status: newStatus as TicketStatus })
+        updateTicket.mutate({ id: ticket.id, status: newStatus as TicketStatus, status_reason_id: null })
       },
       undoAction: () => {
-        updateTicket.mutate({ id: ticket.id, status: previousStatus })
+        updateTicket.mutate({ id: ticket.id, status: previousStatus, status_reason_id: previousReasonId } as any)
       },
     })
+  }
+
+  const handleStatusReasonChange = (reasonId: string) => {
+    const value = reasonId === 'none' ? null : reasonId
+    updateTicket.mutate({ id: ticket.id, status_reason_id: value } as any)
   }
 
   const handleAddComment = () => {
@@ -134,18 +145,38 @@ export function TicketDetailPanel({ ticket }: TicketDetailPanelProps) {
             </Badge>
           )}
         </div>
-        <Select value={ticket.status} onValueChange={handleStatusChange}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Change status" />
-          </SelectTrigger>
-          <SelectContent>
-            {(Object.keys(ticketStatusLabels) as TicketStatus[]).map((s) => (
-              <SelectItem key={s} value={s}>
-                {ticketStatusLabels[s]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <Select value={ticket.status} onValueChange={handleStatusChange}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Change status" />
+            </SelectTrigger>
+            <SelectContent>
+              {(Object.keys(ticketStatusLabels) as TicketStatus[]).map((s) => (
+                <SelectItem key={s} value={s}>
+                  {ticketStatusLabels[s]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {hasSubStatuses && (
+            <Select
+              value={ticket.status_reason_id || 'none'}
+              onValueChange={handleStatusReasonChange}
+            >
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Select reason..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Select reason...</SelectItem>
+                {statusReasons.filter(r => r.is_active).map((r) => (
+                  <SelectItem key={r.id} value={r.id}>
+                    {r.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
       </div>
 
       {/* Ticket Actions */}
@@ -234,6 +265,12 @@ export function TicketDetailPanel({ ticket }: TicketDetailPanelProps) {
               <span className="text-muted-foreground">Source</span>
               <span>{ticket.source || '-'}</span>
             </div>
+            {ticket.status_reason_id && ticket.status_reason && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Status Reason</span>
+                <Badge variant="outline" className="text-xs">{ticket.status_reason.label}</Badge>
+              </div>
+            )}
             <div className="flex justify-between">
               <span className="text-muted-foreground">Follow-up Sent</span>
               <span>{ticket.follow_up_sent ? 'Yes' : 'No'}</span>

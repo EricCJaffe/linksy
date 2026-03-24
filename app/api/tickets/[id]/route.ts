@@ -17,7 +17,7 @@ export async function GET(
   const { data: ticket, error: queryError } = await supabase
     .from('linksy_tickets')
     .select(
-      '*, linksy_providers!provider_id(name), linksy_needs!need_id(id, name), linksy_ticket_comments(*)'
+      '*, linksy_providers!provider_id(name), linksy_needs!need_id(id, name), linksy_ticket_comments(*), linksy_ticket_status_reasons!status_reason_id(id, label)'
     )
     .eq('id', id)
     .order('created_at', { referencedTable: 'linksy_ticket_comments', ascending: true })
@@ -53,6 +53,8 @@ export async function GET(
     client_email: ticket.client_email,
     description_of_need: ticket.description_of_need,
     status: ticket.status,
+    status_reason_id: ticket.status_reason_id,
+    status_reason: (ticket as any).linksy_ticket_status_reasons || null,
     client_perception: ticket.client_perception,
     follow_up_sent: ticket.follow_up_sent,
     source: ticket.source,
@@ -97,6 +99,7 @@ export async function PATCH(
 
   const adminAllowedFields = [
     'status',
+    'status_reason_id',
     'description_of_need',
     'client_name',
     'client_phone',
@@ -106,7 +109,7 @@ export async function PATCH(
     'need_id',
     'client_user_id',
   ]
-  const providerAllowedFields = ['status', 'follow_up_sent']
+  const providerAllowedFields = ['status', 'status_reason_id', 'follow_up_sent']
 
   const updates: Record<string, any> = {}
   for (const field of adminAllowedFields) {
@@ -130,6 +133,11 @@ export async function PATCH(
   if ('client_user_id' in updates) {
     updates.assigned_to = updates.client_user_id
     updates.assigned_at = new Date().toISOString()
+  }
+
+  // Clear status_reason_id when status changes to a status without a sub-reason
+  if ('status' in updates && !('status_reason_id' in updates)) {
+    updates.status_reason_id = null
   }
 
   updates.updated_at = new Date().toISOString()

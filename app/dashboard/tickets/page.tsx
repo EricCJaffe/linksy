@@ -646,7 +646,12 @@ export default function TicketsPage() {
                     className="cursor-pointer"
                     onClick={() => router.push(`/dashboard/tickets/${ticket.id}`)}
                   >
-                    <StatusBadge status={ticket.status} />
+                    <div className="flex flex-col gap-1">
+                      <StatusBadge status={ticket.status} />
+                      {ticket.status_reason && (
+                        <span className="text-xs text-muted-foreground">{ticket.status_reason.label}</span>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell
                     className="text-muted-foreground cursor-pointer"

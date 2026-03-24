@@ -20,6 +20,7 @@ import {
   Calendar,
   Palette,
   Users,
+  Settings2,
 } from 'lucide-react'
 import { TenantsTab } from '@/components/admin/console/tenants-tab'
 import { ModulesTab } from '@/components/admin/console/modules-tab'
@@ -28,6 +29,7 @@ import { StatisticsTab } from '@/components/admin/console/statistics-tab'
 import { DashboardTab } from '@/components/admin/console/dashboard-tab'
 import { SupportTicketsTab } from '@/components/admin/console/support-tickets-tab'
 import { CrisisTab } from '@/components/admin/console/crisis-tab'
+import { ReferralSettingsTab } from '@/components/admin/console/referral-settings-tab'
 import { CompanyTab } from '@/components/company/console/company-tab'
 import { BrandingTab } from '@/components/company/console/branding-tab'
 import { UsersTab } from '@/components/company/console/users-tab'
@@ -119,6 +121,10 @@ export default function AdminConsolePage() {
             <Calendar className="h-4 w-4" />
             <span>Events</span>
           </TabsTrigger>
+          <TabsTrigger value="referral-settings" className="flex items-center gap-2">
+            <Settings2 className="h-4 w-4" />
+            <span>Referral Settings</span>
+          </TabsTrigger>
           <TabsTrigger value="company-management" className="flex items-center gap-2">
             <Briefcase className="h-4 w-4" />
             <span>Company Mgmt</span>
@@ -183,6 +189,10 @@ export default function AdminConsolePage() {
 
         <TabsContent value="events" className="space-y-6">
           <EventsTab />
+        </TabsContent>
+
+        <TabsContent value="referral-settings" className="space-y-6">
+          <ReferralSettingsTab />
         </TabsContent>
 
         <TabsContent value="company-management" className="space-y-6">

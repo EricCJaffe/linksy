@@ -53,6 +53,17 @@ export type ApplicationStatus = 'pending' | 'approved' | 'rejected'
 export type EventStatus = 'pending' | 'approved' | 'rejected' | 'cancelled'
 export type NoteType = 'general' | 'outreach' | 'update' | 'internal' | 'call_log'
 export type CallOutcome = 'answered' | 'voicemail' | 'no_answer' | 'busy' | 'disconnected' | 'wrong_number'
+export interface TicketStatusReason {
+  id: string
+  tenant_id: string
+  parent_status: string
+  label: string
+  sort_order: number
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
 export type SupportTicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed'
 export type SupportTicketPriority = 'low' | 'medium' | 'high' | 'urgent'
 export type SupportTicketCategory = 'technical' | 'account' | 'billing' | 'feature_request' | 'other'
@@ -278,6 +289,8 @@ export interface Ticket {
   client_email: string | null
   description_of_need: string | null
   status: TicketStatus
+  status_reason_id: string | null
+  status_reason?: TicketStatusReason
   client_perception: string | null
   follow_up_sent: boolean | null
   is_test: boolean
