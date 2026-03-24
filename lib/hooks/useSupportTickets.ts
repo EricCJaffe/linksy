@@ -31,7 +31,23 @@ export function useSupportTicket(id: string | undefined) {
       return res.json() as Promise<SupportTicket>
     },
     enabled: !!id,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 15 * 1000, // 15s — short so landing on a fresh ticket picks up triage quickly
+    refetchInterval: (query) => {
+      const data = query.state.data as SupportTicket | undefined
+      // Poll every 3s while triage is running or remediation is in-flight
+      if (
+        data?.ai_triage_status === 'analyzing' ||
+        data?.remediation_status === 'approved' ||
+        data?.remediation_status === 'generating'
+      ) {
+        return 3000
+      }
+      // Poll once more after creation so auto-triage result lands
+      if (data?.ai_triage_status === 'pending') {
+        return 5000
+      }
+      return false
+    },
   })
 }
 

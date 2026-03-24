@@ -49,11 +49,196 @@ function getRepoConfig() {
 }
 
 /**
+ * Fetch the repo's CLAUDE.md file from GitHub for project context.
+ * Returns empty string if not found (non-fatal).
+ */
+async function fetchProjectContext(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  ref: string
+): Promise<string> {
+  try {
+    const { data } = await octokit.repos.getContent({
+      owner,
+      repo,
+      path: 'CLAUDE.md',
+      ref,
+    })
+    if ('content' in data && data.type === 'file') {
+      return Buffer.from(data.content, 'base64').toString('utf-8')
+    }
+  } catch {
+    console.warn('Could not fetch CLAUDE.md from GitHub — proceeding without project context')
+  }
+  return ''
+}
+
+/**
+ * Fetch the repository file tree (paths only) so the AI knows what files exist.
+ * Uses the Git Trees API with recursive=true for a single API call.
+ * Returns paths filtered to source code files only.
+ */
+async function fetchRepoTree(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  ref: string
+): Promise<string[]> {
+  try {
+    const { data: refData } = await octokit.git.getRef({
+      owner,
+      repo,
+      ref: `heads/${ref}`,
+    })
+    const { data: tree } = await octokit.git.getTree({
+      owner,
+      repo,
+      tree_sha: refData.object.sha,
+      recursive: 'true',
+    })
+
+    // Filter to relevant source files only (skip node_modules, .git, dist, etc.)
+    const ignoreDirs = ['node_modules/', '.next/', '.git/', 'dist/', '.vercel/', 'coverage/']
+    const sourceExts = ['.ts', '.tsx', '.js', '.jsx', '.css', '.json', '.md', '.sql']
+
+    return tree.tree
+      .filter((item) => {
+        if (item.type !== 'blob' || !item.path) return false
+        if (ignoreDirs.some((d) => item.path!.startsWith(d))) return false
+        return sourceExts.some((ext) => item.path!.endsWith(ext))
+      })
+      .map((item) => item.path!)
+  } catch (err) {
+    console.warn('Could not fetch repo tree:', err)
+    return []
+  }
+}
+
+/**
+ * Resolve triage-suggested file paths against the actual repo tree.
+ * If a suggested path doesn't exist, try to find the closest match
+ * (e.g., triage says "app/dashboard/index.tsx" but real file is "app/dashboard/page.tsx").
+ */
+function resolveAffectedFiles(
+  suggestedPaths: string[],
+  repoTree: string[]
+): { resolved: string[]; unresolved: string[] } {
+  const treeSet = new Set(repoTree)
+  const resolved: string[] = []
+  const unresolved: string[] = []
+
+  for (const suggested of suggestedPaths) {
+    // Normalize: strip leading slash
+    const normalized = suggested.replace(/^\//, '')
+
+    // Exact match
+    if (treeSet.has(normalized)) {
+      resolved.push(normalized)
+      continue
+    }
+
+    // Try common substitutions for App Router
+    const appRouterVariants = [
+      normalized.replace(/index\.(tsx?|jsx?)$/, 'page.$1'),
+      normalized.replace(/index\.(tsx?|jsx?)$/, 'layout.$1'),
+      normalized.replace(/page\.(tsx?|jsx?)$/, 'index.$1'),
+    ]
+    const variantMatch = appRouterVariants.find((v) => treeSet.has(v))
+    if (variantMatch) {
+      resolved.push(variantMatch)
+      continue
+    }
+
+    // Fuzzy: find files in the same directory or with similar basenames
+    const parts = normalized.split('/')
+    const basename = parts[parts.length - 1]?.replace(/\.[^.]+$/, '') || ''
+    const dir = parts.slice(0, -1).join('/')
+
+    // Look for files in the same directory
+    const dirMatches = repoTree.filter((p) => p.startsWith(dir + '/') && !p.slice(dir.length + 1).includes('/'))
+    if (dirMatches.length > 0) {
+      // Prefer files with similar names
+      const nameMatch = dirMatches.find((p) => {
+        const pBase = p.split('/').pop()?.replace(/\.[^.]+$/, '') || ''
+        return pBase === basename || pBase === 'page' || pBase === 'layout'
+      })
+      if (nameMatch) {
+        resolved.push(nameMatch)
+        continue
+      }
+      // Add the directory's page.tsx as best guess
+      const pageFile = dirMatches.find((p) => p.endsWith('/page.tsx') || p.endsWith('/page.ts'))
+      if (pageFile) {
+        resolved.push(pageFile)
+        continue
+      }
+    }
+
+    unresolved.push(normalized)
+  }
+
+  // Deduplicate
+  return { resolved: Array.from(new Set(resolved)), unresolved }
+}
+
+/** The enriched system prompt with project conventions */
+const REMEDIATION_SYSTEM_PROMPT = `You are an expert software engineer fixing issues in the Linksy codebase.
+You will be given:
+1. The project's CLAUDE.md (coding standards and architecture)
+2. The full repository file tree (so you know exactly what files exist)
+3. The current contents of affected source files
+4. A support ticket with AI triage analysis
+
+Your job: generate the minimal, correct code changes to fix the issue.
+
+## CRITICAL RULES — YOU MUST FOLLOW THESE
+
+### Framework: Next.js 14 App Router
+- Route files are named page.tsx (NOT index.tsx)
+- Layout files are named layout.tsx
+- API routes are in app/api/**/route.ts
+- Use "use client" directive ONLY when the component needs browser APIs, state, or event handlers
+- Server Components are the default — do NOT add "use client" unless needed
+- NEVER use Pages Router patterns (getServerSideProps, _app.tsx, index.tsx for pages)
+
+### Styling: Tailwind CSS + shadcn/ui
+- ALWAYS use Tailwind utility classes for styling (e.g., className="bg-red-600 text-white px-6 py-3 rounded-lg")
+- Use the cn() utility from lib/utils for conditional classes
+- NEVER inject raw CSS via <style> tags, document.createElement("style"), or CSS modules
+- NEVER use inline style objects unless absolutely necessary
+- Use shadcn/ui components from components/ui/ when available (Button, Card, Dialog, etc.)
+- Import shadcn Button like: import { Button } from "@/components/ui/button"
+
+### TypeScript
+- Strict mode is enabled — all types must be correct
+- Use the project's existing type definitions from lib/types/
+- Prefer interface over type for object shapes
+- Don't use React.FC — use plain function components
+
+### Code Patterns
+- Data fetching: React Query v5 hooks wrapping fetch() calls
+- Forms: React Hook Form + Zod validation
+- Supabase client: createClient() for RLS-respecting calls, createServiceClient() for admin
+- Module imports use @/ path alias (e.g., @/components/ui/button)
+
+### File Modification Rules
+- ONLY modify files that already exist in the repository tree (provided below)
+- NEVER create files at paths that don't exist unless the fix genuinely requires a new file
+- When modifying a file, return the COMPLETE file content (not just the changed parts)
+- Preserve all existing imports, exports, and functionality — only change what's needed
+- If you cannot find the right file to modify, say so in the summary rather than creating a wrong file
+
+Return ONLY valid JSON.`
+
+/**
  * Run the full AI remediation pipeline:
- * 1. Read affected files from GitHub
- * 2. Send to OpenAI with the remediation prompt
- * 3. Create a branch + commit + PR on GitHub
- * 4. Update the ticket and notify admin
+ * 1. Fetch project context (CLAUDE.md) and repo tree from GitHub
+ * 2. Resolve and read affected files from GitHub
+ * 3. Send to OpenAI with enriched prompt
+ * 4. Validate changes against repo tree
+ * 5. Create a branch + commit + PR on GitHub
+ * 6. Update the ticket and notify admin
  */
 export async function remediateSupportTicket(input: RemediationInput): Promise<RemediationResult> {
   const supabase = await createServiceClient()
@@ -69,22 +254,50 @@ export async function remediateSupportTicket(input: RemediationInput): Promise<R
     const octokit = getOctokit()
     const { owner, repo, baseBranch } = getRepoConfig()
 
-    // 1. Read affected files from GitHub
-    const fileContents = await readFilesFromGitHub(octokit, owner, repo, baseBranch, input.triage.affected_areas)
+    // 1. Fetch project context and repo tree in parallel
+    const [projectContext, repoTree] = await Promise.all([
+      fetchProjectContext(octokit, owner, repo, baseBranch),
+      fetchRepoTree(octokit, owner, repo, baseBranch),
+    ])
 
-    // 2. Generate fix using OpenAI
-    const { changes, commit_message, summary } = await generateFix(input, fileContents)
+    // 2. Resolve triage-suggested paths against actual tree
+    const { resolved, unresolved } = resolveAffectedFiles(input.triage.affected_areas, repoTree)
+
+    if (unresolved.length > 0) {
+      console.warn('Triage suggested paths not found in repo:', unresolved)
+    }
+
+    // 3. Read the resolved files from GitHub
+    const fileContents = await readFilesFromGitHub(octokit, owner, repo, baseBranch, resolved)
+
+    // 4. Generate fix using OpenAI with full context
+    const { changes, commit_message, summary } = await generateFix(
+      input,
+      fileContents,
+      projectContext,
+      repoTree,
+      unresolved
+    )
 
     if (changes.length === 0) {
       throw new Error('OpenAI did not suggest any file changes')
     }
 
-    // 3. Create branch, commit, and PR
+    // 5. Validate: warn if AI tries to create files at paths not in the tree
+    const validatedChanges = changes.map((change) => {
+      const inTree = repoTree.includes(change.path)
+      if (!inTree) {
+        console.warn(`AI suggested creating new file: ${change.path} (not in repo tree)`)
+      }
+      return change
+    })
+
+    // 6. Create branch, commit, and PR
     const branchName = `fix/support-${input.ticketNumber.toLowerCase().replace(/[^a-z0-9-]/g, '-')}`
-    const prUrl = await createPullRequest(octokit, owner, repo, baseBranch, branchName, changes, commit_message, input)
+    const prUrl = await createPullRequest(octokit, owner, repo, baseBranch, branchName, validatedChanges, commit_message, input)
 
     const result: RemediationResult = {
-      files_changed: changes.map((c) => ({
+      files_changed: validatedChanges.map((c) => ({
         path: c.path,
         summary: `Modified ${c.path}`,
       })),
@@ -95,7 +308,7 @@ export async function remediateSupportTicket(input: RemediationInput): Promise<R
       branch: branchName,
     }
 
-    // 4. Update ticket
+    // 7. Update ticket
     await supabase
       .from('linksy_support_tickets')
       .update({
@@ -106,7 +319,7 @@ export async function remediateSupportTicket(input: RemediationInput): Promise<R
       })
       .eq('id', ticketId)
 
-    // 5. Notify admin
+    // 8. Notify admin
     void sendRemediationEmail(input, result)
 
     return result
@@ -151,7 +364,6 @@ async function readFilesFromGitHub(
     } catch (err: unknown) {
       const status = (err as { status?: number }).status
       if (status === 404) {
-        // File doesn't exist — triage may have guessed wrong, skip it
         console.warn(`File not found on GitHub: ${filePath}`)
       } else {
         throw err
@@ -164,7 +376,10 @@ async function readFilesFromGitHub(
 
 async function generateFix(
   input: RemediationInput,
-  fileContents: Map<string, string>
+  fileContents: Map<string, string>,
+  projectContext: string,
+  repoTree: string[],
+  unresolvedPaths: string[]
 ): Promise<{ changes: FileChange[]; commit_message: string; summary: string }> {
   const openai = getOpenAI()
 
@@ -173,16 +388,31 @@ async function generateFix(
     .map(([path, content]) => `### File: ${path}\n\`\`\`\n${content}\n\`\`\``)
     .join('\n\n')
 
+  // Build a compact tree listing (only relevant directories expanded)
+  const treeContext = buildCompactTree(repoTree, input.triage.affected_areas)
+
+  // Build context about unresolved paths
+  const unresolvedNote = unresolvedPaths.length > 0
+    ? `\n\n## WARNING: These triage-suggested paths do NOT exist in the repo\n${unresolvedPaths.map((p) => `- ${p}`).join('\n')}\nDo NOT create files at these paths. Find the correct existing files using the repo tree above.`
+    : ''
+
   const completion = await openai.chat.completions.create({
     model: 'gpt-4o',
     messages: [
       {
         role: 'system',
-        content: `You are an expert software engineer fixing bugs in a Next.js 14 / TypeScript / Supabase codebase called Linksy. You will be given a support ticket, triage analysis, and the current source files. Generate a fix and return ONLY valid JSON.`,
+        content: REMEDIATION_SYSTEM_PROMPT,
       },
       {
         role: 'user',
-        content: `## Support Ticket: ${input.ticketNumber}
+        content: `## Project Documentation (CLAUDE.md)
+${projectContext || 'Not available — follow the system prompt conventions.'}
+
+## Repository File Tree
+${treeContext}
+${unresolvedNote}
+
+## Support Ticket: ${input.ticketNumber}
 **Subject:** ${input.subject}
 **Description:** ${input.description}
 
@@ -195,8 +425,8 @@ async function generateFix(
 ## Remediation Prompt from Triage
 ${input.triage.remediation_prompt}
 
-## Current Source Files
-${fileContext || 'No files could be read. Suggest the minimal changes needed based on the triage analysis.'}
+## Current Source Files (read from the repo)
+${fileContext || 'No source files could be read from the affected areas. Use the repo tree to identify the correct files, and explain in your summary which files should be modified.'}
 
 ## Instructions
 Analyze the issue and provide a fix. Return ONLY valid JSON with this structure:
@@ -213,16 +443,18 @@ Analyze the issue and provide a fix. Return ONLY valid JSON with this structure:
 }
 
 Rules:
-- Only change files that need to be changed
+- ONLY modify files that exist in the repository tree above
 - Return the COMPLETE file content for each changed file (not just diffs)
+- Preserve ALL existing code in the file — only change what's needed for the fix
+- Use Tailwind classes for styling, shadcn/ui components where appropriate
+- Use Next.js App Router patterns (page.tsx, not index.tsx)
 - Use Conventional Commits format for the commit message
 - Keep changes minimal and focused on the issue
-- Do NOT change unrelated code
-- Ensure TypeScript types are correct
-- Follow existing code patterns and conventions`,
+- Ensure TypeScript strict mode compliance
+- If you're unsure which file to modify, explain in the summary`,
       },
     ],
-    max_tokens: 8000,
+    max_tokens: 16000,
     temperature: 0.3,
     response_format: { type: 'json_object' },
   })
@@ -239,6 +471,55 @@ Rules:
   }
 
   return result
+}
+
+/**
+ * Build a compact tree view focused on relevant areas.
+ * Shows full expansion for directories mentioned in affected_areas,
+ * and collapsed view for other top-level directories.
+ */
+function buildCompactTree(repoTree: string[], affectedAreas: string[]): string {
+  // Get the directory prefixes we care about from affected areas
+  const relevantDirs = new Set<string>()
+  for (const area of affectedAreas) {
+    const parts = area.split('/')
+    // Add each parent directory
+    for (let i = 1; i <= parts.length; i++) {
+      relevantDirs.add(parts.slice(0, i).join('/'))
+    }
+  }
+
+  // Also always expand key directories
+  const alwaysExpand = ['app/dashboard', 'components', 'lib', 'app/api']
+  for (const dir of alwaysExpand) {
+    relevantDirs.add(dir)
+  }
+
+  // Group files by top-level directory
+  const grouped = new Map<string, string[]>()
+  for (const path of repoTree) {
+    const topDir = path.split('/')[0]
+    if (!grouped.has(topDir)) grouped.set(topDir, [])
+    grouped.get(topDir)!.push(path)
+  }
+
+  const lines: string[] = []
+  const entries = Array.from(grouped.entries())
+  for (const [dir, files] of entries) {
+    const isRelevant = relevantDirs.has(dir) || alwaysExpand.some((d) => d.startsWith(dir))
+
+    if (isRelevant) {
+      // Show all files in relevant directories
+      for (const f of files) {
+        lines.push(f)
+      }
+    } else {
+      // Show collapsed summary
+      lines.push(`${dir}/ (${files.length} files)`)
+    }
+  }
+
+  return lines.join('\n')
 }
 
 async function createPullRequest(
