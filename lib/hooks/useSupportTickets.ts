@@ -108,11 +108,10 @@ export function useApproveRemediation() {
       }
       return res.json() as Promise<{
         status: string
-        message?: string
-        pr_url?: string
-        branch?: string
-        summary?: string
-        files_changed?: { path: string; summary: string }[]
+        pr_url: string
+        branch: string
+        summary: string
+        files_changed: { path: string; summary: string }[]
       }>
     },
     onSuccess: (_data, ticketId) => {
