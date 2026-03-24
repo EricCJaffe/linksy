@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowLeft, Phone, Mail, Globe, Clock } from 'lucide-react'
+import { ArrowLeft, Phone, Mail, Globe, Clock, Store } from 'lucide-react'
 import { useProvider } from '@/lib/hooks/useProviders'
 import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
 import { ProviderDetailTabs } from '@/components/providers/provider-detail-tabs'
@@ -124,6 +124,14 @@ export default function ProviderDetailPage({
             </>
           )}
           <ProviderPublicPreview provider={provider} />
+          {isSiteAdmin && (
+            <Button size="sm" variant="outline" asChild>
+              <Link href={`/dashboard/my-organization?provider=${provider.id}`}>
+                <Store className="h-4 w-4 mr-1" />
+                Portal Preview
+              </Link>
+            </Button>
+          )}
           <Button size="sm" asChild>
             <Link href="/dashboard/support">Linksy Support</Link>
           </Button>

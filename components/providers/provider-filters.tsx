@@ -84,22 +84,6 @@ export function ProviderFiltersBar({ filters, onChange }: ProviderFiltersBarProp
             <SelectItem value="standalone">Standalone</SelectItem>
           </SelectContent>
         </Select>
-        <Select
-          value={filters.source || 'all'}
-          onValueChange={(value) => onChange({ source: value as any, offset: 0 })}
-        >
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder="Source" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Sources</SelectItem>
-            <SelectItem value="CC">Clay County</SelectItem>
-            <SelectItem value="UW">United Way</SelectItem>
-            <SelectItem value="IW">Impact Works</SelectItem>
-            <SelectItem value="Self-Registered">Self-Registered</SelectItem>
-            <SelectItem value="Other">Other</SelectItem>
-          </SelectContent>
-        </Select>
         <ZipCodeFilter
           value={filters.zip}
           onChange={(zip) => onChange({ zip, offset: 0 })}

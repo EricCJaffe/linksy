@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { useProviderAccess } from '@/lib/hooks/useProviderAccess'
 import { useProvider, useProviders, useProviderAnalytics } from '@/lib/hooks/useProviders'
 import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
@@ -18,8 +19,17 @@ export default function MyOrganizationPage() {
   const { data: user } = useCurrentUser()
   const { data: access, isLoading: accessLoading } = useProviderAccess()
   const { data: allProviders } = useProviders({ limit: 1000 }, { enabled: user?.profile?.role === 'site_admin' })
-  const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null)
+  const searchParams = useSearchParams()
+  const providerParam = searchParams.get('provider')
+  const [selectedProviderId, setSelectedProviderId] = useState<string | null>(providerParam)
   const [providerSearch, setProviderSearch] = useState('')
+
+  // Sync URL param → state when navigating from provider detail page
+  useEffect(() => {
+    if (providerParam && providerParam !== selectedProviderId) {
+      setSelectedProviderId(providerParam)
+    }
+  }, [providerParam]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const isSiteAdmin = user?.profile?.role === 'site_admin'
   const providerId = isSiteAdmin && selectedProviderId ? selectedProviderId : access?.provider?.id

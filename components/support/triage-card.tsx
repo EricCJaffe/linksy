@@ -78,6 +78,23 @@ function RemediationStatusSection({
 }) {
   const approveRemediation = useApproveRemediation()
 
+  // Show spinner while the mutation is in-flight (API call takes 15-30s)
+  if (status === 'none' && approveRemediation.isPending) {
+    return (
+      <div className="border-t pt-4 mt-4">
+        <div className="flex items-center gap-3">
+          <Loader2 className="h-5 w-5 animate-spin text-green-600" />
+          <div>
+            <h4 className="text-sm font-semibold">Generating Fix...</h4>
+            <p className="text-xs text-muted-foreground">
+              AI is reading the source files and generating a fix. This may take 15-30 seconds.
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   if (status === 'none') {
     return (
       <div className="border-t pt-4 mt-4">
@@ -102,7 +119,7 @@ function RemediationStatusSection({
               <AlertDialogHeader>
                 <AlertDialogTitle>Approve AI Remediation?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will use Claude to analyze the affected source files, generate a fix,
+                  This will use AI to analyze the affected source files, generate a fix,
                   and create a pull request on GitHub. You will review and merge the PR manually.
                   <br /><br />
                   <strong>This does NOT deploy anything automatically.</strong> The fix will be

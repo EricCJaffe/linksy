@@ -37,6 +37,7 @@ export default function NeedsPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogMode, setDialogMode] = useState<'category' | 'need'>('category')
   const [editItem, setEditItem] = useState<any>(null)
+  const [defaultCategoryId, setDefaultCategoryId] = useState<string | undefined>(undefined)
   const [showInactive, setShowInactive] = useState(false)
 
   const allCategories = useMemo(() => categories || [], [categories])
@@ -60,24 +61,28 @@ export default function NeedsPage() {
   function openAddCategory() {
     setDialogMode('category')
     setEditItem(null)
+    setDefaultCategoryId(undefined)
     setDialogOpen(true)
   }
 
   function openEditCategory(cat: NeedCategory) {
     setDialogMode('category')
     setEditItem(cat)
+    setDefaultCategoryId(undefined)
     setDialogOpen(true)
   }
 
-  function openAddNeed() {
+  function openAddNeed(categoryId?: string) {
     setDialogMode('need')
     setEditItem(null)
+    setDefaultCategoryId(categoryId)
     setDialogOpen(true)
   }
 
   function openEditNeed(need: Need) {
     setDialogMode('need')
     setEditItem(need)
+    setDefaultCategoryId(undefined)
     setDialogOpen(true)
   }
 
@@ -188,7 +193,7 @@ export default function NeedsPage() {
             <Plus className="mr-2 h-4 w-4" />
             Add Category
           </Button>
-          <Button onClick={openAddNeed}>
+          <Button onClick={() => openAddNeed()}>
             <Plus className="mr-2 h-4 w-4" />
             Add Need
           </Button>
@@ -279,49 +284,59 @@ export default function NeedsPage() {
 
               {isExpanded && (
                 <CardContent>
-                  {needs.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No needs in this category</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {activeNeeds.length > 0 && (
+                  <div className="space-y-2">
+                    {activeNeeds.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {activeNeeds.map((need) => (
+                          <button
+                            key={need.id}
+                            onClick={() => openEditNeed(need)}
+                            className="group inline-flex items-center gap-1 rounded-md border bg-background px-2.5 py-1 text-sm hover:border-primary hover:bg-accent"
+                          >
+                            {need.name}
+                            {(need.synonyms?.length ?? 0) > 0 && (
+                              <span className="text-xs text-muted-foreground">
+                                ({need.synonyms!.length})
+                              </span>
+                            )}
+                            <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-100" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {inactiveNeeds.length > 0 && (
+                      <div>
+                        <p className="mb-1 text-xs text-muted-foreground">Inactive</p>
                         <div className="flex flex-wrap gap-2">
-                          {activeNeeds.map((need) => (
+                          {inactiveNeeds.map((need) => (
                             <button
                               key={need.id}
                               onClick={() => openEditNeed(need)}
-                              className="group inline-flex items-center gap-1 rounded-md border bg-background px-2.5 py-1 text-sm hover:border-primary hover:bg-accent"
+                              className="group inline-flex items-center gap-1 rounded-md border border-dashed bg-background px-2.5 py-1 text-sm text-muted-foreground hover:border-primary hover:bg-accent"
                             >
                               {need.name}
-                              {(need.synonyms?.length ?? 0) > 0 && (
-                                <span className="text-xs text-muted-foreground">
-                                  ({need.synonyms!.length})
-                                </span>
-                              )}
                               <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-100" />
                             </button>
                           ))}
                         </div>
-                      )}
+                      </div>
+                    )}
 
-                      {inactiveNeeds.length > 0 && (
-                        <div>
-                          <p className="mb-1 text-xs text-muted-foreground">Inactive</p>
-                          <div className="flex flex-wrap gap-2">
-                            {inactiveNeeds.map((need) => (
-                              <button
-                                key={need.id}
-                                onClick={() => openEditNeed(need)}
-                                className="group inline-flex items-center gap-1 rounded-md border border-dashed bg-background px-2.5 py-1 text-sm text-muted-foreground hover:border-primary hover:bg-accent"
-                              >
-                                {need.name}
-                                <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-100" />
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                    {needs.length === 0 && (
+                      <p className="text-sm text-muted-foreground">No needs in this category</p>
+                    )}
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-1"
+                      onClick={() => openAddNeed(cat.id)}
+                    >
+                      <Plus className="mr-1.5 h-3 w-3" />
+                      Add Need to {cat.name}
+                    </Button>
+                  </div>
                 </CardContent>
               )}
             </Card>
@@ -335,6 +350,7 @@ export default function NeedsPage() {
         mode={dialogMode}
         editItem={editItem}
         categories={(categories || []).filter((c) => c.is_active)}
+        defaultCategoryId={defaultCategoryId}
         onSubmit={handleSubmit}
         isLoading={isMutating}
       />

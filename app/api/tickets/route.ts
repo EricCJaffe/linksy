@@ -67,7 +67,7 @@ export async function GET(request: Request) {
   let query = supabase
     .from('linksy_tickets')
     .select(
-      '*, linksy_providers!provider_id(name, phone), linksy_needs!need_id(name)',
+      '*, linksy_providers!provider_id(name, phone), linksy_needs!need_id(name), linksy_ticket_status_reasons!status_reason_id(id, label)',
       { count: 'exact' }
     )
     .order('created_at', { ascending: false })
@@ -142,6 +142,8 @@ export async function GET(request: Request) {
     client_email: t.client_email,
     description_of_need: t.description_of_need,
     status: t.status,
+    status_reason_id: t.status_reason_id,
+    status_reason: t.linksy_ticket_status_reasons || null,
     is_test: t.is_test ?? false,
     client_perception: t.client_perception,
     follow_up_sent: t.follow_up_sent,
