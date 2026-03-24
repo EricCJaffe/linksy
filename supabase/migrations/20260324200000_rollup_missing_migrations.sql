@@ -22,6 +22,10 @@ ALTER TYPE linksy_ticket_status ADD VALUE IF NOT EXISTS 'in_process';
 ALTER TYPE linksy_ticket_status ADD VALUE IF NOT EXISTS 'transferred_another_provider';
 ALTER TYPE linksy_ticket_status ADD VALUE IF NOT EXISTS 'transferred_pending';
 
+-- Restore contact type enum values dropped by remote_schema
+ALTER TYPE linksy_contact_type ADD VALUE IF NOT EXISTS 'provider_admin';
+ALTER TYPE linksy_contact_type ADD VALUE IF NOT EXISTS 'org_admin';
+
 
 -- ═══════════════════════════════════════════════════════════════════════════════
 -- SECTION 1: TICKET NUMBER SEQUENCE (from 20260303000001)
@@ -300,7 +304,7 @@ CREATE POLICY "host_custom_fields_site_admin"
 CREATE POLICY "host_custom_fields_provider_admin_read"
   ON linksy_host_custom_fields FOR SELECT
   USING (
-    provider_id IN (
+    host_id IN (
       SELECT pc.provider_id FROM linksy_provider_contacts pc
       WHERE pc.user_id = auth.uid() AND pc.provider_role = 'admin' AND pc.status = 'active'
     )
