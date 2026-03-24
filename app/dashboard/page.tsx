@@ -108,6 +108,14 @@ export default function DashboardPage() {
                 </Badge>
               )}
             </Button>
+            <Button
+              variant="destructive"
+              size="lg"
+              className="bg-red-600 text-white"
+              onClick={() => alert('Red Button Danger clicked!')}
+            >
+              Red Button Danger
+            </Button>
           </div>
         )}
       </div>
