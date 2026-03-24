@@ -256,7 +256,6 @@ export default function ReviewImportsPage() {
                     <SortableHeader field="name">Provider Name</SortableHeader>
                     <SortableHeader field="sector">Sector</SortableHeader>
                     <SortableHeader field="contact">Contact</SortableHeader>
-                    <SortableHeader field="source">Import Source</SortableHeader>
                     <SortableHeader field="imported">Imported</SortableHeader>
                     <TableHead className="w-[200px]">Actions</TableHead>
                   </TableRow>
@@ -277,11 +276,6 @@ export default function ReviewImportsPage() {
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {provider.email || (provider.phone ? formatPhone(provider.phone) : null) || 'N/A'}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                          {provider.import_source || 'unknown'}
-                        </Badge>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {provider.imported_at

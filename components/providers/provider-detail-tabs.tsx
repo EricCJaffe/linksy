@@ -2173,17 +2173,6 @@ function ContactsTab({ provider }: { provider: ProviderDetail }) {
 function DetailsTab({ provider }: { provider: ProviderDetail }) {
   const { data: analytics } = useProviderAnalytics(provider.id)
   const router = useRouter()
-  const updateProvider = useUpdateProvider()
-  const [source, setSource] = useState(provider.source || '')
-  const [sourceOther, setSourceOther] = useState(provider.source_other || '')
-  const [sourceSaved, setSourceSaved] = useState(false)
-
-  const handleSaveSource = async () => {
-    updateProvider.mutate(
-      { id: provider.id, source: (source || null) as any, source_other: source === 'Other' ? sourceOther : null },
-      { onSuccess: () => { setSourceSaved(true); setTimeout(() => setSourceSaved(false), 2000) } }
-    )
-  }
 
   const profileViews = analytics?.allTime.profile_view ?? 0
   const totalClicks = (analytics?.allTime.phone_click ?? 0)
@@ -2196,41 +2185,6 @@ function DetailsTab({ provider }: { provider: ProviderDetail }) {
 
   return (
     <div className="space-y-4">
-      {/* Source Tagging */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Provider Source</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center gap-3">
-            <Select value={source || 'none'} onValueChange={(v) => setSource(v === 'none' ? '' : v)}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Select source" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">No source</SelectItem>
-                <SelectItem value="CC">Clay County</SelectItem>
-                <SelectItem value="UW">United Way</SelectItem>
-                <SelectItem value="IW">Impact Works</SelectItem>
-                <SelectItem value="Self-Registered">Self-Registered</SelectItem>
-                <SelectItem value="Other">Other</SelectItem>
-              </SelectContent>
-            </Select>
-            {source === 'Other' && (
-              <Input
-                placeholder="Specify source..."
-                value={sourceOther}
-                onChange={(e) => setSourceOther(e.target.value)}
-                className="w-48"
-              />
-            )}
-            <Button size="sm" onClick={handleSaveSource} disabled={updateProvider.isPending}>
-              {sourceSaved ? 'Saved!' : 'Save'}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Reporting Dashboard</CardTitle>

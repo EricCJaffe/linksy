@@ -24,7 +24,7 @@ import Link from 'next/link'
 import type { ProviderFilters } from '@/lib/types/linksy'
 import { formatPhone } from '@/lib/utils/phone'
 
-type SortField = 'name' | 'sector' | 'phone' | 'locations' | 'status' | 'source' | 'referral_type'
+type SortField = 'name' | 'sector' | 'phone' | 'locations' | 'status' | 'referral_type'
 type SortDir = 'asc' | 'desc'
 
 const LIMIT = 50
@@ -48,22 +48,6 @@ const statusBadgeClass: Record<string, string> = {
   paused: 'bg-yellow-50 text-yellow-800 border-yellow-200',
   inactive: 'bg-slate-100 text-slate-700 border-slate-300',
   frozen: 'bg-cyan-50 text-cyan-700 border-cyan-200',
-}
-
-const sourceLabels: Record<string, string> = {
-  CC: 'Clay County',
-  UW: 'United Way',
-  IW: 'Impact Works',
-  'Self-Registered': 'Self-Registered',
-  Other: 'Other',
-}
-
-const sourceBadgeClass: Record<string, string> = {
-  CC: 'bg-orange-50 text-orange-700 border-orange-200',
-  UW: 'bg-purple-50 text-purple-700 border-purple-200',
-  IW: 'bg-teal-50 text-teal-700 border-teal-200',
-  'Self-Registered': 'bg-lime-50 text-lime-700 border-lime-200',
-  Other: 'bg-gray-50 text-gray-700 border-gray-200',
 }
 
 const referralTypeBadgeClass: Record<string, string> = {
@@ -107,7 +91,6 @@ export default function ProvidersPage() {
       case 'phone': return dir * (a.phone || '').localeCompare(b.phone || '')
       case 'locations': return dir * ((a.location_count || 0) - (b.location_count || 0))
       case 'status': return dir * (a.provider_status || '').localeCompare(b.provider_status || '')
-      case 'source': return dir * ((a as any).source || '').localeCompare((b as any).source || '')
       case 'referral_type': return dir * (a.referral_type || '').localeCompare(b.referral_type || '')
       default: return 0
     }
@@ -181,18 +164,16 @@ export default function ProvidersPage() {
       // No selection → export all with current filters
       const params = new URLSearchParams()
       if (filters.status) params.set('status', filters.status)
-      if (filters.source && filters.source !== 'all') params.set('source', filters.source)
       window.open(`/api/admin/export/providers?${params.toString()}`, '_blank')
     } else {
       // Export selected as CSV, built client-side from current page data
       const selected = providers.filter((p) => selectedIds.has(p.id))
-      const headers = ['Name', 'Sector', 'Phone', 'Status', 'Source', 'Referral Type']
+      const headers = ['Name', 'Sector', 'Phone', 'Status', 'Referral Type']
       const rows = selected.map((p) => [
         p.name,
         sectorLabels[p.sector] || p.sector,
         p.phone ? formatPhone(p.phone) : '',
         p.provider_status === 'active' ? 'Active' : p.provider_status === 'paused' ? 'Paused' : 'Inactive',
-        (p as any).source ? (sourceLabels[(p as any).source] || (p as any).source) : '',
         p.referral_type === 'contact_directly' ? 'Contact Directly' : 'Standard',
       ])
       const csv = [headers, ...rows]
@@ -308,7 +289,6 @@ export default function ProvidersPage() {
               <SortableHeader field="phone">Phone</SortableHeader>
               <SortableHeader field="locations">Locations</SortableHeader>
               <SortableHeader field="status">Status</SortableHeader>
-              <SortableHeader field="source">Source</SortableHeader>
               <SortableHeader field="referral_type">Referral Type</SortableHeader>
             </TableRow>
           </TableHeader>
@@ -322,7 +302,6 @@ export default function ProvidersPage() {
                   <TableCell><Skeleton className="h-4 w-28" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-8" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                 </TableRow>
               ))
@@ -390,15 +369,6 @@ export default function ProvidersPage() {
                         </Badge>
                       )}
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    {(provider as any).source ? (
-                      <Badge variant="outline" className={sourceBadgeClass[(provider as any).source] || 'bg-muted text-muted-foreground'}>
-                        {sourceLabels[(provider as any).source] || (provider as any).source}
-                      </Badge>
-                    ) : (
-                      <span className="text-muted-foreground">-</span>
-                    )}
                   </TableCell>
                   <TableCell>
                     <Badge
