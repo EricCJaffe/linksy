@@ -4,7 +4,21 @@ import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { useTriggerSupportTicketTriage } from '@/lib/hooks/useSupportTickets'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
+import {
+  useTriggerSupportTicketTriage,
+  useApproveRemediation,
+} from '@/lib/hooks/useSupportTickets'
 import {
   Brain,
   Copy,
@@ -13,10 +27,15 @@ import {
   FileCode,
   Target,
   Loader2,
+  Wrench,
+  ExternalLink,
+  GitPullRequest,
 } from 'lucide-react'
 import type {
   SupportTicketTriage,
   SupportTicketTriageStatus,
+  SupportTicketRemediationStatus,
+  SupportTicketRemediationResult,
 } from '@/lib/types/linksy'
 
 const severityColors: Record<string, string> = {
@@ -44,13 +63,209 @@ function TriageStatusBadge({ status }: { status: SupportTicketTriageStatus }) {
   return <Badge className={styles[status]}>{status}</Badge>
 }
 
+function RemediationStatusSection({
+  status,
+  result,
+  prUrl,
+  branch,
+  ticketId,
+}: {
+  status: SupportTicketRemediationStatus
+  result: SupportTicketRemediationResult | null
+  prUrl: string | null
+  branch: string | null
+  ticketId: string
+}) {
+  const approveRemediation = useApproveRemediation()
+
+  if (status === 'none') {
+    return (
+      <div className="border-t pt-4 mt-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h4 className="text-sm font-semibold flex items-center gap-1.5">
+              <Wrench className="h-4 w-4 text-muted-foreground" />
+              Auto-Remediation
+            </h4>
+            <p className="text-xs text-muted-foreground mt-1">
+              Approve to have AI generate a fix and create a pull request automatically.
+            </p>
+          </div>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button size="sm" className="bg-green-600 hover:bg-green-700">
+                <Wrench className="h-4 w-4 mr-1.5" />
+                Approve Fix
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Approve AI Remediation?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will use Claude to analyze the affected source files, generate a fix,
+                  and create a pull request on GitHub. You will review and merge the PR manually.
+                  <br /><br />
+                  <strong>This does NOT deploy anything automatically.</strong> The fix will be
+                  on a separate branch for your review.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => approveRemediation.mutate(ticketId)}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  Approve & Generate Fix
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+        {approveRemediation.isError && (
+          <p className="text-sm text-destructive mt-2">
+            {approveRemediation.error.message}
+          </p>
+        )}
+      </div>
+    )
+  }
+
+  if (status === 'approved' || status === 'generating') {
+    return (
+      <div className="border-t pt-4 mt-4">
+        <div className="flex items-center gap-3">
+          <Loader2 className="h-5 w-5 animate-spin text-green-600" />
+          <div>
+            <h4 className="text-sm font-semibold">Generating Fix...</h4>
+            <p className="text-xs text-muted-foreground">
+              Claude is reading the source files and generating a fix. This may take 15-30 seconds.
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (status === 'pr_created' && prUrl) {
+    return (
+      <div className="border-t pt-4 mt-4">
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <div className="flex items-start justify-between">
+            <div>
+              <h4 className="text-sm font-semibold text-green-800 flex items-center gap-1.5">
+                <GitPullRequest className="h-4 w-4" />
+                Pull Request Created
+              </h4>
+              {branch && (
+                <p className="text-xs text-green-700 mt-1">
+                  Branch: <code className="bg-green-100 px-1.5 py-0.5 rounded">{branch}</code>
+                </p>
+              )}
+              {result?.summary && (
+                <p className="text-sm text-green-800 mt-2">{result.summary}</p>
+              )}
+              {result?.files_changed && result.files_changed.length > 0 && (
+                <div className="mt-2">
+                  <p className="text-xs text-green-700 font-medium">Files changed:</p>
+                  <ul className="text-xs text-green-700 font-mono mt-1 space-y-0.5">
+                    {result.files_changed.map((f) => (
+                      <li key={f.path}>{f.path}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+            <a
+              href={prUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button size="sm" className="bg-green-600 hover:bg-green-700">
+                <ExternalLink className="h-4 w-4 mr-1.5" />
+                Review PR
+              </Button>
+            </a>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (status === 'merged') {
+    return (
+      <div className="border-t pt-4 mt-4">
+        <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+          <h4 className="text-sm font-semibold text-purple-800 flex items-center gap-1.5">
+            <Check className="h-4 w-4" />
+            Fix Merged
+          </h4>
+          {prUrl && (
+            <a
+              href={prUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-purple-600 hover:underline mt-1 inline-block"
+            >
+              View PR
+            </a>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  if (status === 'failed') {
+    return (
+      <div className="border-t pt-4 mt-4">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <h4 className="text-sm font-semibold text-red-800 flex items-center gap-1.5">
+            <Wrench className="h-4 w-4" />
+            Remediation Failed
+          </h4>
+          {result?.error && (
+            <p className="text-sm text-red-700 mt-1">{result.error}</p>
+          )}
+          <Button
+            size="sm"
+            variant="outline"
+            className="mt-2"
+            onClick={() => approveRemediation.mutate(ticketId)}
+            disabled={approveRemediation.isPending}
+          >
+            {approveRemediation.isPending ? (
+              <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-1.5" />
+            )}
+            Retry
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  return null
+}
+
 interface TriageCardProps {
   triage: SupportTicketTriage | null
   triageStatus: SupportTicketTriageStatus
   ticketId: string
+  remediationStatus?: SupportTicketRemediationStatus
+  remediationResult?: SupportTicketRemediationResult | null
+  remediationPrUrl?: string | null
+  remediationBranch?: string | null
 }
 
-export function TriageCard({ triage, triageStatus, ticketId }: TriageCardProps) {
+export function TriageCard({
+  triage,
+  triageStatus,
+  ticketId,
+  remediationStatus = 'none',
+  remediationResult = null,
+  remediationPrUrl = null,
+  remediationBranch = null,
+}: TriageCardProps) {
   const [copied, setCopied] = useState(false)
   const triggerTriage = useTriggerSupportTicketTriage()
 
@@ -265,6 +480,15 @@ export function TriageCard({ triage, triageStatus, ticketId }: TriageCardProps) 
             Paste this prompt into Claude Code to investigate and fix the issue.
           </p>
         </div>
+
+        {/* Auto-Remediation Section */}
+        <RemediationStatusSection
+          status={remediationStatus}
+          result={remediationResult}
+          prUrl={remediationPrUrl}
+          branch={remediationBranch}
+          ticketId={ticketId}
+        />
       </CardContent>
     </Card>
   )

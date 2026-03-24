@@ -159,6 +159,10 @@ export default function AdminSupportTicketDetailPage() {
             triage={ticket.ai_triage}
             triageStatus={ticket.ai_triage_status}
             ticketId={ticketId}
+            remediationStatus={ticket.remediation_status}
+            remediationResult={ticket.remediation_result}
+            remediationPrUrl={ticket.remediation_pr_url}
+            remediationBranch={ticket.remediation_branch}
           />
 
           <Card>

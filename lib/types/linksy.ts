@@ -393,6 +393,18 @@ export interface SupportTicketTriage {
   estimated_complexity: 'trivial' | 'small' | 'medium' | 'large'
 }
 
+export type SupportTicketRemediationStatus = 'none' | 'approved' | 'generating' | 'pr_created' | 'merged' | 'failed'
+
+export interface SupportTicketRemediationResult {
+  files_changed: { path: string; summary: string }[]
+  commit_message: string
+  summary: string
+  model_used: string
+  pr_url?: string
+  branch?: string
+  error?: string
+}
+
 export interface SupportTicket {
   id: string
   ticket_number: string
@@ -411,6 +423,11 @@ export interface SupportTicket {
   resolved_at: string | null
   ai_triage: SupportTicketTriage | null
   ai_triage_status: SupportTicketTriageStatus
+  remediation_status: SupportTicketRemediationStatus
+  remediation_pr_url: string | null
+  remediation_branch: string | null
+  remediation_result: SupportTicketRemediationResult | null
+  remediation_approved_at: string | null
   provider?: { name: string }
   comments?: SupportTicketComment[]
 }

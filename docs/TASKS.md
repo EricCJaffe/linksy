@@ -270,7 +270,7 @@ All 8 LOW findings resolved.
 
 #### AI-Powered Support Ticket Triage
 - [x] **Support ticket AI triage (Phase 1)** — COMPLETED 2026-03-24. On support ticket creation, OpenAI (gpt-4o-mini) analyzes the issue and generates: classification, severity, affected code areas, root cause hypothesis, suggested fix, investigation steps, and a ready-to-use Claude Code remediation prompt. Results displayed in support ticket detail (both admin and provider views). Admin email notification with full analysis. "Copy Prompt" button for easy paste into Claude Code. Manual "Run AI Triage" / "Re-run" buttons. Migration: `20260324000001_support_ticket_ai_triage.sql`.
-- [ ] **Support ticket AI remediation (Phase 2)** — Future: "Approve Fix" button → triggers Claude Code API to create branch → auto-applies fix → creates PR → notifies admin for review/merge. Requires GitHub API integration and Claude Code CLI/API access.
+- [x] **Support ticket AI remediation (Phase 2)** — COMPLETED 2026-03-24. "Approve Fix" button on triage card → confirmation dialog → Claude API (claude-sonnet-4-20250514) reads affected files from GitHub, generates fix → creates branch + commit + PR via GitHub API → emails admin with PR link. Remediation status tracked (none → approved → generating → pr_created → merged/failed). Retry on failure. Requires `ANTHROPIC_API_KEY`, `GITHUB_TOKEN`, `GITHUB_OWNER`, `GITHUB_REPO`. Migration: `20260324000002_support_ticket_ai_remediation.sql`.
 
 #### Existing Backlog
 - [ ] Voice input (Whisper) in widget (`/api/linksy/transcribe` + mic UX)
