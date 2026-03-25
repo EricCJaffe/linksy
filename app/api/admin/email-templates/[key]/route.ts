@@ -10,15 +10,16 @@ export async function PATCH(
   if (error) return error
 
   const body = await request.json()
-  const { name, subject_template, html_template, text_template, description, is_active } = body
+  const { name, subject, body_html, is_active, trigger_event, variables } = body
 
+  // Map UI field names to DB column names
   const updateData: Record<string, unknown> = {}
   if (name !== undefined) updateData.name = name
-  if (subject_template !== undefined) updateData.subject_template = subject_template
-  if (html_template !== undefined) updateData.html_template = html_template
-  if (text_template !== undefined) updateData.text_template = text_template
-  if (description !== undefined) updateData.description = description
+  if (subject !== undefined) updateData.subject_template = subject
+  if (body_html !== undefined) updateData.html_template = body_html
   if (is_active !== undefined) updateData.is_active = is_active
+  if (trigger_event !== undefined) updateData.trigger_event = trigger_event
+  if (variables !== undefined) updateData.variables = variables
 
   if (Object.keys(updateData).length === 0) {
     return NextResponse.json({ error: 'No fields to update' }, { status: 400 })
@@ -36,7 +37,20 @@ export async function PATCH(
     return NextResponse.json({ error: updateError.message }, { status: 500 })
   }
 
-  return NextResponse.json(template)
+  // Map back to UI-friendly names
+  return NextResponse.json({
+    id: template.id,
+    template_key: template.template_key,
+    name: template.name,
+    description: template.description,
+    subject: template.subject_template,
+    body_html: template.html_template,
+    variables: template.variables || [],
+    is_active: template.is_active,
+    trigger_event: template.trigger_event || null,
+    created_at: template.created_at,
+    updated_at: template.updated_at,
+  })
 }
 
 export async function DELETE(

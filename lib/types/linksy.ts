@@ -622,11 +622,11 @@ export interface EmailTemplate {
   template_key: string
   name: string
   description: string | null
-  subject_template: string
-  html_template: string
-  text_template: string | null
+  subject: string
+  body_html: string
+  variables: string[]
   is_active: boolean
-  updated_by: string | null
+  trigger_event: string | null
   created_at: string
   updated_at: string
 }
