@@ -186,7 +186,17 @@ Core features that users and admins need on day one, plus remaining quality fixe
 - [x] **[TASK-033] Support tickets: visible tab** — COMPLETED 2026-03-12. Already in main navigation with color-coded badge (blue for open, yellow for in-progress). Provider portal has "Submit Support Ticket" link. Badge count shows open + in-progress total.
 - [x] **[TASK-013] Add Contacts to dashboard nav panel** — Already exists in sidebar (sidebar.tsx line 47). VERIFIED 2026-03-06.
 
-#### 1.12 Needs Stakeholder Decisions (Program Review) [CLARIFY FIRST]
+#### 1.12 Email Template Management
+- [x] **Dynamic email template CRUD** — COMPLETED 2026-03-25. Admin can create, edit, preview, and send test emails for all templates at `/dashboard/admin/email-templates`. 13 system templates seeded with default content. Rich text editor (TipTap) with formatting toolbar. "Insert Variable" dropdown with all variables grouped by category (Common, Client, Provider, Ticket, SLA, Support/AI, Invitation, Description Review). Preview renders with sample data. Test send fills sample variables. Template key auto-generated from name.
+- [ ] **[PRE-GO-LIVE] Connect email templates to system triggers/webhooks** — Each template has a `trigger_event` field (currently display-only with "Coming Soon" badge). Before go-live, wire up:
+  - Map each `trigger_event` value to the actual system event that fires the email (ticket.created, ticket.status_changed, ticket.forwarded, ticket.assigned, ticket.reassigned, user.invited, referral.stale_alert, referral.sla_reminder, support_ticket.triage_complete, provider.description_review)
+  - Update `resolveEmailTemplate()` in `lib/utils/email.ts` to look up templates by `trigger_event` instead of hardcoded template keys
+  - Enable the trigger_event dropdown in the admin UI (currently disabled)
+  - Allow admins to create custom templates and assign them to events
+  - Support multiple templates per event (e.g. different templates for different statuses)
+  - Document the complete event → template mapping
+
+#### 1.13 Needs Stakeholder Decisions (Program Review) [CLARIFY FIRST]
 - [ ] **[TASK-005] Email bounce handling** — How should system handle bounces? Stop after N? Flag "Bad Email"? One admin notification? Auto-queue for verification?
 - [ ] **[TASK-009] Provider self-registration form** — Is form identical to internal page? Who edits structure? Auto-approve from UW? Allow referral/non-referral selection?
 - [ ] **[TASK-010] Provider approval workflow** — Where is approval screen? Does UW import bypass approval? Dedicated "Pending Approval" queue tab?
@@ -278,7 +288,7 @@ All 8 LOW findings resolved.
 - [ ] Two-factor authentication (2FA) for admins
 - [ ] SSO integration (SAML)
 - [x] Autoupdates for provider description every 90 days — COMPLETED 2026-03-21. Quarterly cron job (Jan/Apr/Jul/Oct) scans provider websites via OpenAI, compares descriptions, emails provider contacts with accept/edit links. Admin can override timing per provider. Email template editable in Admin Console.
-- [ ] Enhanced notification workflows beyond baseline
+- [ ] **[PRE-GO-LIVE] Connect email templates to system triggers/webhooks** — Email templates now have a `trigger_event` column (e.g. `ticket.created`, `ticket.status_changed`, `ticket.forwarded`, etc.) but this is read-only/display-only. Before go-live, need to: (1) Build a UI to let admins select which template fires for which event, (2) Wire `resolveEmailTemplate()` to check `trigger_event` instead of hardcoded template keys, (3) Allow multiple templates per event (e.g. one to client, one to admin), (4) Support conditional triggers (e.g. only fire on specific status transitions). Related: email template admin page enhanced 2026-03-25 with full CRUD, variable reference, preview, and test send.
 - [ ] Host-specific email template customization (tenant/host-level overrides)
 - [ ] Host custom form builder for pre-proposal intake
 - [ ] Custom provider referral redirects (external destination behavior)
