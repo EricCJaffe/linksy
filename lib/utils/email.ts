@@ -78,12 +78,15 @@ async function getEmailTemplateOverride(
 ): Promise<EmailTemplateOverride | null> {
   try {
     const supabase = await createServiceClient()
-    const { data, error } = await supabase
+    const { data: raw, error } = await supabase
       .from('linksy_email_templates')
-      .select('subject, body_html, is_active')
-      .eq('slug', templateKey)
+      .select('subject_template, html_template, is_active')
+      .eq('template_key', templateKey)
       .eq('is_active', true)
       .maybeSingle()
+
+    // Map DB columns to the interface the rest of the code expects
+    const data = raw ? { subject: raw.subject_template, body_html: raw.html_template, is_active: raw.is_active } : null
 
     if (error) {
       logger.warn('Failed to load email template override; using default template.', {

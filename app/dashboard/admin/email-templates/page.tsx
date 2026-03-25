@@ -133,7 +133,7 @@ export default function EmailTemplatesPage() {
   const [editMode, setEditMode] = useState<EditMode>('none')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState({
-    slug: '',
+    template_key: '',
     name: '',
     subject: '',
     body_html: '',
@@ -176,7 +176,7 @@ export default function EmailTemplatesPage() {
     setEditMode('edit')
     setEditingId(template.id)
     setEditForm({
-      slug: template.slug,
+      template_key: template.template_key,
       name: template.name,
       subject: template.subject,
       body_html: template.body_html,
@@ -191,7 +191,7 @@ export default function EmailTemplatesPage() {
     setEditMode('create')
     setEditingId(null)
     setEditForm({
-      slug: '',
+      template_key: '',
       name: '',
       subject: '',
       body_html: '<p>Enter your email template content here.</p>',
@@ -235,12 +235,12 @@ export default function EmailTemplatesPage() {
     setSaveMessage(null)
     try {
       if (editMode === 'create') {
-        const slug = editForm.slug || generateSlug(editForm.name)
+        const template_key = editForm.template_key || generateSlug(editForm.name)
         const res = await fetch('/api/admin/email-templates', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            slug,
+            template_key,
             name: editForm.name,
             subject: editForm.subject,
             body_html: editForm.body_html,
@@ -390,12 +390,12 @@ export default function EmailTemplatesPage() {
   }
 
   // Find the registry definition for a template (if it's a system template)
-  const getRegistryDef = (slug: string): EmailTemplateDefinition | undefined => {
-    return EMAIL_TEMPLATE_DEFINITIONS.find((d) => d.key === slug)
+  const getRegistryDef = (key: string): EmailTemplateDefinition | undefined => {
+    return EMAIL_TEMPLATE_DEFINITIONS.find((d) => d.key === key)
   }
 
-  const isSystemTemplate = (slug: string) => {
-    return EMAIL_TEMPLATE_DEFINITIONS.some((d) => d.key === slug)
+  const isSystemTemplate = (key: string) => {
+    return EMAIL_TEMPLATE_DEFINITIONS.some((d) => d.key === key)
   }
 
   return (
@@ -464,7 +464,6 @@ export default function EmailTemplatesPage() {
               setForm={setEditForm}
               editorApiRef={editorApiRef}
               insertVariable={insertVariable}
-              showSlug
             />
           </CardContent>
         </Card>
@@ -490,9 +489,9 @@ export default function EmailTemplatesPage() {
       ) : (
         <div className="space-y-4">
           {templates.map((template) => {
-            const registryDef = getRegistryDef(template.slug)
+            const registryDef = getRegistryDef(template.template_key)
             const isEditing = editMode === 'edit' && editingId === template.id
-            const isSystem = isSystemTemplate(template.slug)
+            const isSystem = isSystemTemplate(template.template_key)
 
             return (
               <Card
@@ -506,7 +505,7 @@ export default function EmailTemplatesPage() {
                       <div className="min-w-0">
                         <CardTitle className="text-base">{template.name}</CardTitle>
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
-                          <span className="text-xs text-muted-foreground font-mono">{template.slug}</span>
+                          <span className="text-xs text-muted-foreground font-mono">{template.template_key}</span>
                           {template.trigger_event && (
                             <Badge variant="secondary" className="text-xs gap-1">
                               <Zap className="h-3 w-3" />
@@ -737,7 +736,7 @@ export default function EmailTemplatesPage() {
 
 interface TemplateEditFormProps {
   form: {
-    slug: string
+    template_key: string
     name: string
     subject: string
     body_html: string
@@ -748,7 +747,6 @@ interface TemplateEditFormProps {
   setForm: React.Dispatch<React.SetStateAction<TemplateEditFormProps['form']>>
   editorApiRef: React.MutableRefObject<RichTextEditorApi | null>
   insertVariable: (variable: string) => void
-  showSlug?: boolean
 }
 
 function TemplateEditForm({
@@ -756,7 +754,6 @@ function TemplateEditForm({
   setForm,
   editorApiRef,
   insertVariable,
-  showSlug,
 }: TemplateEditFormProps) {
   const [varDropdownOpen, setVarDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -780,36 +777,14 @@ function TemplateEditForm({
 
   return (
     <div className="space-y-4">
-      {showSlug && (
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label>Template Name <span className="text-destructive">*</span></Label>
-            <Input
-              value={form.name}
-              onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-              placeholder="e.g. Welcome Email"
-            />
-          </div>
-          <div>
-            <Label>Slug (auto-generated if blank)</Label>
-            <Input
-              value={form.slug}
-              onChange={(e) => setForm((prev) => ({ ...prev, slug: e.target.value }))}
-              placeholder="e.g. welcome_email"
-              className="font-mono text-sm"
-            />
-          </div>
-        </div>
-      )}
-      {!showSlug && (
-        <div>
-          <Label>Template Name</Label>
-          <Input
-            value={form.name}
-            onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-          />
-        </div>
-      )}
+      <div>
+        <Label>Template Name <span className="text-destructive">*</span></Label>
+        <Input
+          value={form.name}
+          onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+          placeholder="e.g. Welcome Email"
+        />
+      </div>
       <div>
         <Label>Subject Line <span className="text-destructive">*</span></Label>
         <Input

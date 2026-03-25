@@ -1,15 +1,20 @@
--- Email templates: add description + trigger_event columns, seed all 13 system templates
+-- Email templates: add variables + trigger_event columns, seed all 13 system templates
 -- Safe to re-run (all statements are idempotent)
+--
+-- Actual table schema (from 20260223133000):
+--   id, template_key, name, description, subject_template, html_template, text_template,
+--   is_active, updated_by, created_at, updated_at
 
 -- 1. Add new columns
 ALTER TABLE linksy_email_templates
-  ADD COLUMN IF NOT EXISTS description TEXT,
+  ADD COLUMN IF NOT EXISTS variables JSONB DEFAULT '[]'::jsonb,
   ADD COLUMN IF NOT EXISTS trigger_event TEXT;
 
+COMMENT ON COLUMN linksy_email_templates.variables IS 'JSON array of template variable names available for this template';
 COMMENT ON COLUMN linksy_email_templates.trigger_event IS 'Future: the system event that sends this template (e.g. ticket.created). Not yet wired up.';
 
--- 2. Seed all 13 system templates (skip if already exists by slug)
-INSERT INTO linksy_email_templates (slug, name, description, subject, body_html, variables) VALUES
+-- 2. Seed all 13 system templates (skip if already exists by template_key)
+INSERT INTO linksy_email_templates (template_key, name, description, subject_template, html_template, variables) VALUES
   (
     'invitation',
     'User Invitation',
@@ -75,14 +80,6 @@ INSERT INTO linksy_email_templates (slug, name, description, subject, body_html,
     '["app_name","assignee_name","ticket_number","ticket_url","provider_name","assigner_name","notes","client_name"]'::jsonb
   ),
   (
-    'description_review',
-    'Provider Description Review',
-    'Sent quarterly to providers asking them to review their description against AI-scanned website content.',
-    'Action Required: Please Review Your {{provider_name}} Description',
-    '<p>Hello {{contact_name}},</p><p>As part of our quarterly review, we''ve compared your current description for <strong>{{provider_name}}</strong> with information on your website.</p><p><strong>Current:</strong></p><div>{{current_description}}</div><p><strong>AI Suggested:</strong></p><div>{{ai_suggested_description}}</div><p><a href="{{accept_current_url}}">Keep Current</a> | <a href="{{accept_ai_url}}">Accept Suggested</a> | <a href="{{edit_url}}">Edit Manually</a></p>',
-    '["app_name","contact_name","provider_name","current_description","ai_suggested_description","accept_current_url","accept_ai_url","edit_url","support_email"]'::jsonb
-  ),
-  (
     'stale_referral_alert',
     'Stale Referral Alert',
     'Sent daily to designated recipients when referrals stay Pending longer than the configured threshold.',
@@ -114,21 +111,23 @@ INSERT INTO linksy_email_templates (slug, name, description, subject, body_html,
     '<p>Hello {{contactName}},</p><p>A new referral has been submitted.</p><p><strong>Ticket:</strong> {{ticketNumber}}<br/><strong>Client:</strong> {{clientName}}<br/><strong>Service:</strong> {{needName}}<br/><strong>Provider:</strong> {{providerName}}</p><p>{{description}}</p><p><a href="{{ticketUrl}}">View Referral</a></p>',
     '["contactName","ticketNumber","clientName","needName","description","providerName","ticketUrl"]'::jsonb
   )
-ON CONFLICT (slug) DO UPDATE SET
+ON CONFLICT (template_key) DO UPDATE SET
   description = COALESCE(EXCLUDED.description, linksy_email_templates.description),
   variables = EXCLUDED.variables;
 
+-- Note: description_review template is seeded by 20260321000002/20260324200000 migrations
+
 -- 3. Backfill trigger_event for known system templates
-UPDATE linksy_email_templates SET trigger_event = 'user.invited' WHERE slug = 'invitation' AND trigger_event IS NULL;
-UPDATE linksy_email_templates SET trigger_event = 'ticket.created' WHERE slug = 'ticket_new_assignment' AND trigger_event IS NULL;
-UPDATE linksy_email_templates SET trigger_event = 'ticket.status_changed' WHERE slug = 'ticket_status_update' AND trigger_event IS NULL;
-UPDATE linksy_email_templates SET trigger_event = 'ticket.status_changed' WHERE slug = 'ticket_status_in_process' AND trigger_event IS NULL;
-UPDATE linksy_email_templates SET trigger_event = 'ticket.forwarded' WHERE slug = 'ticket_status_transferred' AND trigger_event IS NULL;
-UPDATE linksy_email_templates SET trigger_event = 'ticket.forwarded' WHERE slug = 'ticket_forwarded_to_admin' AND trigger_event IS NULL;
-UPDATE linksy_email_templates SET trigger_event = 'ticket.reassigned' WHERE slug = 'ticket_reassigned_to_provider' AND trigger_event IS NULL;
-UPDATE linksy_email_templates SET trigger_event = 'ticket.assigned' WHERE slug = 'ticket_assigned_internally' AND trigger_event IS NULL;
-UPDATE linksy_email_templates SET trigger_event = 'provider.description_review' WHERE slug = 'description_review' AND trigger_event IS NULL;
-UPDATE linksy_email_templates SET trigger_event = 'referral.stale_alert' WHERE slug = 'stale_referral_alert' AND trigger_event IS NULL;
-UPDATE linksy_email_templates SET trigger_event = 'referral.sla_reminder' WHERE slug = 'sla_reminder' AND trigger_event IS NULL;
-UPDATE linksy_email_templates SET trigger_event = 'support_ticket.triage_complete' WHERE slug = 'support_ticket_triage' AND trigger_event IS NULL;
-UPDATE linksy_email_templates SET trigger_event = 'ticket.created' WHERE slug = 'new_ticket_notification' AND trigger_event IS NULL;
+UPDATE linksy_email_templates SET trigger_event = 'user.invited' WHERE template_key = 'invitation' AND trigger_event IS NULL;
+UPDATE linksy_email_templates SET trigger_event = 'ticket.created' WHERE template_key = 'ticket_new_assignment' AND trigger_event IS NULL;
+UPDATE linksy_email_templates SET trigger_event = 'ticket.status_changed' WHERE template_key = 'ticket_status_update' AND trigger_event IS NULL;
+UPDATE linksy_email_templates SET trigger_event = 'ticket.status_changed' WHERE template_key = 'ticket_status_in_process' AND trigger_event IS NULL;
+UPDATE linksy_email_templates SET trigger_event = 'ticket.forwarded' WHERE template_key = 'ticket_status_transferred' AND trigger_event IS NULL;
+UPDATE linksy_email_templates SET trigger_event = 'ticket.forwarded' WHERE template_key = 'ticket_forwarded_to_admin' AND trigger_event IS NULL;
+UPDATE linksy_email_templates SET trigger_event = 'ticket.reassigned' WHERE template_key = 'ticket_reassigned_to_provider' AND trigger_event IS NULL;
+UPDATE linksy_email_templates SET trigger_event = 'ticket.assigned' WHERE template_key = 'ticket_assigned_internally' AND trigger_event IS NULL;
+UPDATE linksy_email_templates SET trigger_event = 'provider.description_review' WHERE template_key = 'description_review' AND trigger_event IS NULL;
+UPDATE linksy_email_templates SET trigger_event = 'referral.stale_alert' WHERE template_key = 'stale_referral_alert' AND trigger_event IS NULL;
+UPDATE linksy_email_templates SET trigger_event = 'referral.sla_reminder' WHERE template_key = 'sla_reminder' AND trigger_event IS NULL;
+UPDATE linksy_email_templates SET trigger_event = 'support_ticket.triage_complete' WHERE template_key = 'support_ticket_triage' AND trigger_event IS NULL;
+UPDATE linksy_email_templates SET trigger_event = 'ticket.created' WHERE template_key = 'new_ticket_notification' AND trigger_event IS NULL;

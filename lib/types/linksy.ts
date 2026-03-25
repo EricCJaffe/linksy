@@ -619,7 +619,7 @@ export interface DescriptionReview {
 // Email templates
 export interface EmailTemplate {
   id: string
-  slug: string
+  template_key: string
   name: string
   description: string | null
   subject: string
