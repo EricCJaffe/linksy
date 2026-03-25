@@ -62,6 +62,11 @@
 | `20260322000002_sla_reminder_system.sql` | Per-provider SLA hours, reminder tracking, master switch |
 | `20260322000003_seed_help_docs.sql` | Seed help articles (glossary, contacts, intake, referrals) |
 | `20260323000001_rollup_recent_migrations.sql` | Consolidated rollup of 0321–0322 migrations (safe to run if originals already applied) |
+| `20260324000001_support_ticket_ai_triage.sql` | AI triage columns on support tickets (`ai_triage` JSONB, `ai_triage_status`) |
+| `20260324000002_support_ticket_ai_remediation.sql` | AI remediation columns (`remediation_status`, `remediation_pr_url`, etc.) |
+| `20260324000003_ticket_status_reasons.sql` | Admin-configurable status sub-reasons table + seeded defaults |
+| `20260324200000_rollup_missing_migrations.sql` | Consolidated rollup of host custom fields, host email templates, description reviews |
+| `20260325000001_email_templates_full_seed.sql` | Add `variables` (JSONB) + `trigger_event` columns, seed all 13 system templates |
 
 > Full schema reference with column-level detail: `docs/AUDIT-2026-03-02.md` §Tables
 

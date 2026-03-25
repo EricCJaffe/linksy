@@ -316,6 +316,23 @@
   - [x] Welcome message editor
   - [x] Color theme picker
   - [x] Logo upload
+- [x] **Email Template Management** (COMPLETED 2026-03-25)
+  - [x] List all system + custom email templates (13 system templates seeded)
+  - [x] Create new custom templates (name, subject, body, variables auto-populated)
+  - [x] Edit existing templates (name, subject, body HTML via rich text editor)
+  - [x] Rich text editor with formatting toolbar (bold, italic, underline, color, lists, alignment, undo/redo)
+  - [x] "Insert Variable" dropdown with 45+ variables grouped by category (Common, Client, Provider, Ticket, SLA, Support/AI, Invitation, Description Review)
+  - [x] Preview template with sample data rendered
+  - [x] Send test email to any address (variables filled with sample values)
+  - [x] Toggle active/inactive per template
+  - [x] Delete custom templates (system templates protected)
+  - [x] Template key auto-generated from name (hidden from user)
+  - [x] Trigger Event field (display-only placeholder for future webhook wiring)
+  - [ ] Connect templates to system event triggers (pre-go-live — see TASKS.md 1.12)
+- [x] **Provider Public Preview** (COMPLETED 2026-03-25)
+  - [x] Full detail view: description, services, contact info, address, hours, referral instructions
+  - [x] "Create Referral" button shown when provider accepts standard referrals
+  - [x] Diagnostic info panel: status, accepting referrals, frozen state, description/location/services presence
 
 ---
 

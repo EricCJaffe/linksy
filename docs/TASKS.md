@@ -1,6 +1,6 @@
 # Tasks
 
-> Last updated: 2026-03-23. See `FEATURES_CHECKLIST.md` for the full feature inventory.
+> Last updated: 2026-03-25. See `FEATURES_CHECKLIST.md` for the full feature inventory.
 > Program review tasks (TASK-001–039) from [Heather Johnston review 2026-03-03](PROGRAM-REVIEW-2026-03-03.md).
 
 ## Go-Live Roadmap
@@ -66,15 +66,13 @@ Migration written: `20260303000002_rls_security_hardening.sql`. **Needs to be ap
 - [ ] Final QA pass: spot-check 10+ providers for data accuracy
 
 #### 0.6 Template Email Data
-- [ ] **Collect and configure all email template content** — System exists but needs production-ready copy:
-  - New referral notification (to provider)
-  - Referral status update (to client)
-  - Provider invitation / welcome email
+- [x] **Email template admin CRUD** — COMPLETED 2026-03-25. Full create/edit/preview/test-send UI at `/dashboard/admin/email-templates`. 13 system templates seeded with default HTML content, variables, and trigger events. Insert Variable dropdown with 45+ categorized variables. Rich text editor with formatting toolbar. Migration `20260325000001` adds `variables` (JSONB) and `trigger_event` columns.
+- [ ] **Collect and configure all email template content** — Templates exist with placeholder copy; needs production-ready content:
+  - Review and customize all 13 system templates with Impact Works branding/tone
   - User migration / account claim email (ties to 0.4)
-  - Ticket comment notification
-  - Host-specific template overrides
-- [ ] Get final copy from stakeholders (Impact Clay branding, tone, legal disclaimers)
-- [ ] Load templates into `linksy_email_templates` table
+  - Host-specific template overrides (per-host customization ready but no overrides configured)
+- [ ] Get final copy from stakeholders (Impact Works branding, tone, legal disclaimers)
+- [ ] **[PRE-GO-LIVE] Connect templates to system triggers** — `trigger_event` column populated but not yet wired to email sending logic. See 1.12 for details.
 
 #### 0.7 Email & Domain Setup (Impact Works)
 - [ ] **Choose production domain** (e.g., `impactworks.org`, `impactworks.com`, `impactworks.app`)
@@ -374,6 +372,15 @@ Recent migrations to verify applied (check `supabase_migrations.schema_migration
 ## Done
 
 Items completed across all sessions, newest first.
+
+### 2026-03-25
+
+- [x] **Email template management UI** — Full CRUD at `/dashboard/admin/email-templates`: create, edit, preview with sample data, send test email, delete (custom only). 13 system templates seeded with default HTML. "Insert Variable" dropdown with 45+ variables grouped by category (Common, Client, Provider, Ticket, SLA, Support/AI, Invitation, Description Review). Rich text editor (TipTap) with formatting toolbar. Template key auto-generated from name (hidden from user). Trigger Event field placeholder with "Coming Soon" badge for future webhook wiring.
+- [x] **DB migration: email template columns** — Added `variables` (JSONB) and `trigger_event` (TEXT) columns to `linksy_email_templates`. Seeded all 13 system templates with `ON CONFLICT` upsert. Backfilled trigger_event for all system templates. Applied to production Supabase.
+- [x] **API column mapping fix** — Fixed API routes to map UI-friendly names (`subject`, `body_html`) to actual DB columns (`subject_template`, `html_template`). Fixed `getEmailTemplateOverride()` in `lib/utils/email.ts` to query correct columns.
+- [x] **RLS policy for email templates** — Added "Site admins can manage email templates" policy allowing authenticated site admins to create/edit/delete templates (supplements existing service_role policy).
+- [x] **Provider Public Preview enhancement** — Expanded from compact card to full detail view: full description (no truncation), services offered badges, complete contact info (phone/email/website/address/hours), referral instructions, "Create Referral" button (when applicable), and diagnostic info panel showing provider status/config at a glance.
+- [x] **Portable Support Module docs** — Created `docs/PORTABLE_SUPPORT_MODULE/` with INSTALL.md (9-phase Claude Code prompt), SCHEMA.sql, ARCHITECTURE.md, API_CONTRACTS.md for extracting the ticket system to other projects.
 
 ### 2026-03-03
 

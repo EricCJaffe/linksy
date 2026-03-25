@@ -733,6 +733,47 @@ async function uploadFile(file: File, moduleId: string) {
 }
 ```
 
+## Email Template Management
+
+### `GET /api/admin/email-templates`
+**Auth:** Site Admin required
+Returns all email templates with DB columns mapped to UI-friendly names (`subject_template` → `subject`, `html_template` → `body_html`).
+
+### `POST /api/admin/email-templates`
+**Auth:** Site Admin required
+Create a new email template.
+```json
+{
+  "template_key": "welcome_email",
+  "name": "Welcome Email",
+  "subject": "Welcome to {{app_name}}",
+  "body_html": "<p>Hello {{contact_name}}...</p>",
+  "variables": ["app_name", "contact_name"],
+  "trigger_event": null
+}
+```
+
+### `PATCH /api/admin/email-templates/[id]`
+**Auth:** Site Admin required
+Update an existing template. Accepts: `name`, `subject`, `body_html`, `is_active`, `variables`, `trigger_event`.
+
+### `DELETE /api/admin/email-templates/[id]`
+**Auth:** Site Admin required
+Delete a template by UUID or template_key. System templates should not be deleted.
+
+### `POST /api/admin/email-templates/test-send`
+**Auth:** Site Admin required
+Send a test email with sample data filled in for all template variables.
+```json
+{
+  "to": "admin@example.com",
+  "subject": "Your referral {{ticket_number}} has been updated",
+  "body_html": "<p>Hello {{client_name}}...</p>"
+}
+```
+
+---
+
 ## Support
 
 For API issues or questions:
