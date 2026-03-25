@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
-import { Textarea } from '@/components/ui/textarea'
 import {
   Dialog,
   DialogContent,
@@ -25,11 +24,8 @@ import {
   SendHorizonal,
   Loader2,
   Trash2,
-  Copy,
-  Check,
   Zap,
   ChevronDown,
-  ChevronUp,
   Info,
 } from 'lucide-react'
 import type { EmailTemplate } from '@/lib/types/linksy'
@@ -37,67 +33,97 @@ import { RichTextEditor, type RichTextEditorApi } from '@/components/ui/rich-tex
 import { EMAIL_TEMPLATE_DEFINITIONS, type EmailTemplateDefinition } from '@/lib/email/template-registry'
 import DOMPurify from 'isomorphic-dompurify'
 
-// Variable descriptions for the reference panel
-const VARIABLE_DESCRIPTIONS: Record<string, string> = {
-  app_name: 'Application name (e.g. Linksy)',
-  app_url: 'Application base URL',
-  to: 'Recipient email address',
-  email: 'Recipient email address',
-  contact_name: 'Name of the provider contact receiving this email',
-  client_name: 'Name of the client/referral subject',
-  provider_name: 'Name of the provider organization',
-  need_name: 'Name of the service/need category',
-  ticket_number: 'Referral ticket number (e.g. R-2001-07)',
-  ticket_url: 'Direct link to view the referral ticket',
-  description: 'Description of the client\'s need',
-  custom_fields: 'HTML table of custom intake form field responses',
-  status_label: 'Human-readable status label (e.g. "In Process")',
-  new_status: 'New status value (machine name)',
-  new_provider_name: 'Name of the new provider (when transferred)',
-  forwarder_name: 'Name of the person who forwarded the referral',
-  reason: 'Reason for forwarding/reassignment',
-  notes: 'Additional notes from the forwarding/assignment action',
-  assignee_name: 'Name of the person being assigned the referral',
-  reassigner_name: 'Name of the admin who reassigned the referral',
-  assigner_name: 'Name of the person who assigned internally',
-  inviter_name: 'Name of the person sending the invitation',
-  tenant_name: 'Name of the tenant/organization',
-  role: 'Role being assigned (admin, member)',
-  invite_url: 'Link to accept the invitation',
-  total_count: 'Total number of stale referrals',
-  threshold_hours: 'SLA threshold in hours',
-  threshold_days: 'SLA threshold in days',
-  age_breakdown: 'HTML breakdown of referral ages',
-  ticket_table: 'HTML table of stale referral details',
-  dashboard_url: 'Link to the admin dashboard',
-  hours_pending: 'Number of hours the referral has been pending',
-  days_pending: 'Number of days the referral has been pending',
-  sla_hours: 'SLA threshold hours for the provider',
-  severity: 'AI triage severity level (low/medium/high/critical)',
-  classification: 'AI triage classification (bug/feature_request/etc)',
-  root_cause: 'AI triage root cause hypothesis',
-  suggested_fix: 'AI triage suggested fix approach',
-  remediation_prompt: 'AI-generated prompt for coding assistant',
-  support_email: 'Platform support email address',
-  current_description: 'Provider\'s current description text',
-  ai_suggested_description: 'AI-suggested description from website scan',
-  accept_current_url: 'Link to accept current description',
-  accept_ai_url: 'Link to accept AI-suggested description',
-  edit_url: 'Link to manually edit description',
-  subject: 'Support ticket subject line',
-  // Legacy camelCase variables
-  contactName: 'Name of the provider contact (legacy)',
-  clientName: 'Name of the client (legacy)',
-  providerName: 'Provider organization name (legacy)',
-  needName: 'Service/need category name (legacy)',
-  ticketNumber: 'Referral ticket number (legacy)',
-  ticketUrl: 'Link to view the referral (legacy)',
-  statusLabel: 'Human-readable status (legacy)',
-  newStatus: 'New status machine name (legacy)',
-  inviterName: 'Name of inviter (legacy)',
-  tenantName: 'Tenant/organization name (legacy)',
-  inviteUrl: 'Invitation accept link (legacy)',
-}
+// All available variables grouped by category for the insert dropdown
+const VARIABLE_GROUPS: { label: string; variables: { name: string; desc: string }[] }[] = [
+  {
+    label: 'Common',
+    variables: [
+      { name: 'app_name', desc: 'Application name (e.g. Linksy)' },
+      { name: 'app_url', desc: 'Application base URL' },
+      { name: 'to', desc: 'Recipient email address' },
+      { name: 'dashboard_url', desc: 'Link to admin dashboard' },
+      { name: 'support_email', desc: 'Platform support email' },
+    ],
+  },
+  {
+    label: 'Client / Person',
+    variables: [
+      { name: 'client_name', desc: 'Client name' },
+      { name: 'contact_name', desc: 'Provider contact name' },
+      { name: 'assignee_name', desc: 'Person being assigned' },
+      { name: 'assigner_name', desc: 'Person who assigned' },
+      { name: 'reassigner_name', desc: 'Admin who reassigned' },
+      { name: 'forwarder_name', desc: 'Person who forwarded' },
+      { name: 'inviter_name', desc: 'Person sending invite' },
+    ],
+  },
+  {
+    label: 'Provider / Organization',
+    variables: [
+      { name: 'provider_name', desc: 'Provider organization name' },
+      { name: 'new_provider_name', desc: 'New provider (when transferred)' },
+      { name: 'tenant_name', desc: 'Tenant / region name' },
+      { name: 'role', desc: 'Role being assigned' },
+    ],
+  },
+  {
+    label: 'Referral / Ticket',
+    variables: [
+      { name: 'ticket_number', desc: 'Referral number (e.g. R-2001-07)' },
+      { name: 'ticket_url', desc: 'Link to view the referral' },
+      { name: 'need_name', desc: 'Service / need category' },
+      { name: 'description', desc: 'Description of client need' },
+      { name: 'custom_fields', desc: 'Custom intake form responses' },
+      { name: 'status_label', desc: 'Status label (e.g. "In Process")' },
+      { name: 'new_status', desc: 'New status machine name' },
+      { name: 'reason', desc: 'Reason for forwarding / reassignment' },
+      { name: 'notes', desc: 'Notes from the action' },
+    ],
+  },
+  {
+    label: 'SLA / Alerts',
+    variables: [
+      { name: 'total_count', desc: 'Total stale referrals' },
+      { name: 'threshold_hours', desc: 'SLA threshold (hours)' },
+      { name: 'threshold_days', desc: 'SLA threshold (days)' },
+      { name: 'hours_pending', desc: 'Hours referral has been pending' },
+      { name: 'days_pending', desc: 'Days referral has been pending' },
+      { name: 'sla_hours', desc: 'Provider SLA threshold hours' },
+      { name: 'age_breakdown', desc: 'Stale referral age breakdown' },
+      { name: 'ticket_table', desc: 'HTML table of stale referrals' },
+    ],
+  },
+  {
+    label: 'Support / AI Triage',
+    variables: [
+      { name: 'subject', desc: 'Support ticket subject' },
+      { name: 'severity', desc: 'AI triage severity' },
+      { name: 'classification', desc: 'AI triage classification' },
+      { name: 'root_cause', desc: 'AI root cause hypothesis' },
+      { name: 'suggested_fix', desc: 'AI suggested fix' },
+      { name: 'remediation_prompt', desc: 'AI coding prompt' },
+    ],
+  },
+  {
+    label: 'Invitation',
+    variables: [
+      { name: 'invite_url', desc: 'Invitation accept link' },
+    ],
+  },
+  {
+    label: 'Description Review',
+    variables: [
+      { name: 'current_description', desc: 'Current provider description' },
+      { name: 'ai_suggested_description', desc: 'AI-suggested description' },
+      { name: 'accept_current_url', desc: 'Accept current link' },
+      { name: 'accept_ai_url', desc: 'Accept AI suggestion link' },
+      { name: 'edit_url', desc: 'Manual edit link' },
+    ],
+  },
+]
+
+// Flat list of all variable names for quick lookup
+const ALL_VARIABLE_NAMES = VARIABLE_GROUPS.flatMap((g) => g.variables.map((v) => v.name))
 
 type EditMode = 'none' | 'edit' | 'create'
 
@@ -109,7 +135,6 @@ export default function EmailTemplatesPage() {
   const [editForm, setEditForm] = useState({
     slug: '',
     name: '',
-    description: '',
     subject: '',
     body_html: '',
     variables: [] as string[],
@@ -126,8 +151,6 @@ export default function EmailTemplatesPage() {
   const [testEmailLoading, setTestEmailLoading] = useState(false)
   const [testEmailTemplate, setTestEmailTemplate] = useState<EmailTemplate | null>(null)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
-  const [expandedVars, setExpandedVars] = useState(false)
-  const [copiedVar, setCopiedVar] = useState<string | null>(null)
   const editorApiRef = useRef<RichTextEditorApi | null>(null)
 
   useEffect(() => {
@@ -155,14 +178,12 @@ export default function EmailTemplatesPage() {
     setEditForm({
       slug: template.slug,
       name: template.name,
-      description: template.description || '',
       subject: template.subject,
       body_html: template.body_html,
       variables: template.variables || [],
       is_active: template.is_active,
       trigger_event: template.trigger_event || '',
     })
-    setExpandedVars(false)
     setSaveMessage(null)
   }
 
@@ -172,14 +193,12 @@ export default function EmailTemplatesPage() {
     setEditForm({
       slug: '',
       name: '',
-      description: '',
       subject: '',
       body_html: '<p>Enter your email template content here.</p>',
-      variables: [],
+      variables: ALL_VARIABLE_NAMES,
       is_active: true,
       trigger_event: '',
     })
-    setExpandedVars(false)
     setSaveMessage(null)
   }
 
@@ -204,38 +223,6 @@ export default function EmailTemplatesPage() {
     []
   )
 
-  const insertVariableIntoSubject = (variable: string) => {
-    setEditForm((prev) => ({
-      ...prev,
-      subject: `${prev.subject}{{${variable}}}`,
-    }))
-  }
-
-  const copyVariable = (variable: string) => {
-    navigator.clipboard.writeText(`{{${variable}}}`)
-    setCopiedVar(variable)
-    setTimeout(() => setCopiedVar(null), 1500)
-  }
-
-  const handleAddVariable = () => {
-    const name = prompt('Enter variable name (letters, numbers, underscores only):')
-    if (!name) return
-    const clean = name.trim().replace(/[^a-zA-Z0-9_]/g, '')
-    if (!clean) return
-    if (editForm.variables.includes(clean)) return
-    setEditForm((prev) => ({
-      ...prev,
-      variables: [...prev.variables, clean],
-    }))
-  }
-
-  const handleRemoveVariable = (variable: string) => {
-    setEditForm((prev) => ({
-      ...prev,
-      variables: prev.variables.filter((v) => v !== variable),
-    }))
-  }
-
   const generateSlug = (name: string) => {
     return name
       .toLowerCase()
@@ -255,7 +242,6 @@ export default function EmailTemplatesPage() {
           body: JSON.stringify({
             slug,
             name: editForm.name,
-            description: editForm.description || null,
             subject: editForm.subject,
             body_html: editForm.body_html,
             variables: editForm.variables,
@@ -276,7 +262,6 @@ export default function EmailTemplatesPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             name: editForm.name,
-            description: editForm.description || null,
             subject: editForm.subject,
             body_html: editForm.body_html,
             is_active: editForm.is_active,
@@ -409,13 +394,6 @@ export default function EmailTemplatesPage() {
     return EMAIL_TEMPLATE_DEFINITIONS.find((d) => d.key === slug)
   }
 
-  // Get all available variables for the current edit form
-  const getAvailableVariables = (): string[] => {
-    if (editForm.variables.length > 0) return editForm.variables
-    const def = getRegistryDef(editForm.slug)
-    return def?.placeholders || []
-  }
-
   const isSystemTemplate = (slug: string) => {
     return EMAIL_TEMPLATE_DEFINITIONS.some((d) => d.key === slug)
   }
@@ -486,14 +464,6 @@ export default function EmailTemplatesPage() {
               setForm={setEditForm}
               editorApiRef={editorApiRef}
               insertVariable={insertVariable}
-              insertVariableIntoSubject={insertVariableIntoSubject}
-              copyVariable={copyVariable}
-              copiedVar={copiedVar}
-              availableVariables={getAvailableVariables()}
-              onAddVariable={handleAddVariable}
-              onRemoveVariable={handleRemoveVariable}
-              expandedVars={expandedVars}
-              setExpandedVars={setExpandedVars}
               showSlug
             />
           </CardContent>
@@ -628,14 +598,6 @@ export default function EmailTemplatesPage() {
                       setForm={setEditForm}
                       editorApiRef={editorApiRef}
                       insertVariable={insertVariable}
-                      insertVariableIntoSubject={insertVariableIntoSubject}
-                      copyVariable={copyVariable}
-                      copiedVar={copiedVar}
-                      availableVariables={getAvailableVariables()}
-                      onAddVariable={handleAddVariable}
-                      onRemoveVariable={handleRemoveVariable}
-                      expandedVars={expandedVars}
-                      setExpandedVars={setExpandedVars}
                     />
                   ) : (
                     <div className="space-y-2 text-sm">
@@ -777,7 +739,6 @@ interface TemplateEditFormProps {
   form: {
     slug: string
     name: string
-    description: string
     subject: string
     body_html: string
     variables: string[]
@@ -787,14 +748,6 @@ interface TemplateEditFormProps {
   setForm: React.Dispatch<React.SetStateAction<TemplateEditFormProps['form']>>
   editorApiRef: React.MutableRefObject<RichTextEditorApi | null>
   insertVariable: (variable: string) => void
-  insertVariableIntoSubject: (variable: string) => void
-  copyVariable: (variable: string) => void
-  copiedVar: string | null
-  availableVariables: string[]
-  onAddVariable: () => void
-  onRemoveVariable: (variable: string) => void
-  expandedVars: boolean
-  setExpandedVars: (v: boolean) => void
   showSlug?: boolean
 }
 
@@ -803,16 +756,28 @@ function TemplateEditForm({
   setForm,
   editorApiRef,
   insertVariable,
-  insertVariableIntoSubject,
-  copyVariable,
-  copiedVar,
-  availableVariables,
-  onAddVariable,
-  onRemoveVariable,
-  expandedVars,
-  setExpandedVars,
   showSlug,
 }: TemplateEditFormProps) {
+  const [varDropdownOpen, setVarDropdownOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (!varDropdownOpen) return
+    const handleClick = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setVarDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [varDropdownOpen])
+
+  const handleInsertVar = (varName: string) => {
+    insertVariable(varName)
+    setVarDropdownOpen(false)
+  }
+
   return (
     <div className="space-y-4">
       {showSlug && (
@@ -846,15 +811,6 @@ function TemplateEditForm({
         </div>
       )}
       <div>
-        <Label>Description</Label>
-        <Textarea
-          value={form.description}
-          onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
-          placeholder="Brief description of when this template is used..."
-          rows={2}
-        />
-      </div>
-      <div>
         <Label>Subject Line <span className="text-destructive">*</span></Label>
         <Input
           value={form.subject}
@@ -862,12 +818,49 @@ function TemplateEditForm({
           placeholder="e.g. Your referral {{ticket_number}} has been updated"
           className="font-mono text-sm"
         />
-        <p className="text-xs text-muted-foreground mt-1">
-          Click a variable below to insert it into the subject line or email body.
-        </p>
       </div>
       <div>
-        <Label>Email Body</Label>
+        <div className="flex items-center justify-between mb-1">
+          <Label>Email Body</Label>
+          {/* Insert Variable dropdown — sits above the editor toolbar */}
+          <div className="relative" ref={dropdownRef}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs gap-1.5"
+              onClick={() => setVarDropdownOpen(!varDropdownOpen)}
+            >
+              <Plus className="h-3 w-3" />
+              Insert Variable
+              <ChevronDown className={cn('h-3 w-3 transition-transform', varDropdownOpen && 'rotate-180')} />
+            </Button>
+            {varDropdownOpen && (
+              <div className="absolute right-0 top-full z-50 mt-1 w-80 max-h-96 overflow-y-auto rounded-lg border bg-popover shadow-lg">
+                {VARIABLE_GROUPS.map((group) => (
+                  <div key={group.label}>
+                    <div className="sticky top-0 bg-muted/80 backdrop-blur px-3 py-1.5 text-xs font-semibold text-muted-foreground border-b">
+                      {group.label}
+                    </div>
+                    {group.variables.map((v) => (
+                      <button
+                        key={v.name}
+                        type="button"
+                        className="flex items-center gap-3 w-full px-3 py-2 text-left text-sm hover:bg-accent transition-colors"
+                        onClick={() => handleInsertVar(v.name)}
+                      >
+                        <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono shrink-0">
+                          {`{{${v.name}}}`}
+                        </code>
+                        <span className="text-xs text-muted-foreground truncate">{v.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
         <RichTextEditor
           value={form.body_html}
           onChange={(html) => setForm((prev) => ({ ...prev, body_html: html }))}
@@ -875,96 +868,9 @@ function TemplateEditForm({
             editorApiRef.current = api
           }}
         />
-      </div>
-
-      {/* Variable reference panel */}
-      <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <Label className="font-semibold flex items-center gap-2">
-            Available Variables
-            <Badge variant="secondary" className="text-xs">{availableVariables.length}</Badge>
-          </Label>
-          <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={onAddVariable}>
-              <Plus className="h-3 w-3 mr-1" />
-              Add Variable
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setExpandedVars(!expandedVars)}
-            >
-              {expandedVars ? (
-                <ChevronUp className="h-4 w-4" />
-              ) : (
-                <ChevronDown className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
-        </div>
-
-        {/* Compact variable buttons (always visible) */}
-        <div className="flex flex-wrap gap-1.5">
-          {availableVariables.map((v) => (
-            <div key={v} className="inline-flex items-center gap-0.5">
-              <button
-                type="button"
-                onClick={() => insertVariable(v)}
-                className="inline-flex items-center rounded-l-full border border-r-0 px-2.5 py-1 font-mono text-xs hover:bg-accent transition-colors"
-                title={`Click to insert {{${v}}} into email body`}
-              >
-                {`{{${v}}}`}
-              </button>
-              <button
-                type="button"
-                onClick={() => insertVariableIntoSubject(v)}
-                className="inline-flex items-center border border-r-0 px-1.5 py-1 text-xs hover:bg-accent transition-colors text-muted-foreground"
-                title={`Insert into subject line`}
-              >
-                S
-              </button>
-              <button
-                type="button"
-                onClick={() => copyVariable(v)}
-                className="inline-flex items-center rounded-r-full border px-1.5 py-1 text-xs hover:bg-accent transition-colors text-muted-foreground"
-                title="Copy to clipboard"
-              >
-                {copiedVar === v ? (
-                  <Check className="h-3 w-3 text-green-600" />
-                ) : (
-                  <Copy className="h-3 w-3" />
-                )}
-              </button>
-            </div>
-          ))}
-        </div>
-
-        {/* Expanded variable descriptions */}
-        {expandedVars && (
-          <div className="mt-3 border-t pt-3 space-y-1">
-            <p className="text-xs font-medium text-muted-foreground mb-2">Variable Reference</p>
-            <div className="grid gap-1">
-              {availableVariables.map((v) => (
-                <div key={v} className="flex items-start gap-3 text-xs py-1">
-                  <code className="bg-muted px-1.5 py-0.5 rounded font-mono shrink-0">{`{{${v}}}`}</code>
-                  <span className="text-muted-foreground">
-                    {VARIABLE_DESCRIPTIONS[v] || 'Custom variable'}
-                  </span>
-                  {!VARIABLE_DESCRIPTIONS[v] && (
-                    <button
-                      type="button"
-                      onClick={() => onRemoveVariable(v)}
-                      className="ml-auto text-destructive hover:text-destructive/80"
-                      title="Remove this variable"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        <p className="text-xs text-muted-foreground mt-1">
+          Use the <strong>Insert Variable</strong> button to add dynamic fields like names, ticket numbers, and links.
+        </p>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
