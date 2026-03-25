@@ -28,8 +28,8 @@ interface InvitationEmailData {
 }
 
 interface EmailTemplateOverride {
-  subject: string
-  body_html: string
+  subject_template: string
+  html_template: string
   is_active: boolean
 }
 
@@ -85,8 +85,8 @@ async function getEmailTemplateOverride(
       .eq('is_active', true)
       .maybeSingle()
 
-    // Map DB columns to the interface the rest of the code expects
-    const data = raw ? { subject: raw.subject_template, body_html: raw.html_template, is_active: raw.is_active } : null
+    // Map DB columns to the interface
+    const data: EmailTemplateOverride | null = raw ? { subject_template: raw.subject_template, html_template: raw.html_template, is_active: raw.is_active } : null
 
     if (error) {
       logger.warn('Failed to load email template override; using default template.', {
@@ -132,8 +132,8 @@ async function resolveEmailTemplate({
 
   // Fall back to system template override
   const override = await getEmailTemplateOverride(templateKey)
-  const subjectTemplate = override?.subject || defaultSubject
-  const htmlTemplate = override?.body_html || defaultHtml
+  const subjectTemplate = override?.subject_template || defaultSubject
+  const htmlTemplate = override?.html_template || defaultHtml
 
   const subject = renderTemplate(subjectTemplate, variables)
   const html = renderTemplate(htmlTemplate, variables)
