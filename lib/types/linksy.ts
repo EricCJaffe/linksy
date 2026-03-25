@@ -621,10 +621,12 @@ export interface EmailTemplate {
   id: string
   slug: string
   name: string
+  description: string | null
   subject: string
   body_html: string
   variables: string[]
   is_active: boolean
+  trigger_event: string | null
   created_at: string
   updated_at: string
 }

@@ -10,13 +10,16 @@ export async function PATCH(
   if (error) return error
 
   const body = await request.json()
-  const { name, subject, body_html, is_active } = body
+  const { name, subject, body_html, is_active, description, trigger_event, variables } = body
 
   const updateData: Record<string, unknown> = {}
   if (name !== undefined) updateData.name = name
   if (subject !== undefined) updateData.subject = subject
   if (body_html !== undefined) updateData.body_html = body_html
   if (is_active !== undefined) updateData.is_active = is_active
+  if (description !== undefined) updateData.description = description
+  if (trigger_event !== undefined) updateData.trigger_event = trigger_event
+  if (variables !== undefined) updateData.variables = variables
 
   if (Object.keys(updateData).length === 0) {
     return NextResponse.json({ error: 'No fields to update' }, { status: 400 })

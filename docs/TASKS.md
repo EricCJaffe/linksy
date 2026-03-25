@@ -278,7 +278,7 @@ All 8 LOW findings resolved.
 - [ ] Two-factor authentication (2FA) for admins
 - [ ] SSO integration (SAML)
 - [x] Autoupdates for provider description every 90 days — COMPLETED 2026-03-21. Quarterly cron job (Jan/Apr/Jul/Oct) scans provider websites via OpenAI, compares descriptions, emails provider contacts with accept/edit links. Admin can override timing per provider. Email template editable in Admin Console.
-- [ ] Enhanced notification workflows beyond baseline
+- [ ] **[PRE-GO-LIVE] Connect email templates to system triggers/webhooks** — Email templates now have a `trigger_event` column (e.g. `ticket.created`, `ticket.status_changed`, `ticket.forwarded`, etc.) but this is read-only/display-only. Before go-live, need to: (1) Build a UI to let admins select which template fires for which event, (2) Wire `resolveEmailTemplate()` to check `trigger_event` instead of hardcoded template keys, (3) Allow multiple templates per event (e.g. one to client, one to admin), (4) Support conditional triggers (e.g. only fire on specific status transitions). Related: email template admin page enhanced 2026-03-25 with full CRUD, variable reference, preview, and test send.
 - [ ] Host-specific email template customization (tenant/host-level overrides)
 - [ ] Host custom form builder for pre-proposal intake
 - [ ] Custom provider referral redirects (external destination behavior)

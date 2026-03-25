@@ -24,7 +24,7 @@ export async function POST(request: Request) {
   if (error) return error
 
   const body = await request.json()
-  const { slug, name, subject, body_html, variables } = body
+  const { slug, name, subject, body_html, variables, description, trigger_event } = body
 
   if (!slug || !name || !subject || !body_html) {
     return NextResponse.json({ error: 'slug, name, subject, and body_html are required' }, { status: 400 })
@@ -33,7 +33,15 @@ export async function POST(request: Request) {
   const supabase = await createServiceClient()
   const { data: template, error: insertError } = await supabase
     .from('linksy_email_templates')
-    .insert({ slug, name, subject, body_html, variables: variables || [] })
+    .insert({
+      slug,
+      name,
+      subject,
+      body_html,
+      variables: variables || [],
+      description: description || null,
+      trigger_event: trigger_event || null,
+    })
     .select()
     .single()
 
